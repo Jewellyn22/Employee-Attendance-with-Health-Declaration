@@ -1,8 +1,334 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Contractor Attendance Monitoring";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container-fluid">
+    <div class="home-container">
+        <div class="left">
+            <div>
+                <h3>Time In - Time Out</h3>
+
+                <form id="scan-form">
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <label for="employee_id" class="form-label">Scan ID:</label>
+                            <input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
+                        </div>
+
+                        <div id="contractor-info" class="row mt-3" style="display: none;">
+                            <div class="col-12">
+                                <h5 id="employee_name" class="mb-2"></h5>
+                                <p id="provider" class="mb-1"></p>
+                                <p id="position" class="mb-1"></p>
+                                <p id="area_of_destination" class="mb-1"></p>
+                            </div>
+                        </div>
+
+                        <div id="scan-result" class="mt-3"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="right">
+            <h4>Health Declaration</h4>
+
+            <div id="health-declaration-section" style="display: none;">
+                <form id="health-declaration-form">
+                    <div class="mb-3">
+                        <label class="form-label">Please select your health status:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="health_status" id="health_fit" value="FIT" checked>
+                            <label class="form-check-label" for="health_fit">
+                                FIT - I am feeling well and healthy
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="health_status" id="health_unfit" value="UNFIT">
+                            <label class="form-check-label" for="health_unfit">
+                                UNFIT - I am feeling unwell
+                            </label>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="hd_attendance_id" name="attendance_id">
+                </form>
+
+                <div class="mt-3">
+                    <small class="text-muted">Health declaration form will close in <span id="timer-countdown">120</span> seconds</small>
+                </div>
+            </div>
+
+            <div id="no-declaration-message" class="text-center text-muted mt-5">
+                <p>Scan your ID to begin health declaration process</p>
+            </div>
+        </div>
+    </div>
 </div>
+
+<div class="text-center mt-4">
+    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-secondary">View History Logs</a>
+</div>
+
+@section Scripts {
+    <script src="~/lib/sweetalert2/sweetalert2.js"></script>
+
+    <script>
+        // Global variables
+        let healthDeclarationTimer = null;
+        let timerCountdown = 120;
+
+        $(document).ready(function() {
+            // Set focus on employee_id input
+            $('#employee_id').focus();
+
+            // ID Scanning - Enter key processing
+            $('#employee_id').on('keypress', function(e) {
+                if (e.which === 13) { // Enter key
+                    e.preventDefault();
+                    processScan();
+                }
+            });
+
+            // Health declaration radio button change handler
+            $('input[name="health_status"]').on('change', function() {
+                const selectedStatus = $(this).val();
+                const attendanceId = $('#hd_attendance_id').val();
+
+                if (selectedStatus === 'UNFIT') {
+                    // Show blocking message for UNFIT
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Not Allowed',
+                        text: 'You are not allowed to enter company premises',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+
+                    // Update health status to UNFIT (sets TIME OUT)
+                    updateHealthStatus(attendanceId, 'UNFIT');
+                } else if (selectedStatus === 'FIT') {
+                    // Update health status to FIT (removes TIME OUT if exists)
+                    updateHealthStatus(attendanceId, 'FIT');
+                }
+            });
+        });
+
+        function processScan() {
+            const employeeId = $('#employee_id').val().trim();
+            if (!employeeId) return;
+
+            // Clear any existing health declaration timer
+            clearHealthDeclarationTimer();
+
+            $.ajax({
+                url: '/Home/Scan',
+                method: 'POST',
+                data: { employee_id: employeeId },
+                success: function(response) {
+                    if (response.success) {
+                        displayContractorInfo(response.data.contractor_info);
+                        displayScanResult(response.message);
+
+                        // Show health declaration form for this contractor
+                        showHealthDeclarationForm(response.data.attendance_id);
+
+                        // Clear input for next scan
+                        $('#employee_id').val('');
+                        $('#employee_id').focus();
+                    } else {
+                        displayScanError(response.message);
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to process scan'
+                    });
+                }
+            });
+        }
+
+        function displayContractorInfo(contractor) {
+            if (!contractor) {
+                $('#contractor-info').hide();
+                return;
+            }
+
+            $('#employee_name').text('Name: ' + contractor.name);
+            $('#provider').text('Provider: ' + contractor.provider_code);
+            $('#position').text('Position: ' + contractor.position);
+            $('#area_of_destination').text('Area: ' + contractor.area_of_destination);
+            $('#contractor-info').show();
+        }
+
+        function displayScanResult(message) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Scan Successful',
+                text: message,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+
+        function displayScanError(message) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Scan Failed',
+                text: message,
+                timer: 3000,
+                showConfirmButton: false
+            });
+
+            // Clear contractor info on error
+            $('#contractor-info').hide();
+        }
+
+        function showHealthDeclarationForm(attendanceId) {
+            $('#hd_attendance_id').val(attendanceId);
+            $('#health-declaration-section').show();
+            $('#no-declaration-message').hide();
+
+            // Reset form to default FIT status
+            $('#health_fit').prop('checked', true);
+
+            // Start 2-minute timer
+            startHealthDeclarationTimer();
+        }
+
+        function hideHealthDeclarationForm() {
+            $('#health-declaration-section').hide();
+            $('#no-declaration-message').show();
+            $('#hd_attendance_id').val('');
+            clearHealthDeclarationTimer();
+        }
+
+        function startHealthDeclarationTimer() {
+            timerCountdown = 120; // 2 minutes in seconds
+            updateTimerDisplay();
+
+            healthDeclarationTimer = setInterval(function() {
+                timerCountdown--;
+                updateTimerDisplay();
+
+                if (timerCountdown <= 0) {
+                    clearHealthDeclarationTimer();
+                    hideHealthDeclarationForm();
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Time Expired',
+                        text: 'Health declaration window has closed',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            }, 1000);
+        }
+
+        function clearHealthDeclarationTimer() {
+            if (healthDeclarationTimer) {
+                clearInterval(healthDeclarationTimer);
+                healthDeclarationTimer = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            $('#timer-countdown').text(timerCountdown);
+        }
+
+        function updateHealthStatus(attendanceId, healthStatus) {
+            $.ajax({
+                url: '/Home/UpdateHealthStatus',
+                method: 'POST',
+                data: {
+                    attendance_id: attendanceId,
+                    health_status: healthStatus
+                },
+                success: function(response) {
+                    if (response.success) {
+                        console.log('Health status updated:', healthStatus);
+
+                        if (healthStatus === 'FIT') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Status Updated',
+                                text: 'You are now marked as FIT and can enter',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Update Failed',
+                            text: response.message || 'Failed to update health status'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to update health status'
+                    });
+                }
+            });
+        }
+    </script>
+
+    <style>
+        .home-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        .left {
+            flex: 0 0 40%;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .right {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        #employee_id {
+            font-size: 18px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        #health-declaration-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .form-check-input[type="radio"] {
+            transform: scale(1.5);
+            margin-right: 10px;
+        }
+
+        .form-check-label {
+            margin-left: 10px;
+            font-size: 16px;
+        }
+
+        #timer-countdown {
+            font-weight: bold;
+            color: #dc3545;
+        }
+    </style>
+}

@@ -20,3 +20,39 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.home-container {
+    display: flex;
+    /*height: 100vh;*/
+}
+
+.left,
+.right {
+    flex: 1; /* Equal width */
+}
+
+.left {
+    background: #f0f0f0;
+    padding: 3%;
+    max-width: 30%;
+}
+
+.right {
+    background: #dfefff;
+    max-width: 70%;
+    padding: 3%;
+}
+
+.form-container{
+    border: 1px solid gray;
+    padding: 0.5%;
+    border-radius: 8px;
+}
+
+input{
+    width: 100%;
+}
+
+h3{
+    text-align: center;
+}

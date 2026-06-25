@@ -1,0 +1,256 @@
+@{
+    ViewData["Title"] = "Projects Management";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Projects Management</h2>
+            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Projects Under Providers</h5>
+                </div>
+                <div class="card-body">
+                    <button id="add-project" class="btn btn-primary mb-3">Add New Project</button>
+
+                    <table id="projects-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Project Code</th>
+                                <th>Project Name</th>
+                                <th>Provider Code</th>
+                                <th>Contract Start</th>
+                                <th>Contract End</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Modal -->
+<div id="project-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Project Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="project-form">
+                    <input type="hidden" id="project_code">
+                    <div class="mb-3">
+                        <label for="project_name" class="form-label">Project Name:</label>
+                        <input type="text" id="project_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider_code" class="form-label">Provider:</label>
+                        <select id="provider_code" class="form-control" required>
+                            <option value="">Select Provider</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contract_startdate" class="form-label">Contract Start Date:</label>
+                        <input type="date" id="contract_startdate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contract_enddate" class="form-label">Contract End Date:</label>
+                        <input type="date" id="contract_enddate" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="save-project" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/datatables/datatables.min.js"></script>
+    <script src="~/lib/select2/select2.min.js"></script>
+    <script src="~/lib/sweetalert2/sweetalert2.js"></script>
+
+    <script>
+        let projectTable;
+
+        $(document).ready(function() {
+            // Initialize Select2 for provider dropdown
+            $('#provider_code').select2({
+                placeholder: 'Select Provider',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Load providers for dropdown
+            loadProviders();
+
+            // Initialize DataTable
+            projectTable = $('#projects-table').DataTable({
+                ajax: {
+                    url: '/Admin/GetAllProjects',
+                    dataSrc: function(data) {
+                        return data.success ? data.data : [];
+                    }
+                },
+                columns: [
+                    { data: 'project_code' },
+                    { data: 'project_name' },
+                    { data: 'provider_code' },
+                    {
+                        data: 'contract_startdate',
+                        render: function(data) {
+                            if (!data) return '-';
+                            return new Date(data).toLocaleDateString();
+                        }
+                    },
+                    {
+                        data: 'contract_enddate',
+                        render: function(data) {
+                            if (!data) return '-';
+                            return new Date(data).toLocaleDateString();
+                        }
+                    },
+                    {
+                        data: 'active',
+                        render: function(data) {
+                            return data === 1 ? 'Active' : 'Inactive';
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(data) {
+                            return `
+                                <button class="btn btn-sm btn-edit" data-project-code="${data.project_code}">Edit</button>
+                                <button class="btn btn-sm btn-set-inactive" data-project-code="${data.project_code}">Set Inactive</button>
+                            `;
+                        }
+                    }
+                ],
+                pageLength: 25
+            });
+
+            // Add project button
+            $('#add-project').on('click', function() {
+                $('#project-form')[0].reset();
+                $('#project_code').val('');
+                $('#provider_code').val(null).trigger('change');
+                $('#project-modal .modal-title').text('Add New Project');
+                $('#project-modal').modal('show');
+            });
+
+            // Edit project button
+            $(document).on('click', '.btn-edit', function() {
+                const projectCode = $(this).data('project-code');
+                const project = projectTable.row($(this).closest('tr')).data();
+
+                $('#project_code').val(project.project_code);
+                $('#project_name').val(project.project_name);
+                $('#provider_code').val(project.provider_code).trigger('change');
+                $('#contract_startdate').val(formatDateForInput(project.contract_startdate));
+                $('#contract_enddate').val(formatDateForInput(project.contract_enddate));
+
+                $('#project-modal .modal-title').text('Edit Project');
+                $('#project-modal').modal('show');
+            });
+
+            // Set inactive button
+            $(document).on('click', '.btn-set-inactive', function() {
+                const projectCode = $(this).data('project-code');
+                const project = projectTable.row($(this).closest('tr')).data();
+
+                Swal.fire({
+                    title: 'Set Project Inactive?',
+                    text: `Set ${project.project_name} to inactive status?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Yes, set inactive'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        project.active = 0;
+                        $.ajax({
+                            url: '/Admin/SetProjectInactive',
+                            method: 'POST',
+                            data: project,
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire('Success', 'Project set to inactive', 'success');
+                                    projectTable.ajax.reload();
+                                } else {
+                                    Swal.fire('Error', response.message, 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Save project
+            $('#save-project').on('click', function() {
+                const project = {
+                    project_code: $('#project_code').val() || 'PRJ-' + Date.now(),
+                    project_name: $('#project_name').val(),
+                    provider_code: $('#provider_code').val(),
+                    contract_startdate: $('#contract_startdate').val(),
+                    contract_enddate: $('#contract_enddate').val(),
+                    active: 1
+                };
+
+                const isNewProject = !$('#project_code').val();
+                const url = isNewProject ? '/Admin/CreateProject' : '/Admin/UpdateProject';
+
+                $.ajax({
+                    url: url,
+                    method: 'POST',
+                    data: project,
+                    success: function(response) {
+                        if (response.success) {
+                            $('#project-modal').modal('hide');
+                            Swal.fire('Success', response.message, 'success');
+                            projectTable.ajax.reload();
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Failed to save project', 'error');
+                    }
+                });
+            });
+        });
+
+        function loadProviders() {
+            $.ajax({
+                url: '/Admin/GetAllProviders',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.data) {
+                        response.data.forEach(provider => {
+                            $('#provider_code').append('<option value="' + provider.provider_code + '">' +
+                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
+                        });
+                    }
+                }
+            });
+        }
+
+        function formatDateForInput(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toISOString().split('T')[0];
+        }
+    </script>
+}
