@@ -1,7 +1,65 @@
+using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories;
+using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services;
+using ContractorAttendanceWithHealthDeclaration.Hubs;
+using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using ContractorAttendanceWithHealthDeclaration.Repositories;
+using ContractorAttendanceWithHealthDeclaration.Services;
+using Dapper;
+using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
+using System.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        // Use snake_case for all JSON property names
+        options.JsonSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+    });
+
+// Configure Session
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8); // 8-hour session timeout
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+// Configure Database Connection (Dapper)
+builder.Services.AddScoped<IDbConnection>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    return new MySqlConnection(connectionString);
+});
+
+// Register Repositories
+builder.Services.AddScoped<IContractorEmployeeRepository, ContractorEmployeeRepository>();
+builder.Services.AddScoped<IProviderRepository, ProviderRepository>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<ITimeLogsRepository, TimeLogsRepository>();
+builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+
+// Register Services
+builder.Services.AddScoped<IContractorService, ContractorService>();
+builder.Services.AddScoped<IProviderService, ProviderService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IHistoryLogsService, HistoryLogsService>();
+builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+
+// Register LDAP Services
+builder.Services.AddScoped<ILdapRepository, LdapRepository>();
+builder.Services.AddScoped<ILdapService, LdapService>();
+
+// Add HttpClient for LDAP
+builder.Services.AddHttpClient();
+
+// Add SignalR
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -18,10 +76,18 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Use Session before UseAuthorization
+app.UseSession();
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Providers}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapHub<AttendanceHub>("/attendanceHub");
 
 app.Run();
