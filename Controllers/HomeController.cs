@@ -32,7 +32,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             // Main kiosk interface (ID scanning + health declaration)
             var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowMinutes();
-            ViewBag.HealthDeclarationWindowSeconds = healthWindowConfig.Data * 60;  // Convert minutes to seconds
+            ViewBag.HealthDeclarationWindowSeconds = (healthWindowConfig.Data ?? 2) * 60;  // Convert minutes to seconds with default
             return View();
         }
 
@@ -50,6 +50,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 var contractorResult = await _contractorService.GetByEmployeeId(employee_id);
                 var contractor = contractorResult.Data;
 
+                // Null check for result.Data
+                if (result?.Data == null)
+                {
+                    return Json(new { success = false, message = "Failed to process attendance" });
+                }
+
+                // Null check for contractor
+                if (contractor == null)
+                {
+                    return Json(new { success = false, message = "Contractor not found" });
+                }
+
                 var response_data = new
                 {
                     attendance_id = result.Data.attendance_id,
@@ -60,7 +72,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     {
                         employee_id = contractor.employee_id,
                         name = contractor.name,
-                        provider_code = contractor.provider_code, 
+                        provider_code = contractor.provider_code,
                         provider_name = contractor.provider_name,
                         position = contractor.position,
                         area_of_destination = contractor.area_of_destination,
@@ -70,7 +82,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                         address = contractor.address,
                         project_code = contractor.project_code,
                         project_name = contractor.project_name
-                        
+
                     }
                 };
 

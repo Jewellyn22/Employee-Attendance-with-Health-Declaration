@@ -32,7 +32,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
-        public async Task<contractor_employee> Create(contractor_employee employee)
+        public async Task<contractor_employee?> Create(contractor_employee employee)
         {
             const string storedProc = "sp_contractor_employee_Create";
             return await _db.QuerySingleOrDefaultAsync<contractor_employee>(
@@ -56,7 +56,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
-        public async Task<contractor_employee> Update(contractor_employee employee)
+        public async Task<contractor_employee?> Update(contractor_employee employee)
         {
             const string storedProc = "sp_contractor_employee_Update";
             return await _db.QuerySingleOrDefaultAsync<contractor_employee>(

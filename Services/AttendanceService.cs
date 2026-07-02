@@ -244,7 +244,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 // Single database call to update all changed fields
                 var updated = await _timeLogsRepository.Update(attendance);
-                if (!updated)
+                if (updated == null)
                 {
                     return new Response<bool>
                     {
