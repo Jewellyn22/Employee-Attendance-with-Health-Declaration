@@ -17,24 +17,24 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             _logger = logger;
         }
 
-        public async Task<Response<int>> GetDebounceThresholdMinutes()
+        public async Task<Response<double>> GetDebounceThresholdMinutes()
         {
             try
             {
                 var config = await _systemConfigRepository.GetByKey("DebounceThresholdMinutes");
                 if (config == null)
                 {
-                    return new Response<int>
+                    return new Response<double>
                     {
                         Success = false,
                         Message = "DebounceThresholdMinutes configuration not found",
-                        Data = 15 // default
+                        Data = 15.0 // default
                     };
                 }
 
-                if (int.TryParse(config.value, out int threshold))
+                if (double.TryParse(config.value, out double threshold))
                 {
-                    return new Response<int>
+                    return new Response<double>
                     {
                         Success = true,
                         Message = "Configuration retrieved successfully",
@@ -42,21 +42,21 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                return new Response<int>
+                return new Response<double>
                 {
                     Success = false,
                     Message = "Invalid configuration value",
-                    Data = 15 // default
+                    Data = 15.0 // default
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting debounce threshold");
-                return new Response<int>
+                return new Response<double>
                 {
                     Success = false,
                     Message = "Error retrieving configuration",
-                    Data = 15 // default
+                    Data = 15.0 // default
                 };
             }
         }
@@ -197,24 +197,24 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<int>> GetHealthDeclarationWindowMinutes()
+        public async Task<Response<double>> GetHealthDeclarationWindowMinutes()
         {
             try
             {
                 var config = await _systemConfigRepository.GetByKey("HealthDeclarationWindowMinutes");
                 if (config == null)
                 {
-                    return new Response<int>
+                    return new Response<double>
                     {
                         Success = false,
                         Message = "HealthDeclarationWindowMinutes configuration not found",
-                        Data = 2 // default to 2 minutes
+                        Data = 2.0 // default to 2 minutes
                     };
                 }
 
-                if (int.TryParse(config.value, out int minutes))
+                if (double.TryParse(config.value, out double minutes))
                 {
-                    return new Response<int>
+                    return new Response<double>
                     {
                         Success = true,
                         Message = "Configuration retrieved successfully",
@@ -222,21 +222,21 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                return new Response<int>
+                return new Response<double>
                 {
                     Success = false,
                     Message = "Invalid configuration value",
-                    Data = 2 // default
+                    Data = 2.0 // default
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting health declaration window minutes");
-                return new Response<int>
+                return new Response<double>
                 {
                     Success = false,
                     Message = "Error retrieving configuration",
-                    Data = 2 // default
+                    Data = 2.0 // default
                 };
             }
         }

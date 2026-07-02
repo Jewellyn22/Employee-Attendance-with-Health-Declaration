@@ -24,11 +24,18 @@
 
                 <div class="navbar-collapse collapse">
                     <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
+                        @* Home link - hidden on Home/Index page, visible on HistoryLogs and other pages *@
+                        <li class="nav-item" style="display: @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" &&
+                                                                        ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "none" : "block")">
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Login</a>
+                        </li>
+                        @* View History Logs link - visible only on Home/Index page, styled as link not button *@
+                        <li class="nav-item" style="display: @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" &&
+                                                                        ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "block" : "none")">
+                            <a class="nav-link text-dark" asp-controller="Home" asp-action="HistoryLogs">View History Logs</a>
                         </li>
                     </ul>
                 </div>

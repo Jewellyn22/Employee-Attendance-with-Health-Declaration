@@ -9,22 +9,30 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
     {
         private readonly IAttendanceService _attendanceService;
         private readonly IHistoryLogsService _historyLogsService;
+        private readonly ISystemConfigService _systemConfigService;
+        private readonly IContractorService _contractorService;
         private readonly ILogger<HomeController> _logger;
 
         public HomeController(
             IAttendanceService attendanceService,
             IHistoryLogsService historyLogsService,
+            ISystemConfigService systemConfigService,
+            IContractorService contractorService,
             ILogger<HomeController> logger)
         {
             _attendanceService = attendanceService;
             _historyLogsService = historyLogsService;
+            _systemConfigService = systemConfigService;
+            _contractorService = contractorService;
             _logger = logger;
         }
 
         // GET: /
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             // Main kiosk interface (ID scanning + health declaration)
+            var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowMinutes();
+            ViewBag.HealthDeclarationWindowSeconds = healthWindowConfig.Data * 60;  // Convert minutes to seconds
             return View();
         }
 
@@ -38,7 +46,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
             if (result.Success)
             {
-                // Include contractor info in response
+                // Retrieve actual contractor details from database
+                var contractorResult = await _contractorService.GetByEmployeeId(employee_id);
+                var contractor = contractorResult.Data;
+
                 var response_data = new
                 {
                     attendance_id = result.Data.attendance_id,
@@ -47,11 +58,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     health_status = result.Data.health_status,
                     contractor_info = new
                     {
-                        employee_id = employee_id,
-                        name = "Contractor Name", // Will be populated from repository
-                        provider_code = "PROV-001",
-                        position = "Worker",
-                        area_of_destination = "Area A"
+                        employee_id = contractor.employee_id,
+                        name = contractor.name,
+                        provider_code = contractor.provider_code, 
+                        provider_name = contractor.provider_name,
+                        position = contractor.position,
+                        area_of_destination = contractor.area_of_destination,
+                        gender = contractor.gender,
+                        birthdate = contractor.birthdate,
+                        contact_number = contractor.contact_number,
+                        address = contractor.address,
+                        project_code = contractor.project_code,
+                        project_name = contractor.project_name
+                        
                     }
                 };
 

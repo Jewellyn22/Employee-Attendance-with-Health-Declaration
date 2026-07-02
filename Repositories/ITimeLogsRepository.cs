@@ -17,6 +17,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         // New methods for admin management
         Task<time_log> UpdateForAdminEdit(time_log timelog);
         Task<bool> Delete(int attendance_id);
-        Task<IEnumerable<time_log>> GetAllFiltered(string employee_id = null, DateTime? from_date = null, DateTime? to_date = null, string health_status = null);
+        Task<IEnumerable<attendance_log_with_employee>> GetAllFiltered(string employee_id = null, DateTime? from_date = null, DateTime? to_date = null, string health_status = null);
     }
 }

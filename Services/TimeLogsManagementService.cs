@@ -150,7 +150,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<IEnumerable<time_log>>> GetAllTimeLogs(
+        public async Task<Response<IEnumerable<attendance_log_with_employee>>> GetAllTimeLogs(
             string employee_id = null,
             DateTime? from_date = null,
             DateTime? to_date = null,
@@ -163,7 +163,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 var timelogs = await _timeLogsRepository.GetAllFiltered(employee_id, from_date, to_date, health_status);
 
-                return new Response<IEnumerable<time_log>>
+                return new Response<IEnumerable<attendance_log_with_employee>>
                 {
                     Success = true,
                     Message = "Timelogs retrieved successfully",
@@ -173,7 +173,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting filtered timelogs");
-                return new Response<IEnumerable<time_log>>
+                return new Response<IEnumerable<attendance_log_with_employee>>
                 {
                     Success = false,
                     Message = "Error retrieving timelogs",

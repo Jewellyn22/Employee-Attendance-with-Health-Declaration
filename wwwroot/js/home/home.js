@@ -40,6 +40,46 @@ const HomePage = {
             }
         },
 
+        showCriticalAlert: function(message, title = 'Critical Alert') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: title,
+                    text: message,
+                    width: '80%',  // XXL size
+                    timer: 0,  // No auto-dismiss - requires user acknowledgment
+                    showConfirmButton: true,
+                    confirmButtonText: 'I Understand',
+                    customClass: {
+                        popup: 'critical-alert-popup',
+                        title: 'critical-alert-title',
+                        content: 'critical-alert-content',
+                        confirmButton: 'critical-alert-button'
+                    },
+                    backdrop: `rgba(0, 0, 0, 0.7)`
+                });
+            }
+        },
+
+        showSuccessAlert: function(message, title = 'Success') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: title,
+                    text: message,
+                    width: '80%',  // XXL size
+                    timer: 2000,  // Auto-dismiss after 2 seconds
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: 'success-alert-popup',
+                        title: 'success-alert-title',
+                        content: 'success-alert-content'
+                    },
+                    backdrop: `rgba(0, 0, 0, 0.4)`
+                });
+            }
+        },
+
         formatDate: function(dateString) {
             if (!dateString) return '';
             const date = new Date(dateString);
@@ -50,6 +90,23 @@ const HomePage = {
             if (!dateString) return '';
             const date = new Date(dateString);
             return date.toISOString().slice(0, 19).replace('T', ' ');
+        },
+
+        calculateAge: function(birthdate) {
+            if (!birthdate) return '';
+
+            const birthDate = new Date(birthdate);
+            const today = new Date();
+
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            // Adjust age if birthday hasn't occurred yet this year
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            return age;
         }
     },
 
@@ -57,7 +114,10 @@ const HomePage = {
     index: {
         // Global variables for health declaration timer
         healthDeclarationTimer: null,
-        timerCountdown: 120,
+        timerCountdown: window.healthDeclarationWindowSeconds,  // Use server config or fallback
+
+        // Global variable for scan-result timeout
+        scanResultTimeout: null,
 
         init: function() {
             const self = this;
@@ -80,7 +140,7 @@ const HomePage = {
 
                 if (selectedStatus === 'UNFIT') {
                     // Show blocking message for UNFIT
-                    HomePage.common.showError('You are not allowed to enter company premises', 'Not Allowed');
+                    HomePage.common.showCriticalAlert('You are not allowed to enter company premises', 'Not Allowed');
 
                     // Update health status to UNFIT (sets TIME OUT)
                     self.updateHealthStatus(attendanceId, 'UNFIT');
@@ -99,6 +159,12 @@ const HomePage = {
             // Clear any existing health declaration timer
             self.clearHealthDeclarationTimer();
 
+            // Clear any existing scan-result message
+            self.clearScanResult();
+
+            // Hide health declaration form from previous scan (if any)
+            self.hideHealthDeclarationForm();
+
             $.ajax({
                 url: '/Home/Scan',
                 method: 'POST',
@@ -108,8 +174,14 @@ const HomePage = {
                         self.displayContractorInfo(response.data.contractor_info);
                         self.displayScanResult(response.message);
 
-                        // Show health declaration form for this contractor
-                        self.showHealthDeclarationForm(response.data.attendance_id);
+                        // Only show health declaration form for TIME IN (not TIME OUT)
+                        if (response.message.includes("TIME OUT")) {
+                            // TIME OUT operation - don't show health declaration form
+                            self.hideHealthDeclarationForm();
+                        } else {
+                            // TIME IN operation - show health declaration form
+                            self.showHealthDeclarationForm(response.data.attendance_id);
+                        }
 
                         // Clear input for next scan
                         $('#employee_id').val('');
@@ -130,19 +202,83 @@ const HomePage = {
                 return;
             }
 
-            $('#employee_name').text('Name: ' + contractor.name);
-            $('#provider').text('Provider: ' + contractor.provider_code);
-            $('#position').text('Position: ' + contractor.position);
-            $('#area_of_destination').text('Area: ' + contractor.area_of_destination);
+           
+            $('#provider').text((contractor.provider_code ? ' (' + contractor.provider_code + ')' : '') + ' ' + (contractor.provider_name));
+            $('#project').text((contractor.project_code ? ' (' + contractor.project_code + ')' : '') + ' ' + (contractor.project_name));
+            $('#area_of_destination').text('Assigned Area: ' + contractor.area_of_destination);
+            $('#employee_name').text(contractor.name);
+            $('#sex').text(contractor.gender);
+            $('#position').text(contractor.position);
+            
+            
+
+            // Calculate age from birthdate
+            const age = HomePage.common.calculateAge(contractor.birthdate);        
+
+            // Format birthdate for display
+            const birthdateFormatted = contractor.birthdate ?
+                new Date(contractor.birthdate).toLocaleDateString() : '';
+            $('#bday').text(birthdateFormatted + ' (' + age + ' yrs. old)');
+
+            $('#contact_no').text(contractor.contact_number);
+            $('#address').text(contractor.address);
+
             $('#contractor-info').show();
         },
 
         displayScanResult: function(message) {
-            HomePage.common.showSuccess(message, 'Scan Successful');
+            const self = this;
+
+            // Clear any existing timeout first
+            if (self.scanResultTimeout) {
+                clearTimeout(self.scanResultTimeout);
+            }
+
+            // Display success message inline under employee_id field
+            $('#scan-result').html('<div class="alert alert-success mt-2" role="alert">' + message + '</div>');
+
+            // Auto-clear the message after 10 seconds
+            self.scanResultTimeout = setTimeout(function() {
+                $('#scan-result').fadeOut('slow', function() {
+                    $(this).empty().show();
+                    self.scanResultTimeout = null;
+                });
+            }, 10000);
+        },
+
+        clearScanResult: function() {
+            const self = this;
+
+            // Clear the timeout if exists
+            if (self.scanResultTimeout) {
+                clearTimeout(self.scanResultTimeout);
+                self.scanResultTimeout = null;
+            }
+
+            // Clear and hide the scan-result div immediately
+            $('#scan-result').stop(true, true).fadeOut(0, function() {
+                $(this).empty().show();
+            });
         },
 
         displayScanError: function(message) {
-            HomePage.common.showError(message, 'Scan Failed');
+            const self = this;
+
+            // Clear any existing timeout first
+            if (self.scanResultTimeout) {
+                clearTimeout(self.scanResultTimeout);
+            }
+
+            // Display error message inline under employee_id field
+            $('#scan-result').html('<div class="alert alert-danger mt-2" role="alert">' + message + '</div>');
+
+            // Auto-clear the error message after 10 seconds
+            self.scanResultTimeout = setTimeout(function() {
+                $('#scan-result').fadeOut('slow', function() {
+                    $(this).empty().show();
+                    self.scanResultTimeout = null;
+                });
+            }, 10000);
 
             // Clear contractor info on error
             $('#contractor-info').hide();
@@ -169,7 +305,7 @@ const HomePage = {
 
         startHealthDeclarationTimer: function() {
             const self = this;
-            self.timerCountdown = 120; // 2 minutes in seconds
+            self.timerCountdown = window.healthDeclarationWindowSeconds || 120;  // Use server config or fallback
             self.updateTimerDisplay();
 
             self.healthDeclarationTimer = setInterval(function() {
@@ -179,16 +315,6 @@ const HomePage = {
                 if (self.timerCountdown <= 0) {
                     self.clearHealthDeclarationTimer();
                     self.hideHealthDeclarationForm();
-
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Time Expired',
-                            text: 'Health declaration window has closed',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    }
                 }
             }, 1000);
         },
@@ -218,7 +344,7 @@ const HomePage = {
                         console.log('Health status updated:', healthStatus);
 
                         if (healthStatus === 'FIT') {
-                            HomePage.common.showSuccess('You are now marked as FIT and can enter', 'Status Updated');
+                            HomePage.common.showSuccessAlert('You are now marked as FIT and can enter', 'Status Updated');
                         }
                     } else {
                         HomePage.common.showError(response.message || 'Failed to update health status', 'Update Failed');
@@ -252,6 +378,8 @@ const HomePage = {
                 columns: [
                     { data: 'attendance_id' },
                     { data: 'employee_id' },
+                    { data: 'name' },
+                    { data: 'provider_code' },
                     {
                         data: 'time_in',
                         render: function(data) {
@@ -276,25 +404,14 @@ const HomePage = {
                             }
                             return data;
                         }
-                    },
-                    {
-                        data: 'updated_by',
-                        render: function(data) {
-                            return data || '-';
-                        }
-                    },
-                    {
-                        data: 'updated_at',
-                        render: function(data) {
-                            if (!data) return '-';
-                            return HomePage.common.formatDate(data);
-                        }
                     }
                 ],
-                order: [[2, 'desc']], // Sort by Time In descending
+                searching: true,  // Enable global search
+                order: [[4, 'desc']], // Sort by Time In descending (column index 4)
                 pageLength: 25,
                 language: {
-                    emptyTable: 'No attendance records available'
+                    emptyTable: 'No attendance records available',
+                    search: 'Search:'  // Label for global search box
                 }
             });
 
@@ -366,11 +483,11 @@ const HomePage = {
             const exportData = tableData.map(row => ({
                 'Attendance ID': row.attendance_id,
                 'Employee ID': row.employee_id,
+                'Employee Name': row.name,
+                'Provider': row.provider_code,
                 'Time In': HomePage.common.formatDateTime(row.time_in),
                 'Time Out': row.time_out ? HomePage.common.formatDateTime(row.time_out) : 'Active',
-                'Health Status': row.health_status,
-                'Updated By': row.updated_by || '-',
-                'Updated At': row.updated_at ? HomePage.common.formatDateTime(row.updated_at) : '-'
+                'Health Status': row.health_status
             }));
 
             // Create Excel file

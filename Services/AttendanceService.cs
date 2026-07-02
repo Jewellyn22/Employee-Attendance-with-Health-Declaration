@@ -57,15 +57,39 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 if (lastScan != null && IsWithin2Minutes(lastScan.time_in ?? lastScan.time_out, debounceThresholdMinutes.Data))
                 {
+                    var debounceThresholdSeconds = debounceThresholdMinutes.Data * 60;
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Duplicate scan - wait 2 minutes",
+                        Message = @"Duplicate scan - wait " + debounceThresholdSeconds + "secs." ,
                         Data = null
                     };
                 }
 
-                // Step 3: Create TIME IN record with FIT status (single scan workflow)
+                // Step 3: Check for open session (TIME IN without TIME OUT)
+                var openSession = await _timeLogsRepository.GetOpenSession(employee_id);
+
+                if (openSession != null)
+                {
+                    // Open session exists → Update with TIME OUT
+                    openSession.time_out = DateTime.Now;
+                    openSession.updated_at = DateTime.Now;
+                    openSession.updated_by = employee_id; // Self-service scan
+
+                    var updatedLog = await _timeLogsRepository.Update(openSession);
+
+                    _logger.LogInformation("TIME OUT recorded for {EmployeeId}, attendance_id: {AttendanceId}",
+                        employee_id, openSession.attendance_id);
+
+                    return new Response<time_log>
+                    {
+                        Success = true,
+                        Message = "SUCCESS TIME OUT",
+                        Data = updatedLog
+                    };
+                }
+
+                // Step 4: Create TIME IN record with FIT status (only if no open session)
                 var newTimeLog = new time_log
                 {
                     employee_id = employee_id,
@@ -81,7 +105,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 return new Response<time_log>
                 {
                     Success = true,
-                    Message = "TIME IN created with FIT status",
+                    Message = "SUCCESS TIME IN",
                     Data = createdLog
                 };
             }
@@ -295,7 +319,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        private bool IsWithin2Minutes(DateTime? timestamp, int thresholdMinutes)
+        private bool IsWithin2Minutes(DateTime? timestamp, double thresholdMinutes)
         {
             if (!timestamp.HasValue) return false;
             var timeDiff = DateTime.Now - timestamp.Value;

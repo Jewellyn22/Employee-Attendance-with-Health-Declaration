@@ -348,8 +348,18 @@ const AdminPage = {
                 columns: [
                     { data: 'employee_id' },
                     { data: 'name' },
-                    { data: 'provider_code' },
-                    { data: 'project_code' },
+                    {
+                        data: 'provider_code',
+                        render: function(data, type, row) {
+                            return row.provider_name ? `${row.provider_name} (${data})` : data;
+                        }
+                    },
+                    {
+                        data: 'project_code',
+                        render: function(data, type, row) {
+                            return row.project_name ? `${row.project_name} (${data})` : data;
+                        }
+                    },
                     { data: 'position' },
                     { data: 'area_of_destination' },
                     {
@@ -575,9 +585,9 @@ const AdminPage = {
 
                 // Validate numeric configs
                 if (config.key === 'DebounceThresholdMinutes' || config.key === 'HealthDeclarationWindowMinutes') {
-                    const numValue = parseInt(config.value);
-                    if (isNaN(numValue) || numValue < 1 || numValue > 60) {
-                        AdminPage.common.showError('Value must be between 1 and 60 minutes', 'Validation Error');
+                    const numValue = parseFloat(config.value);
+                    if (isNaN(numValue) || numValue < 0.1 || numValue > 60) {
+                        AdminPage.common.showError('Value must be between 0.1 and 60 minutes', 'Validation Error');
                         return;
                     }
                 }
@@ -610,7 +620,8 @@ const AdminPage = {
                     guidance = '<div class="alert alert-info">' +
                         '<strong>Duplicate Scan Prevention</strong><br>' +
                         'Time in minutes that must pass before the same contractor can scan again.<br>' +
-                        'Current: 2 minutes. Range: 1-60 minutes.' +
+                        'Decimals are supported (e.g., 0.5 = 30 seconds).<br>' +
+                        'Current: 2 minutes. Range: 0.1-60 minutes.' +
                         '</div>';
                     break;
                 case 'HealthDeclarationWindowMinutes':
@@ -618,7 +629,8 @@ const AdminPage = {
                         '<strong>Health Declaration Window</strong><br>' +
                         'Time in minutes that contractors can change their health status after scanning.<br>' +
                         'Also controls how long the health declaration form remains visible.<br>' +
-                        'Current: 2 minutes. Range: 1-60 minutes.' +
+                        'Decimals are supported (e.g., 0.5 = 30 seconds).<br>' +
+                        'Current: 2 minutes. Range: 0.1-60 minutes.' +
                         '</div>';
                     break;
                 case 'AdminADGroup':

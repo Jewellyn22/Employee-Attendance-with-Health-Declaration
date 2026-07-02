@@ -12,6 +12,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         public string area_of_destination { get; set; }
         public string project_code { get; set; }
         public string provider_code { get; set; }
+        public string provider_name { get; set; }
+        public string project_name { get; set; }
         public string position { get; set; }
         public int active { get; set; }
         public DateTime create_at { get; set; }

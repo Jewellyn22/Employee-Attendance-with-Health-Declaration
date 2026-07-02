@@ -1,134 +1,236 @@
 @{
-    ViewData["Title"] = "Contractor Attendance Monitoring";
+	ViewData["Title"] = "Contractor Attendance Monitoring";
 }
 
 <div class="container-fluid">
-    <div class="home-container">
-        <div class="left">
-            <div>
-                <h3>Time In - Time Out</h3>
+	<div class="home-container">
+		<div class="left">
+			<div>
+				<h3>Attendance Scanning</h3>
 
-                <form id="scan-form">
-                    <div class="text-center">
-                        <div class="mb-3">
-                            <label for="employee_id" class="form-label">Scan ID:</label>
-                            <input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
-                        </div>
+				<form id="scan-form">
+					<div class="text-center">
+						<div class="mb-3">
+							<label for="employee_id" class="form-label">Scan ID:</label>
+							<input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
+						</div>
 
-                        <div id="contractor-info" class="row mt-3" style="display: none;">
-                            <div class="col-12">
-                                <h5 id="employee_name" class="mb-2"></h5>
-                                <p id="provider" class="mb-1"></p>
-                                <p id="position" class="mb-1"></p>
-                                <p id="area_of_destination" class="mb-1"></p>
-                            </div>
-                        </div>
+						<div id="scan-result" class="mt-3"></div>
+					</div>
+				</form>
+			</div>
+		</div>
 
-                        <div id="scan-result" class="mt-3"></div>
-                    </div>
-                </form>
-            </div>
-        </div>
+		<div class="right">
+			<div id="health-declaration-section" style="display:none;">
+				<div class="hd_header">
+					<h3 class="hd_title">Health Declaration Form</h3>
+					<h6>
+						Your health and safety are important to us. <br />
+						Please complete this form truthfully before entering the company premises.
+					</h6>
+				</div>
 
-        <div class="right">
-            <h4>Health Declaration</h4>
 
-            <div id="health-declaration-section" style="display: none;">
-                <form id="health-declaration-form">
-                    <div class="mb-3">
-                        <label class="form-label">Please select your health status:</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="health_status" id="health_fit" value="FIT" checked>
-                            <label class="form-check-label" for="health_fit">
-                                FIT - I am feeling well and healthy
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="health_status" id="health_unfit" value="UNFIT">
-                            <label class="form-check-label" for="health_unfit">
-                                UNFIT - I am feeling unwell
-                            </label>
-                        </div>
-                    </div>
 
-                    <input type="hidden" id="hd_attendance_id" name="attendance_id">
-                </form>
+				<form id="health-declaration-form">
+					@* PERSONAL DETAILS *@
+					<div>
+						<h6 class="category">Personal Detail</h6>
+						<hr />
+						<div class="f-body">
+							<div id="contractor-info">
+								<div class="row">
+									<div class="col-4">
+										<p id="provider" class="mb-1">[Provider]</p>
+									</div>
+									<div class="col-4">
+										<p id="project" class="mb-1">[Project]</p>
+									</div>
+									<div class="col-4">
+										<p id="area_of_destination" class="mb-1">[Area]</p>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-4">
+										<p id="employee_name" class="mb-1">[Name]</p>
+									</div>
+									<div class="col-4">
+										<p id="sex" class="mb-1">[Sex]</p>
+									</div>
+									<div class="col-4">
+										<p id="position" class="mb-1">[Position]</p>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-4">
+										<p id="bday" class="mb-1">[Birth Date] (Age)</p>
+									</div>
+									
 
-                <div class="mt-3">
-                    <small class="text-muted">Health declaration form will close in <span id="timer-countdown">120</span> seconds</small>
-                </div>
-            </div>
+									<div class="col-4">
+										<p id="contact_no" class="mb-1">[Contact No]</p>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-12">
+										<p id="address" class="mb-1">[Address]</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
 
-            <div id="no-declaration-message" class="text-center text-muted mt-5">
-                <p>Scan your ID to begin health declaration process</p>
-            </div>
-        </div>
-    </div>
+
+					@* HEALTH STATUS *@
+					<div>
+						<h6 class="category">Health Self-Assessment</h6>
+						<hr />
+						<div class="f-body">
+							<label> Do you have any of the following?</label>
+							<div id="sickness" class="mb-3">
+								@* AUTO-GENERATED FROM JS *@
+						</div>
+							<div class="mb-3">
+								<div class="row">
+									<div class="col-1">
+										<div class="form-check">
+											<input class="form-check-input" type="radio" name="health_status" id="health_fit" value="FIT" checked>
+											<label class="form-check-label" for="health_fit">
+												NO
+											</label>
+										</div>
+									</div>
+									<div class="col-1">
+										<div class="form-check">
+											<input class="form-check-input" type="radio" name="health_status" id="health_unfit" value="UNFIT">
+											<label class="form-check-label" for="health_unfit">
+												YES
+											</label>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<input id="hd_attendance_id" name="attendance_id">
+				</form>
+
+				<div class="mt-3">
+					<small class="text-muted">Health declaration form will close in <span id="timer-countdown">@ViewBag.HealthDeclarationWindowSeconds</span> seconds</small>
+				</div>
+			</div>
+
+			@* <div id="no-declaration-message" class="text-center text-muted mt-5">
+				<p>Scan your ID to begin health declaration process</p>
+			</div> *@
+		</div>
+	</div>
 </div>
 
-<div class="text-center mt-4">
-    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-secondary">View History Logs</a>
-</div>
 
 @section Scripts {
-    <script src="~/js/home/home.js"></script>
-    <script>
-        $(document).ready(function() {
-            HomePage.index.init();
-        });
-    </script>
+	<script src="~/js/home/home.js"></script>
+	<script>
+		// Initialize health declaration window from server config
+		window.healthDeclarationWindowSeconds = @ViewBag.HealthDeclarationWindowSeconds;
 
-    <style>
-        .home-container {
-            display: flex;
-            gap: 20px;
-            padding: 20px;
-            min-height: 500px;
-        }
+		$(document).ready(function() {
+			HomePage.index.init();
+		});
+	</script>
 
-        .left {
-            flex: 0 0 40%;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
+	<style>
+		.home-container {
+			display: flex;
+			gap: 20px;
+			padding: 20px;
+			min-height: 500px;
+		}
 
-        .right {
-            flex: 1;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
+		.left {
+			flex: 0 0 40%;
+			background: #f8f9fa;
+			padding: 20px;
+			border-radius: 5px;
+			border: 1px solid #dee2e6;
+		}
 
-        #employee_id {
-            font-size: 18px;
-            padding: 10px;
-            text-align: center;
-        }
+		.right {
+			flex: 1;
+			background: #f8f9fa;
+			padding: 20px;
+			border-radius: 5px;
+			border: 1px solid #dee2e6;
+		}
 
-        #health-declaration-section {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
+		#employee_id {
+			font-size: 18px;
+			padding: 10px;
+			text-align: center;
+		}
 
-        .form-check-input[type="radio"] {
-            transform: scale(1.5);
-            margin-right: 10px;
-        }
+		#health-declaration-section {
+			padding: 20px;
+			background: white;
+			border-radius: 5px;
+			border: 1px solid #dee2e6;
+		}
 
-        .form-check-label {
-            margin-left: 10px;
-            font-size: 16px;
-        }
+		.form-check-input[type="radio"] {
+			transform: scale(1.5);
+			margin-right: 10px;
+		}
 
-        #timer-countdown {
-            font-weight: bold;
-            color: #dc3545;
-        }
-    </style>
+		.form-check-label {
+			margin-left: 10px;
+			font-size: 16px;
+		}
+
+		#timer-countdown {
+			font-weight: bold;
+			color: #dc3545;
+		}
+
+		.hd_header {
+			text-align: center;
+		}
+
+		h3 {
+			font-weight: 700;
+		}
+
+		.hd_title {
+			color: whitesmoke;
+			background-color: midnightblue;
+			border-radius: 10px;
+			padding: 0.5% 0 0.5% 0;
+		}
+
+		hr {
+			border: 0.5px solid;
+			color: midnightblue;
+		}
+
+		.category {
+			font-weight: 700;
+			margin-bottom: -1%;
+			margin-top: 1%;
+			font-size: 20px;
+		}
+
+		#scan-result .alert {
+			margin-bottom: 0;
+			text-align: center;
+			font-size: 100px;
+			padding: 8px 12px;
+		}
+
+		.f-body {
+			margin-top: -1%;
+			margin-bottom: 1%;
+			font-size: 16px;
+		}
+	</style>
 }
