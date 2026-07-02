@@ -221,29 +221,44 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Update health status
-                var result = await _timeLogsRepository.UpdateHealthStatus(attendance_id, health_status);
+                // Update health status in memory
+                attendance.health_status = health_status;
 
-                // If UNFIT, set TIME OUT to current time
+                // Set time_out based on health status
                 if (health_status == "UNFIT")
                 {
+                    // UNFIT -> Auto time-out
                     attendance.time_out = DateTime.Now;
-                    await _timeLogsRepository.Update(attendance);
                     _logger.LogInformation("Health status set to UNFIT for {AttendanceId}, TIME OUT set", attendance_id);
                 }
                 else if (health_status == "FIT" && attendance.time_out != null)
                 {
-                    // If toggling back to FIT, remove TIME OUT
-                    attendance.time_out = null;
-                    await _timeLogsRepository.Update(attendance);
-                    _logger.LogInformation("Health status set to FIT for {AttendanceId}, TIME OUT removed", attendance_id);
+                    // Only clear time_out if it was auto-set for UNFIT (within health declaration window)
+                    var timeOutElapsed = DateTime.Now - attendance.time_out.Value;
+                    if (timeOutElapsed.TotalMinutes <= healthWindowMinutes.Data)
+                    {
+                        attendance.time_out = null;
+                        _logger.LogInformation("Health status set to FIT for {AttendanceId}, auto TIME OUT removed", attendance_id);
+                    }
+                }
+
+                // Single database call to update all changed fields
+                var updated = await _timeLogsRepository.Update(attendance);
+                if (!updated)
+                {
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "Failed to update health status",
+                        Data = false
+                    };
                 }
 
                 return new Response<bool>
                 {
                     Success = true,
                     Message = $"Health status updated to {health_status}",
-                    Data = result
+                    Data = true
                 };
             }
             catch (Exception ex)
