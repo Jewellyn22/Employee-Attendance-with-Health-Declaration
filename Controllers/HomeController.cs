@@ -32,7 +32,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             // Main kiosk interface (ID scanning + health declaration)
             var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowMinutes();
-            ViewBag.HealthDeclarationWindowSeconds = (healthWindowConfig.Data ?? 2) * 60;  // Convert minutes to seconds with default
+            ViewBag.HealthDeclarationWindowSeconds = (healthWindowConfig.Data ?? 2.0) * 60;  // Convert minutes to seconds with default
             return View();
         }
 

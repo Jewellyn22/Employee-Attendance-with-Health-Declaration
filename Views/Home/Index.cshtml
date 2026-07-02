@@ -134,7 +134,7 @@
 	<script src="~/js/home/home.js"></script>
 	<script>
 		// Initialize health declaration window from server config
-		window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120);
+		window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120.0);
 
 		$(document).ready(function() {
 			HomePage.index.init();
