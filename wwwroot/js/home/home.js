@@ -376,7 +376,6 @@ const HomePage = {
                     }
                 },
                 columns: [
-                    { data: 'attendance_id' },
                     { data: 'employee_id' },
                     { data: 'name' },
                     { data: 'provider_code' },
@@ -407,7 +406,7 @@ const HomePage = {
                     }
                 ],
                 searching: true,  // Enable global search
-                order: [[4, 'desc']], // Sort by Time In descending (column index 4)
+                order: [[3, 'desc']], // Sort by Time In descending (column index 3)
                 pageLength: 25,
                 language: {
                     emptyTable: 'No attendance records available',
@@ -439,17 +438,15 @@ const HomePage = {
         },
 
         applyFilters: function() {
-            const employeeId = $('#filter-employee-id').val();
             const fromDate = $('#filter-from-date').val();
             const toDate = $('#filter-to-date').val();
             const healthStatus = $('#filter-health-status').val();
 
             // Reload DataTable with filters
-            this.historyTable.ajax.url(this.buildFilterUrl(employeeId, fromDate, toDate, healthStatus)).load();
+            this.historyTable.ajax.url(this.buildFilterUrl(fromDate, toDate, healthStatus)).load();
         },
 
         clearFilters: function() {
-            $('#filter-employee-id').val('');
             $('#filter-from-date').val('');
             $('#filter-to-date').val('');
             $('#filter-health-status').val('');
@@ -458,11 +455,10 @@ const HomePage = {
             this.historyTable.ajax.url('/Home/GetHistoryLogs').load();
         },
 
-        buildFilterUrl: function(employeeId, fromDate, toDate, healthStatus) {
+        buildFilterUrl: function(fromDate, toDate, healthStatus) {
             let url = '/Home/GetHistoryLogs?';
             const params = [];
 
-            if (employeeId) params.push('employee_id=' + encodeURIComponent(employeeId));
             if (fromDate) params.push('from_date=' + encodeURIComponent(fromDate));
             if (toDate) params.push('to_date=' + encodeURIComponent(toDate));
             if (healthStatus) params.push('health_status=' + encodeURIComponent(healthStatus));
@@ -481,7 +477,6 @@ const HomePage = {
 
             // Transform data for export
             const exportData = tableData.map(row => ({
-                'Attendance ID': row.attendance_id,
                 'Employee ID': row.employee_id,
                 'Employee Name': row.name,
                 'Provider': row.provider_code,
