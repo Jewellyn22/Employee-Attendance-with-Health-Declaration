@@ -389,7 +389,7 @@ const HomePage = {
                     {
                         data: 'time_out',
                         render: function(data) {
-                            if (!data) return 'Active';
+                            if (!data) return '';
                             return HomePage.common.formatDate(data);
                         }
                     },
@@ -467,8 +467,8 @@ const HomePage = {
         },
 
         exportToExcel: function() {
-            // Get current filtered data from DataTable
-            const tableData = this.historyTable.rows().data().toArray();
+            // Get current filtered data from DataTable (respecting search and filters)
+            const tableData = this.historyTable.rows({ search: 'applied' }).data().toArray();
 
             if (tableData.length === 0) {
                 HomePage.common.showWarning('No data available to export', 'No Data');
