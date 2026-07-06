@@ -264,5 +264,63 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<List<string>>> GetHealthDeclarationSicknessItems()
+        {
+            try
+            {
+                var config = await _systemConfigRepository.GetByKey("Health_Declaration_Sickness");
+
+                // Default sickness items if config is missing or empty
+                var defaultItems = new List<string>
+                {
+                    "Fever", "Cough", "Cold", "Body Pain", "Headache",
+                    "Sore Throat", "Fatigue", "Nausea", "Diarrhea"
+                };
+
+                if (config == null || string.IsNullOrWhiteSpace(config.value))
+                {
+                    return new Response<List<string>>
+                    {
+                        Success = false,
+                        Message = "Health_Declaration_Sickness configuration not found, using defaults",
+                        Data = defaultItems
+                    };
+                }
+
+                // Parse semicolon-separated values
+                var items = config.value.Split(';')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToList();
+
+                if (items.Count == 0)
+                {
+                    return new Response<List<string>>
+                    {
+                        Success = false,
+                        Message = "Empty sickness configuration, using defaults",
+                        Data = defaultItems
+                    };
+                }
+
+                return new Response<List<string>>
+                {
+                    Success = true,
+                    Message = "Sickness items retrieved successfully",
+                    Data = items
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting health declaration sickness items");
+                return new Response<List<string>>
+                {
+                    Success = false,
+                    Message = "Error retrieving sickness configuration",
+                    Data = new List<string> { "Fever", "Cough", "Cold" } // minimal default
+                };
+            }
+        }
     }
 }

@@ -1,236 +1,283 @@
-@{
-	ViewData["Title"] = "Contractor Attendance Monitoring";
+﻿@{
+    ViewData["Title"] = "Contractor Attendance Monitoring";
 }
 
 <div class="container-fluid">
-	<div class="home-container">
-		<div class="left">
-			<div>
-				<h3>Attendance Scanning</h3>
+    <div class="home-container">
+        <div class="left">
+            <div>
+                <h3>Attendance Scanning</h3>
 
-				<form id="scan-form">
-					<div class="text-center">
-						<div class="mb-3">
-							<label for="employee_id" class="form-label">Scan ID:</label>
-							<input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
-						</div>
+                <form id="scan-form">
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <label for="employee_id" class="form-label">Scan ID:</label>
+                            <input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
+                        </div>
 
-						<div id="scan-result" class="mt-3"></div>
-					</div>
-				</form>
-			</div>
-		</div>
+                        <div id="scan-result" class="mt-3"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-		<div class="right">
-			<div id="health-declaration-section" @* style="display:none;" *@>
-				<div class="hd_header">
-					<h3 class="hd_title">Health Declaration Form</h3>
-					<h6>
-						Your health and safety are important to us. <br />
-						Please complete this form truthfully before entering the company premises.
-					</h6>
-				</div>
-
-
-
-				<form id="health-declaration-form">
-					@* PERSONAL DETAILS *@
-					<div>
-						<h6 class="category">Personal Detail</h6>
-						<hr />
-						<div class="f-body">
-							<div id="contractor-info">
-								<div class="row">
-									<div class="col-4">
-										<p id="provider" class="mb-1">[Provider]</p>
-									</div>
-									<div class="col-4">
-										<p id="project" class="mb-1">[Project]</p>
-									</div>
-									<div class="col-4">
-										<p id="area_of_destination" class="mb-1">[Area]</p>
-									</div>
-								</div>
-								<div class="row">
-									<div class="col-4">
-										<p id="employee_name" class="mb-1">[Name]</p>
-									</div>
-									<div class="col-4">
-										<p id="sex" class="mb-1">[Sex]</p>
-									</div>
-									<div class="col-4">
-										<p id="position" class="mb-1">[Position]</p>
-									</div>
-								</div>
-								<div class="row">
-									<div class="col-4">
-										<p id="bday" class="mb-1">[Birth Date] (Age)</p>
-									</div>
-									
-
-									<div class="col-4">
-										<p id="contact_no" class="mb-1">[Contact No]</p>
-									</div>
-								</div>
-								<div class="row">
-									<div class="col-12">
-										<p id="address" class="mb-1">[Address]</p>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+        <div class="right">
+            <div id="health-declaration-section" @* style="display:none;" *@>
+                <div class="hd_header">
+                    <h3 class="hd_title">Health Declaration Form</h3>
+                    <h6>
+                        Your health and safety are important to us. <br />
+                        Please complete this form truthfully before entering the company premises.
+                    </h6>
+                </div>
 
 
-					@* HEALTH STATUS *@
-					<div>
-						<h6 class="category">Health Self-Assessment</h6>
-						<hr />
-						<div class="f-body">
-							<label> Do you have any of the following?</label>
-							<div id="sickness" class="mb-3">
-								@* AUTO-GENERATED FROM JS *@
-						</div>
-							<div class="mb-3">
-								<div class="row">
-									<div class="col-1">
-										<div class="form-check">
-											<input class="form-check-input" type="radio" name="health_status" id="health_fit" value="FIT" checked>
-											<label class="form-check-label" for="health_fit">
-												NO
-											</label>
-										</div>
-									</div>
-									<div class="col-1">
-										<div class="form-check">
-											<input class="form-check-input" type="radio" name="health_status" id="health_unfit" value="UNFIT">
-											<label class="form-check-label" for="health_unfit">
-												YES
-											</label>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					
-					<input id="hd_attendance_id" name="attendance_id">
-				</form>
 
-				<div class="mt-3">
-					<small class="text-muted">Health declaration form will close in <span id="timer-countdown">@ViewBag.HealthDeclarationWindowSeconds</span> seconds</small>
-				</div>
-			</div>
+                <form id="health-declaration-form">
+                    @* PERSONAL DETAILS *@
+                    <div>
+                        <h6 class="category">Personal Detail</h6>
+                        <hr />
+                        <div class="f-body">
+                            <div id="contractor-info">
+                                <div class="row">
+                                    <div class="col-5">
+                                        <p id="provider" class="mb-1">[Provider]</p>
+                                    </div>
+                                    <div class="col-5">
+                                        <p id="project" class="mb-1">[Project]</p>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-5">
+                                        <p id="employee_name" class="mb-1">[Name]</p>
+                                    </div>
+                                    <div class="col-5">
+                                        <p id="area_of_destination" class="mb-1">[Area]</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-			@* <div id="no-declaration-message" class="text-center text-muted mt-5">
+
+                    @* HEALTH STATUS *@
+                    <div>
+                        <h6 class="category">Health Self-Assessment</h6>
+                        <hr />
+                        <div class="f-body">
+                            <label><i class="fa-solid fa-question"></i> <strong> Do you have any of the following? </strong></label>
+                            <div id="sickness" class="" style="padding-left: 5%; padding-right:5%;">
+                                @if (ViewBag.SicknessItems != null)
+                                {
+                                    var sicknessItems = ViewBag.SicknessItems as List<string>;
+                                    if (sicknessItems != null && sicknessItems.Count > 0)
+                                    {
+                                        var totalItems = sicknessItems.Count;
+                                        var itemsPerColumn = (int)Math.Ceiling((double)totalItems / 3);
+
+                                        <div class="row">
+                                            @for (int col = 0; col < 3; col++)
+                                            {
+                                                <div class="col-4">
+                                                    @for (int i = col * itemsPerColumn; i < Math.Min((col + 1) * itemsPerColumn, totalItems); i++)
+                                                    {
+                                                        <p class="mb-1">• @sicknessItems[i]</p>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">No sickness items configured</p>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted">Sickness items not available</p>
+                                }
+                            </div>
+                            <div class="d-flex justify-content-center gap-3">
+                                <input type="radio" class="btn-check" name="health_status" id="fit" value="FIT" checked>
+                                <label class="btn rounded-pill btn-outline-success px-4" for="fit">
+                                    <i class="fa-regular fa-thumbs-up"></i> NO
+                                </label>
+
+                                <input type="radio" class="btn-check" name="health_status" id="unfit" value="UNFIT">
+                                <label class="btn rounded-pill btn-outline-danger px-4" for="unfit">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> YES
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h6 class="category">Waiver and Declaration Statement</h6>
+                        <hr />
+                        <div class="f-body">
+                            <table class="waiver">
+                                <tr>
+                                    <td>
+                                        <i class="fa-regular fa-circle-check" style="font-size: 35px;"></i>
+                                    </td>
+                                    <td>
+                                        <p>
+                                            I hereby certify that all information provided in this Health Declaration Form is true, complete, and accurate to the
+                                            best of my knowledge. I understand that declaring my health condition is essential to ensure my own safety and the
+                                            safety of others within the company premises.
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fa-regular fa-file-lines" style="font-size: 35px;"></i>
+                                    </td>
+                                    <td>
+
+                                        I acknowledge and agree that failure to disclose any relevant medical condition, symptoms, illness, or exposure may
+                                        pose a risk to myself and others. In such cases, I accept full responsibility for any consequences arising from non-
+                                        disclosure.
+                                        <br />
+                                        By signing this form, I voluntarily confirm that I am physically fit to enter and perform work within the company
+                                        premises, unless otherwise declared and evaluated by the Clinic or Safety Officer.
+
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fa-regular fa-pen-to-square" style="font-size: 35px;"></i>
+                                    </td>
+                                    <td>
+                                        Furthermore, I release and hold harmless the company from any liability arising from inaccurate, incomplete, or
+                                        false declarations provided in this form.
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                    </div>
+
+                    <input type="hidden" id="hd_attendance_id" name="attendance_id">
+                </form>
+
+
+                <div class="mt-3">
+                    <small class="text-muted">Health declaration form will close in <span id="timer-countdown">@ViewBag.HealthDeclarationWindowSeconds</span> seconds</small>
+                </div>
+            </div>
+
+            @* <div id="no-declaration-message" class="text-center text-muted mt-5">
 				<p>Scan your ID to begin health declaration process</p>
 			</div> *@
-		</div>
-	</div>
+        </div>
+    </div>
 </div>
 
 
 @section Scripts {
-	<script src="~/js/home/home.js"></script>
-	<script>
-		// Initialize health declaration window from server config
-		window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120.0);
+    <script src="~/js/home/home.js"></script>
+    <script>
+        // Initialize health declaration window from server config
+        window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120.0);
 
-		$(document).ready(function() {
-			HomePage.index.init();
-		});
-	</script>
+        $(document).ready(function() {
+            HomePage.index.init();
+        });
+    </script>
 
-	<style>
-		.home-container {
-			display: flex;
-			gap: 20px;
-			padding: 20px;
-			min-height: 500px;
-		}
+    <style>
+        .home-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            min-height: 500px;
+        }
 
-		.left {
-			flex: 0 0 40%;
-			background: #f8f9fa;
-			padding: 20px;
-			border-radius: 5px;
-			border: 1px solid #dee2e6;
-		}
+        .left {
+            flex: 0 0 40%;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
 
-		.right {
-			flex: 1;
-			background: #f8f9fa;
-			padding: 20px;
-			border-radius: 5px;
-			border: 1px solid #dee2e6;
-		}
+        .right {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
 
-		#employee_id {
-			font-size: 18px;
-			padding: 10px;
-			text-align: center;
-		}
+        #employee_id {
+            font-size: 18px;
+            padding: 10px;
+            text-align: center;
+        }
 
-		#health-declaration-section {
-			padding: 20px;
-			background: white;
-			border-radius: 5px;
-			border: 1px solid #dee2e6;
-		}
+        #health-declaration-section {
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
 
-		.form-check-input[type="radio"] {
-			transform: scale(1.5);
-			margin-right: 10px;
-		}
+        .form-check-input[type="radio"] {
+            transform: scale(1.5);
+            margin-right: 10px;
+        }
 
-		.form-check-label {
-			margin-left: 10px;
-			font-size: 16px;
-		}
+        .form-check-label {
+            margin-left: 10px;
+            font-size: 16px;
+        }
 
-		#timer-countdown {
-			font-weight: bold;
-			color: #dc3545;
-		}
+        #timer-countdown {
+            font-weight: bold;
+            color: #dc3545;
+        }
 
-		.hd_header {
-			text-align: center;
-		}
+        .hd_header {
+            text-align: center;
+        }
 
-		h3 {
-			font-weight: 700;
-		}
+        h3 {
+            font-weight: 700;
+        }
 
-		.hd_title {
-			color: whitesmoke;
-			background-color: midnightblue;
-			border-radius: 10px;
-			padding: 0.5% 0 0.5% 0;
-		}
+        .hd_title {
+            color: whitesmoke;
+            background-color: midnightblue;
+            border-radius: 10px;
+            padding: 0.5% 0 0.5% 0;
+        }
 
-		hr {
-			border: 0.5px solid;
-			color: midnightblue;
-		}
+        hr {
+            border: 0.5px solid;
+            color: midnightblue;
+        }
 
-		.category {
-			font-weight: 700;
-			margin-bottom: -1%;
-			margin-top: 1%;
-			font-size: 20px;
-		}
+        .category {
+            font-weight: 700;
+            margin-bottom: -1%;
+            margin-top: 1%;
+            font-size: 20px;
+        }
 
-		#scan-result .alert {
-			margin-bottom: 0;
-			text-align: center;
-			font-size: 100px;
-			padding: 8px 12px;
-		}
+        #scan-result .alert {
+            margin-bottom: 0;
+            text-align: center;
+            font-size: 100px;
+            padding: 8px 12px;
+        }
 
-		.f-body {
-			margin-top: -1%;
-			margin-bottom: 1%;
-			font-size: 16px;
-		}
-	</style>
+        .f-body {
+            margin: -1% 1% 1% 1%;
+            font-size: 16px;
+        }
+        table td {
+            padding: 5px;
+        }
+    </style>
 }

@@ -12,5 +12,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<system_config>> GetByKey(string key);
         Task<Response<bool>> Update(system_config config);
         Task<Response<IEnumerable<system_config>>> GetAll();
+        Task<Response<List<string>>> GetHealthDeclarationSicknessItems();
     }
 }

@@ -91,23 +91,6 @@ const HomePage = {
             const date = new Date(dateString);
             return date.toISOString().slice(0, 19).replace('T', ' ');
         },
-
-        calculateAge: function(birthdate) {
-            if (!birthdate) return '';
-
-            const birthDate = new Date(birthdate);
-            const today = new Date();
-
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const monthDiff = today.getMonth() - birthDate.getMonth();
-
-            // Adjust age if birthday hasn't occurred yet this year
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
-            }
-
-            return age;
-        }
     },
 
     // Index.cshtml - Kiosk scanning functionality
@@ -203,26 +186,11 @@ const HomePage = {
             }
 
            
-            $('#provider').text((contractor.provider_code ? ' (' + contractor.provider_code + ')' : '') + ' ' + (contractor.provider_name));
-            $('#project').text((contractor.project_code ? ' (' + contractor.project_code + ')' : '') + ' ' + (contractor.project_name));
-            $('#area_of_destination').text('Assigned Area: ' + contractor.area_of_destination);
-            $('#employee_name').text(contractor.name);
-            $('#sex').text(contractor.gender);
-            $('#position').text(contractor.position);
+            $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (contractor.provider_code ? ' (' + contractor.provider_code + ')' : '') + ' ' + (contractor.provider_name));
+            $('#project').html('<i class="fa-solid fa-gear"></i> ' + (contractor.project_code ? ' (' + contractor.project_code + ')' : '') + ' ' + (contractor.project_name));
+            $('#area_of_destination').html('<i class="fa-solid fa-location-dot"></i> ' + 'Assigned Area: ' + contractor.area_of_destination);
+            $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + contractor.name);
             
-            
-
-            // Calculate age from birthdate
-            const age = HomePage.common.calculateAge(contractor.birthdate);        
-
-            // Format birthdate for display
-            const birthdateFormatted = contractor.birthdate ?
-                new Date(contractor.birthdate).toLocaleDateString() : '';
-            $('#bday').text(birthdateFormatted + ' (' + age + ' yrs. old)');
-
-            $('#contact_no').text(contractor.contact_number);
-            $('#address').text(contractor.address);
-
             $('#contractor-info').show();
         },
 
@@ -237,13 +205,13 @@ const HomePage = {
             // Display success message inline under employee_id field
             $('#scan-result').html('<div class="alert alert-success mt-2" role="alert">' + message + '</div>');
 
-            // Auto-clear the message after 10 seconds
+            // Auto-clear the message after 5 seconds
             self.scanResultTimeout = setTimeout(function() {
                 $('#scan-result').fadeOut('slow', function() {
                     $(this).empty().show();
                     self.scanResultTimeout = null;
                 });
-            }, 10000);
+            }, 5000);
         },
 
         clearScanResult: function() {
@@ -272,13 +240,13 @@ const HomePage = {
             // Display error message inline under employee_id field
             $('#scan-result').html('<div class="alert alert-danger mt-2" role="alert">' + message + '</div>');
 
-            // Auto-clear the error message after 10 seconds
+            // Auto-clear the error message after 5 seconds
             self.scanResultTimeout = setTimeout(function() {
                 $('#scan-result').fadeOut('slow', function() {
                     $(this).empty().show();
                     self.scanResultTimeout = null;
                 });
-            }, 10000);
+            }, 5000);
 
             // Clear contractor info on error
             $('#contractor-info').hide();
