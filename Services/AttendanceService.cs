@@ -51,11 +51,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 2: Check 2-minute duplicate scan debounce
+                // Step 2: Check duplicate scan debounce (applies to both TIME IN and TIME OUT)
                 var debounceThresholdMinutes = await _systemConfigService.GetDebounceThresholdMinutes();
                 var lastScan = await _timeLogsRepository.GetLastScan(employee_id);
 
-                if (lastScan != null && IsWithin2Minutes(lastScan.time_in ?? lastScan.time_out, debounceThresholdMinutes.Data))
+                // Check against the MOST RECENT scan event:
+                // - For completed sessions: time_out is most recent
+                // - For open sessions: time_out is null, so check time_in
+                var lastScanTime = lastScan?.time_out ?? lastScan?.time_in;
+
+                if (lastScan != null && IsWithin2Minutes(lastScanTime, debounceThresholdMinutes.Data))
                 {
                     var debounceThresholdSeconds = debounceThresholdMinutes.Data * 60;
                     return new Response<time_log>
