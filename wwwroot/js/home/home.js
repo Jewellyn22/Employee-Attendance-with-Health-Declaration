@@ -407,7 +407,7 @@ const HomePage = {
                 ],
                 searching: true,  // Enable global search
                 order: [[3, 'desc']], // Sort by Time In descending (column index 3)
-                pageLength: 25,
+                pageLength: 10,
                 language: {
                     emptyTable: 'No attendance records available',
                     search: 'Search:'  // Label for global search box
