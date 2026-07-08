@@ -1,0 +1,89 @@
+@{
+    ViewData["Title"] = "Projects Management";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Projects Management</h2>
+            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Projects Under Providers</h5>
+                </div>
+                <div class="card-body">
+                    <button id="add-project" class="btn btn-primary mb-3">Add New Project</button>
+
+                    <table id="projects-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Project Code</th>
+                                <th>Project Name</th>
+                                <th>Provider Code</th>
+                                <th>Contract Start</th>
+                                <th>Contract End</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Modal -->
+<div id="project-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Project Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="project-form">
+                    <input type="hidden" id="project_code">
+                    <div class="mb-3">
+                        <label for="project_name" class="form-label">Project Name:</label>
+                        <input type="text" id="project_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider_code" class="form-label">Provider:</label>
+                        <select id="provider_code" class="form-control" required>
+                            <option value="">Select Provider</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contract_startdate" class="form-label">Contract Start Date:</label>
+                        <input type="date" id="contract_startdate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contract_enddate" class="form-label">Contract End Date:</label>
+                        <input type="date" id="contract_enddate" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="save-project" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/select2/select2.min.js"></script>
+    <script src="~/js/admin/admin.js"></script>
+    <script>
+        $(document).ready(function() {
+            AdminPage.projects.init();
+        });
+    </script>
+}

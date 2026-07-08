@@ -1,0 +1,140 @@
+@{
+    ViewData["Title"] = "TimeLogs Management";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>TimeLogs Management</h2>
+            <p class="text-muted">Edit or delete attendance records for corrections with audit trail</p>
+            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Attendance Records with Audit Trail</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Filter Form -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="filter-employee-id" class="form-label">Employee ID:</label>
+                            <input type="text" id="filter-employee-id" class="form-control" placeholder="Filter by ID">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filter-from-date" class="form-label">From Date:</label>
+                            <input type="date" id="filter-from-date" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filter-to-date" class="form-label">To Date:</label>
+                            <input type="date" id="filter-to-date" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filter-health-status" class="form-label">Health Status:</label>
+                            <select id="filter-health-status" class="form-control">
+                                <option value="">All</option>
+                                <option value="FIT">FIT</option>
+                                <option value="UNFIT">UNFIT</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button id="apply-filters" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Apply Filters
+                            </button>
+                            <button id="clear-filters" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Clear Filters
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- DataTable -->
+                    <table id="timelogs-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Attendance ID</th>
+                                <th>Employee ID</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Health Status</th>
+                                <th>Updated By</th>
+                                <th>Updated At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div id="no-data-message" class="text-center text-muted" style="display: none;">
+                        <p>No attendance records found matching your filters.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timelog Edit Modal -->
+<div id="timelog-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Attendance Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="timelog-form">
+                    <input type="hidden" id="edit_attendance_id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_employee_id" class="form-label">Employee ID:</label>
+                                <input type="text" id="edit_employee_id" class="form-control" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_time_in" class="form-label">Time In:</label>
+                                <input type="datetime-local" id="edit_time_in" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_time_out" class="form-label">Time Out:</label>
+                                <input type="datetime-local" id="edit_time_out" class="form-control">
+                                <small class="text-muted">Leave empty for active attendance</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_health_status" class="form-label">Health Status:</label>
+                                <select id="edit_health_status" class="form-control" required>
+                                    <option value="FIT">FIT</option>
+                                    <option value="UNFIT">UNFIT</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Admin Correction:</strong> Your employee ID will be recorded in the audit trail.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="save-timelog" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/admin.js"></script>
+    <script>
+        $(document).ready(function() {
+            AdminPage.timeLogs.init();
+        });
+    </script>
+}

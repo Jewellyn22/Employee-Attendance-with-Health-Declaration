@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "Privacy Policy";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h1>Privacy Policy</h1>
+            <a href="@Url.Action("Index", "Home")" class="btn btn-secondary float-end">Back to Kiosk Interface</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h3>Contractor Attendance and Health Declaration Monitoring System</h3>
+                    <p class="text-muted">Last updated: January 25, 2025</p>
+
+                    <h4>Data Collection</h4>
+                    <p>This system collects the following information:</p>
+                    <ul>
+                        <li><strong>Contractor Information:</strong> Employee ID, name, provider, project, position, and contact details</li>
+                        <li><strong>Attendance Records:</strong> Time in/out timestamps, health declaration status (FIT/UNFIT)</li>
+                        <li><strong>Health Declarations:</strong> Self-reported health status for entry screening</li>
+                        <li><strong>Admin Corrections:</strong> Records of administrative corrections with audit trail</li>
+                    </ul>
+
+                    <h4>Data Purpose</h4>
+                    <p>The collected data is used for:</p>
+                    <ul>
+                        <li>Monitoring contractor attendance and working hours</li>
+                        <li>Health screening and workplace safety</li>
+                        <li>Administrative reporting and audit trails</li>
+                        <li>Ensuring compliance with health and safety regulations</li>
+                    </ul>
+
+                    <h4>Data Security</h4>
+                    <p>All data is stored securely in our database system with:</p>
+                    <ul>
+                        <li>Admin access requiring LDAP authentication</li>
+                        <li>Comprehensive audit logging for all corrections</li>
+                        <li>Session-based authentication for admin users</li>
+                        <li>No public access to sensitive administrative functions</li>
+                    </ul>
+
+                    <h4>Data Retention</h4>
+                    <p>Attendance records and health declarations are retained according to company policy and applicable regulations. Historical data is maintained for:</p>
+                    <ul>
+                        <li>Compliance and auditing purposes</li>
+                        <li>Trend analysis and reporting</li>
+                        <li>Workplace safety monitoring</li>
+                    </ul>
+
+                    <h4>Access Rights</h4>
+                    <p><strong>Public Access:</strong></p>
+                    <ul>
+                        <li>History Logs page - read-only access to attendance data</li>
+                        <li>No modification capabilities for public users</li>
+                    </ul>
+
+                    <p><strong>Admin Access:</strong></p>
+                    <ul>
+                        <li>Full CRUD operations on providers, projects, and contractors</li>
+                        <li>Ability to edit or delete attendance records with audit trail</li>
+                        <li>System configuration management</li>
+                        <li>Requires LDAP authentication and authorized group membership</li>
+                    </ul>
+
+                    <h4>Your Rights</h4>
+                    <p>As a contractor whose data is collected in this system, you have the right to:</p>
+                    <ul>
+                        <li>View your own attendance records</li>
+                        <li>Request corrections to inaccurate data through your supervisor</li>
+                        <li>Access the publicly available history logs</li>
+                    </ul>
+
+                    <h4>Data Correction Process</h4>
+                    <p>If you believe there are errors in your attendance records:</p>
+                    <ol>
+                        <li>Contact your supervisor or the site administrator</li>
+                        <li>Administrators can edit attendance records with full audit trail</li>
+                        <li>All corrections are logged with admin's employee ID and timestamp</li>
+                        <li>Changes are tracked for accountability and compliance</li>
+                    </ol>
+
+                    <h4>Contact Information</h4>
+                    <p>For questions about this privacy policy or data practices, please contact:</p>
+                    <ul>
+                        <li>System Administrator</li>
+                        <li>HR Department</li>
+                        <li>Your assigned Supervisor</li>
+                    </ul>
+
+                    <div class="alert alert-info mt-4">
+                        <strong>Note:</strong> This system is designed for workplace safety and attendance monitoring. Health declarations are self-administered and used for entry screening purposes only.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

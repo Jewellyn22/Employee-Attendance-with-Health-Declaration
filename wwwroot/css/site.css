@@ -20,3 +20,121 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.home-container {
+    display: flex;
+    /*height: 100vh;*/
+}
+
+.left,
+.right {
+    flex: 1; /* Equal width */
+}
+
+.left {
+    background: #f0f0f0;
+    padding: 3%;
+    max-width: 30%;
+}
+
+.right {
+    background: #dfefff;
+    max-width: 70%;
+    padding: 3%;
+}
+
+.form-container{
+    border: 1px solid gray;
+    padding: 0.5%;
+    border-radius: 8px;
+}
+
+input{
+    width: 100%;
+}
+
+h3{
+	text-align: center;
+}
+
+/* Critical Alert Styles - Red background, white text, XL size */
+.critical-alert-popup {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: 3px solid #a71d2a !important;
+    border-radius: 8px !important;
+}
+
+.critical-alert-title {
+    color: #ffffff !important;
+    font-size: 2rem !important;
+    font-weight: bold !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.critical-alert-content {
+    color: #ffffff !important;
+    font-size: 1.1rem !important;
+}
+
+.critical-alert-button {
+    background-color: #ffffff !important;
+    color: #dc3545 !important;
+    font-weight: bold !important;
+    border: none !important;
+    padding: 12px 24px !important;
+    font-size: 1rem !important;
+    border-radius: 4px !important;
+}
+
+.critical-alert-button:hover {
+    background-color: #f8f9fa !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Mobile responsive adjustment */
+@media (max-width: 768px) {
+    .critical-alert-popup {
+        width: 90% !important;
+        max-width: 500px !important;
+    }
+
+    .critical-alert-title {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Success Alert Styles - Green background, white text, XXL size */
+.success-alert-popup {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    border: 3px solid #0f5132 !important;
+    border-radius: 8px !important;
+}
+
+.success-alert-title {
+    color: #ffffff !important;
+    font-size: 2rem !important;
+    font-weight: bold !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.success-alert-content {
+    color: #ffffff !important;
+    font-size: 1.1rem !important;
+}
+
+/* Mobile responsive adjustment */
+@media (max-width: 768px) {
+    .success-alert-popup {
+        width: 90% !important;
+        max-width: 500px !important;
+    }
+
+    .success-alert-title {
+        font-size: 1.5rem !important;
+    }
+}

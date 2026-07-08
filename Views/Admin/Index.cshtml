@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Admin Dashboard</h2>
+            <p class="text-muted">Welcome, @ViewBag.AdminName</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Providers</h5>
+                    <p class="card-text">Manage provider companies</p>
+                    <a href="@Url.Action("Providers", "Admin")" class="btn btn-primary">Manage Providers</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Projects</h5>
+                    <p class="card-text">Manage projects under providers</p>
+                    <a href="@Url.Action("Projects", "Admin")" class="btn btn-primary">Manage Projects</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Contractors</h5>
+                    <p class="card-text">Manage contractor employees</p>
+                    <a href="@Url.Action("Contractors", "Admin")" class="btn btn-primary">Manage Contractors</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">System Config</h5>
+                    <p class="card-text">Configure system settings</p>
+                    <a href="@Url.Action("SystemConfig", "Admin")" class="btn btn-primary">System Config</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">TimeLogs Management</h5>
+                    <p class="card-text">Edit or delete attendance records for corrections</p>
+                    <a href="@Url.Action("TimeLogs", "Admin")" class="btn btn-warning">Manage TimeLogs</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Public Access</h5>
+                    <p class="card-text">View history logs page (public access)</p>
+                    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-info">View History Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

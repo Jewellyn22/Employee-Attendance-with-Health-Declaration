@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Contractors Management";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Contractors Management</h2>
+            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Contractor Employees</h5>
+                </div>
+                <div class="card-body">
+                    <button id="add-contractor" class="btn btn-primary mb-3">Add New Contractor</button>
+
+                    <table id="contractors-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Provider</th>
+                                <th>Project</th>
+                                <th>Position</th>
+                                <th>Area</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contractor Modal -->
+<div id="contractor-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Contractor Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="contractor-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="employee_id" class="form-label">Employee ID:</label>
+                                <input type="text" id="employee_id" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name:</label>
+                                <input type="text" id="name" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="age" class="form-label">Age:</label>
+                                <input type="number" id="age" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="gender" class="form-label">Gender:</label>
+                                <select id="gender" class="form-control">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="birthdate" class="form-label">Birthdate:</label>
+                                <input type="date" id="birthdate" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contact_number" class="form-label">Contact Number:</label>
+                                <input type="text" id="contact_number" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="area_of_destination" class="form-label">Area of Destination:</label>
+                                <input type="text" id="area_of_destination" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="provider_code" class="form-label">Provider:</label>
+                                <select id="provider_code" class="form-control" required>
+                                    <option value="">Select Provider</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="project_code" class="form-label">Project:</label>
+                                <select id="project_code" class="form-control">
+                                    <option value="">Select Project</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="position" class="form-label">Position:</label>
+                                <input type="text" id="position" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="save-contractor" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/select2/select2.min.js"></script>
+    <script src="~/js/admin/admin.js"></script>
+    <script>
+        $(document).ready(function() {
+            AdminPage.contractors.init();
+        });
+    </script>
+}

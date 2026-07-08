@@ -1,0 +1,85 @@
+@{
+    ViewData["Title"] = "Providers Management";
+}
+
+<div class="container-fluid">
+    <div class="row mt-4">
+        <div class="col-12">
+            <h2>Providers Management</h2>
+            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Provider Companies</h5>
+                </div>
+                <div class="card-body">
+                    <button id="add-provider" class="btn btn-primary mb-3">Add New Provider</button>
+
+                    <table id="providers-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Provider Code</th>
+                                <th>Provider Name</th>
+                                <th>PIC</th>
+                                <th>PIC Number</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Provider Modal -->
+<div id="provider-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Provider Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="provider-form">
+                    <input type="hidden" id="provider_code">
+                    <div class="mb-3">
+                        <label for="provider_name" class="form-label">Provider Name:</label>
+                        <input type="text" id="provider_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider_address" class="form-label">Address:</label>
+                        <textarea id="provider_address" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider_pic" class="form-label">PIC Name:</label>
+                        <input type="text" id="provider_pic" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider_pic_number" class="form-label">PIC Number:</label>
+                        <input type="text" id="provider_pic_number" class="form-control">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="save-provider" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/admin.js"></script>
+    <script>
+        $(document).ready(function() {
+            AdminPage.providers.init();
+        });
+    </script>
+}
