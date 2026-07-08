@@ -81,7 +81,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_employee_id = time_log.employee_id,
                     p_time_in = time_log.time_in,
                     p_time_out = time_log.time_out,
-                    p_health_status = time_log.health_status
+                    p_health_status = time_log.health_status,
+                    p_waiver_consent = time_log.waiver_consent
                 },
                 commandType: CommandType.StoredProcedure
             );
@@ -98,7 +99,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_employee_id = time_log.employee_id,
                     p_time_in = time_log.time_in,
                     p_time_out = time_log.time_out,
-                    p_health_status = time_log.health_status
+                    p_health_status = time_log.health_status,
+                    p_waiver_consent = time_log.waiver_consent
                 },
                 commandType: CommandType.StoredProcedure
             );

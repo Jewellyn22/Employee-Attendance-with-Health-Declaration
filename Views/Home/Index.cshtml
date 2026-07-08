@@ -22,7 +22,7 @@
         </div>
 
         <div class="right">
-            <div id="health-declaration-section" @* style="display:none;" *@>
+            <div id="health-declaration-section" style="display:none;">
                 <div class="hd_header">
                     <h3 class="hd_title">Health Declaration Form</h3>
                     <h6>
@@ -112,6 +112,8 @@
                         </div>
                     </div>
 
+
+                    @* WAIVER AND DECLARATION STATEMENT *@ 
                     <div>
                         <h6 class="category">Waiver and Declaration Statement</h6>
                         <hr />
@@ -154,6 +156,32 @@
                                     </td>
                                 </tr>
                             </table>
+                        </div>
+
+                        @* WAIVER CONSENT RADIO BUTTONS *@
+                        <div class="d-flex justify-content-center gap-3 mt-3" style="padding-left: 5%; padding-right: 5%;">
+                            <div class="form-check">
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="waiver_consent"
+                                       id="understood"
+                                       value="UNDERSTOOD"
+                                       checked>
+                                <label class="btn rounded-pill btn-outline-primary px-4 py-2" for="understood">
+                                    <i class="fa-regular fa-thumbs-up"></i> I understand
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="waiver_consent"
+                                       id="not_understood"
+                                       value="NOT_UNDERSTOOD">
+                                <label class="btn rounded-pill btn-outline-warning px-4 py-2" for="not_understood">
+                                    <i class="fa-regular fa-thumbs-down"></i> I do not understand
+                                </label>
+                            </div>
                         </div>
 
                     </div>

@@ -73,6 +73,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     employee_id = result.Data.employee_id,
                     time_in = result.Data.time_in,
                     health_status = result.Data.health_status,
+                    waiver_consent = result.Data.waiver_consent,
                     contractor_info = new
                     {
                         employee_id = contractor.employee_id,
@@ -99,12 +100,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
         // POST: /Home/UpdateHealthStatus
         [HttpPost]
-        public async Task<IActionResult> UpdateHealthStatus(int attendance_id, string health_status)
+        public async Task<IActionResult> UpdateHealthStatus(int attendance_id, string health_status, string waiver_consent)
         {
-            _logger.LogInformation("Health status update request for attendance: {AttendanceId} to {HealthStatus}",
-                attendance_id, health_status);
+            _logger.LogInformation("Health status and waiver consent update request for attendance: {AttendanceId} to health={HealthStatus}, waiver={WaiverConsent}",
+                attendance_id, health_status, waiver_consent);
 
-            var result = await _attendanceService.UpdateHealthStatus(attendance_id, health_status);
+            var result = await _attendanceService.UpdateHealthStatus(attendance_id, health_status, waiver_consent);
 
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }

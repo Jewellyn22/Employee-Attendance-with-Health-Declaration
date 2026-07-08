@@ -94,13 +94,14 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 4: Create TIME IN record with FIT status (only if no open session)
+                // Step 4: Create TIME IN record with FIT status and UNDERSTOOD waiver consent (only if no open session)
                 var newTimeLog = new time_log
                 {
                     employee_id = employee_id,
                     time_in = DateTime.Now,
                     time_out = null,
-                    health_status = "FIT" // Default FIT status
+                    health_status = "FIT", // Default FIT status
+                    waiver_consent = "UNDERSTOOD" // Default waiver consent
                 };
 
                 var createdLog = await _timeLogsRepository.Create(newTimeLog);
@@ -184,12 +185,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<bool>> UpdateHealthStatus(int attendance_id, string health_status)
+        public async Task<Response<bool>> UpdateHealthStatus(int attendance_id, string health_status, string waiver_consent)
         {
             try
             {
-                _logger.LogInformation("Updating health status for attendance: {AttendanceId} to {HealthStatus}",
-                    attendance_id, health_status);
+                _logger.LogInformation("Updating health status and waiver consent for attendance: {AttendanceId} to health={HealthStatus}, waiver={WaiverConsent}",
+                    attendance_id, health_status, waiver_consent);
 
                 // Validate health status enum values
                 if (health_status != "FIT" && health_status != "UNFIT")
@@ -198,6 +199,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     {
                         Success = false,
                         Message = "Invalid health status. Must be 'FIT' or 'UNFIT'",
+                        Data = false
+                    };
+                }
+
+                // Validate waiver consent enum values
+                if (waiver_consent != "UNDERSTOOD" && waiver_consent != "NOT_UNDERSTOOD")
+                {
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "Invalid waiver consent. Must be 'UNDERSTOOD' or 'NOT_UNDERSTOOD'",
                         Data = false
                     };
                 }
@@ -214,36 +226,42 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Check if within 2-minute window from TIME IN
+                // Check if within health declaration window from TIME IN (same window for both health status and waiver consent)
                 var healthWindowMinutes = await _systemConfigService.GetHealthDeclarationWindowMinutes();
                 if (!IsWithin2Minutes(attendance.time_in, healthWindowMinutes.Data))
                 {
                     return new Response<bool>
                     {
                         Success = false,
-                        Message = "Health declaration window has expired. Please contact admin for corrections.",
+                        Message = $"Health declaration and waiver consent window has expired. Changes allowed only within {healthWindowMinutes.Data} minutes of TIME IN.",
                         Data = false
                     };
                 }
 
-                // Update health status in memory
+                // Update health status and waiver consent in memory
                 attendance.health_status = health_status;
+                attendance.waiver_consent = waiver_consent;
 
-                // Set time_out based on health status
+                // Set time_out based on health status and waiver consent
                 if (health_status == "UNFIT")
                 {
-                    // UNFIT -> Auto time-out
+                    // UNFIT always triggers auto time-out
                     attendance.time_out = DateTime.Now;
                     _logger.LogInformation("Health status set to UNFIT for {AttendanceId}, TIME OUT set", attendance_id);
                 }
-                else if (health_status == "FIT" && attendance.time_out != null)
+                else if (health_status == "FIT")
                 {
-                    // Only clear time_out if it was auto-set for UNFIT (within health declaration window)
-                    var timeOutElapsed = DateTime.Now - attendance.time_out.Value;
-                    if (timeOutElapsed.TotalMinutes <= healthWindowMinutes.Data)
+                    if (waiver_consent == "NOT_UNDERSTOOD")
                     {
+                        // NOT_UNDERSTOOD triggers TIME_OUT even if FIT
+                        attendance.time_out = DateTime.Now;
+                        _logger.LogInformation("Waiver consent set to NOT_UNDERSTOOD for {AttendanceId}, TIME OUT set even though health is FIT", attendance_id);
+                    }
+                    else if (attendance.time_out != null && IsWithin2Minutes(attendance.time_out, healthWindowMinutes.Data))
+                    {
+                        // If changing back to UNDERSTOOD + FIT within window, remove auto TIME_OUT
                         attendance.time_out = null;
-                        _logger.LogInformation("Health status set to FIT for {AttendanceId}, auto TIME OUT removed", attendance_id);
+                        _logger.LogInformation("Health status set to FIT and waiver consent to UNDERSTOOD for {AttendanceId}, auto TIME OUT removed", attendance_id);
                     }
                 }
 
@@ -254,7 +272,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<bool>
                     {
                         Success = false,
-                        Message = "Failed to update health status",
+                        Message = "Failed to update health status and waiver consent",
                         Data = false
                     };
                 }
@@ -262,17 +280,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 return new Response<bool>
                 {
                     Success = true,
-                    Message = $"Health status updated to {health_status}",
+                    Message = $"Health status updated to {health_status}, waiver consent updated to {waiver_consent}",
                     Data = true
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating health status for attendance: {AttendanceId}", attendance_id);
+                _logger.LogError(ex, "Error updating health status and waiver consent for attendance: {AttendanceId}", attendance_id);
                 return new Response<bool>
                 {
                     Success = false,
-                    Message = "Error updating health status",
+                    Message = "Error updating health status and waiver consent",
                     Data = false
                 };
             }

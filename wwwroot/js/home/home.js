@@ -46,15 +46,13 @@ const HomePage = {
                     icon: 'error',
                     title: title,
                     text: message,
-                    width: '80%',  // XXL size
-                    timer: 0,  // No auto-dismiss - requires user acknowledgment
-                    showConfirmButton: true,
-                    confirmButtonText: 'I Understand',
+                    width: '80%',  // XXL size for visibility
+                    timer: 3000,  // Auto-dismiss after 3 seconds
+                    showConfirmButton: false,  // No button required
                     customClass: {
                         popup: 'critical-alert-popup',
                         title: 'critical-alert-title',
-                        content: 'critical-alert-content',
-                        confirmButton: 'critical-alert-button'
+                        content: 'critical-alert-content'
                     },
                     backdrop: `rgba(0, 0, 0, 0.7)`
                 });
@@ -67,7 +65,7 @@ const HomePage = {
                     icon: 'success',
                     title: title,
                     text: message,
-                    width: '80%',  // XXL size
+                    width: '80%',  // XXL size for visibility
                     timer: 2000,  // Auto-dismiss after 2 seconds
                     showConfirmButton: false,
                     customClass: {
@@ -120,16 +118,47 @@ const HomePage = {
             $('input[name="health_status"]').on('change', function() {
                 const selectedStatus = $(this).val();
                 const attendanceId = $('#hd_attendance_id').val();
+                const waiverConsent = $('input[name="waiver_consent"]:checked').val();
 
                 if (selectedStatus === 'UNFIT') {
                     // Show blocking message for UNFIT
-                    HomePage.common.showCriticalAlert('You are not allowed to enter company premises', 'Not Allowed');
-
-                    // Update health status to UNFIT (sets TIME OUT)
-                    self.updateHealthStatus(attendanceId, 'UNFIT');
+                    HomePage.common.showCriticalAlert(
+                        'You are not allowed to enter company premises due to health status.',
+                        'Not Allowed'
+                    );
+                    self.updateHealthStatus(attendanceId, 'UNFIT', waiverConsent);
                 } else if (selectedStatus === 'FIT') {
-                    // Update health status to FIT (removes TIME OUT if exists)
-                    self.updateHealthStatus(attendanceId, 'FIT');
+                    // When changing TO FIT, check if waiver is NOT_UNDERSTOOD
+                    if (waiverConsent === 'NOT_UNDERSTOOD') {
+                        // Show alert that TIME OUT will still be triggered due to waiver
+                        HomePage.common.showCriticalAlert(
+                            'You are marked as FIT but do not understand the waiver.',
+                            'You are not allowed to enter'
+                        );
+                    }
+                    // Update health status to FIT
+                    self.updateHealthStatus(attendanceId, 'FIT', waiverConsent);
+                }
+            });
+
+            // Waiver consent radio button change handler
+            $('input[name="waiver_consent"]').on('change', function() {
+                const selectedConsent = $(this).val();
+                const attendanceId = $('#hd_attendance_id').val();
+                const currentHealthStatus = $('input[name="health_status"]:checked').val();
+
+                if (selectedConsent === 'NOT_UNDERSTOOD') {
+                    // Show CRITICAL blocking alert for NOT_UNDERSTOOD (same as UNFIT styling)
+                    HomePage.common.showCriticalAlert(
+                        'You are marked as FIT but do not understand the waiver.',
+                        'You are not allowed to enter'
+                    );
+
+                    // Update to NOT_UNDERSTOOD consent (this will auto-set TIME_OUT)
+                    self.updateHealthStatus(attendanceId, currentHealthStatus, 'NOT_UNDERSTOOD');
+                } else if (selectedConsent === 'UNDERSTOOD') {
+                    // Update to UNDERSTOOD consent (will remove TIME_OUT if within window)
+                    self.updateHealthStatus(attendanceId, currentHealthStatus, 'UNDERSTOOD');
                 }
             });
         },
@@ -258,7 +287,10 @@ const HomePage = {
             $('#no-declaration-message').hide();
 
             // Reset form to default FIT status
-            $('#health_fit').prop('checked', true);
+            $('#fit').prop('checked', true);  // Reset health status to FIT
+
+            // Reset waiver consent to default "I understand"
+            $('#understood').prop('checked', true);  // Reset waiver consent to UNDERSTOOD
 
             // Start 2-minute timer
             this.startHealthDeclarationTimer();
@@ -298,28 +330,37 @@ const HomePage = {
             $('#timer-countdown').text(this.timerCountdown);
         },
 
-        updateHealthStatus: function(attendanceId, healthStatus) {
+        updateHealthStatus: function(attendanceId, healthStatus, waiverConsent) {
             const self = this;
             $.ajax({
                 url: '/Home/UpdateHealthStatus',
                 method: 'POST',
                 data: {
                     attendance_id: attendanceId,
-                    health_status: healthStatus
+                    health_status: healthStatus,
+                    waiver_consent: waiverConsent || 'UNDERSTOOD'  // Default if not provided
                 },
                 success: function(response) {
                     if (response.success) {
-                        console.log('Health status updated:', healthStatus);
+                        console.log('Health status and waiver consent updated:', healthStatus, waiverConsent);
 
-                        if (healthStatus === 'FIT') {
-                            HomePage.common.showSuccessAlert('You are now marked as FIT and can enter', 'Status Updated');
+                        if (healthStatus === 'FIT' && waiverConsent === 'UNDERSTOOD') {
+                            // Success: FIT + UNDERSTOOD = allowed to enter
+                            HomePage.common.showSuccessAlert('FIT and understand the waiver.', 'ALLOWED TO ENTER');
+                        } else if (healthStatus === 'FIT' && waiverConsent === 'NOT_UNDERSTOOD') {
+                            // Error: FIT but NOT_UNDERSTOOD = not allowed (TIME_OUT set)
+                            // No need to show alert here since it's already shown in the change handler
+                            //console.log('TIME OUT set due to NOT_UNDERSTOOD waiver consent');
+                            HomePage.common.showCriticalAlert('You do not understand the waiver.', 'NOT ALLOWED TO ENTER');
+                        } else if (healthStatus === 'UNFIT' && waiverConsent === 'UNDERSTOOD') {
+                            HomePage.common.showCriticalAlert('You are UNFIT.', 'NOT ALLOWED TO ENTER');
                         }
                     } else {
-                        HomePage.common.showError(response.message || 'Failed to update health status', 'Update Failed');
+                        HomePage.common.showError(response.message || 'Failed to update health status and waiver consent', 'Update Failed');
                     }
                 },
                 error: function() {
-                    HomePage.common.showError('Failed to update health status');
+                    HomePage.common.showError('Failed to update health status and waiver consent');
                 }
             });
         }
