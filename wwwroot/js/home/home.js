@@ -259,7 +259,13 @@ const HomePage = {
             }
 
             // Display success message inline under employee_id field
-            $('#scan-result').html('<div class="alert alert-success mt-2" role="alert">' + message + '</div>');
+            if (message.includes('TIME OUT')) {
+                // Use blue/primary styling for TIME OUT messages
+                $('#scan-result').html('<div class="time-out-success-popup mt-2" role="alert">' + message + '</div>');
+            } else {
+                // Use green styling for other success messages
+                $('#scan-result').html('<div class="alert alert-success mt-2" role="alert">' + message + '</div>');
+            }
 
             // Auto-clear the message after 5 seconds
             self.scanResultTimeout = setTimeout(function() {

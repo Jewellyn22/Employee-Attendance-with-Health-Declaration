@@ -138,3 +138,16 @@ h3{
         font-size: 1.5rem !important;
     }
 }
+
+/* TIME OUT Success Alert Styles - Blue/Primary background, white text */
+.time-out-success-popup {
+    background-color: #0d6efd !important; /* Bootstrap primary blue */
+    color: #ffffff !important;
+    border: 1px solid #1059c4 !important; /* Darker blue border */
+    border-radius: 8px !important;
+    padding: 1rem 1.5rem !important;
+    font-weight: bold !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 80px !important;
+}
