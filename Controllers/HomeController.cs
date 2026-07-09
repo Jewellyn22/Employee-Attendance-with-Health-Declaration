@@ -82,10 +82,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                         provider_name = contractor.provider_name,
                         position = contractor.position,
                         area_of_destination = contractor.area_of_destination,
-                        gender = contractor.gender,
-                        birthdate = contractor.birthdate,
-                        contact_number = contractor.contact_number,
-                        address = contractor.address,
                         project_code = contractor.project_code,
                         project_name = contractor.project_name
 

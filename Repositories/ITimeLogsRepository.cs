@@ -10,6 +10,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         Task<IEnumerable<time_log>> GetByEmployeeId(string employee_id);
         Task<time_log?> GetLastScan(string employee_id);
         Task<time_log?> GetOpenSession(string employee_id);
+        Task<time_log?> GetTodayTimeIn(string employee_id);
         Task<time_log> Create(time_log time_log);
         Task<time_log> Update(time_log time_log);
         Task<bool> UpdateHealthStatus(int attendance_id, string health_status);

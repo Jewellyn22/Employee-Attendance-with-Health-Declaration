@@ -71,7 +71,27 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 3: Check for open session (TIME IN without TIME OUT)
+                // Step 3: Check if contractor has already TIME-IN today with blocked health status
+                var todayTimeIn = await _timeLogsRepository.GetTodayTimeIn(employee_id);
+                if (todayTimeIn != null)
+                {
+                    // Block if health_status is "UNFIT" OR (health_status is "FIT" AND waiver_consent is "NOT_UNDERSTOOD")
+                    bool shouldBlock = todayTimeIn.health_status == "UNFIT" ||
+                                       (todayTimeIn.health_status == "FIT" && todayTimeIn.waiver_consent == "NOT_UNDERSTOOD");
+
+                    if (shouldBlock)
+                    {
+                        string healthStatusDesc = todayTimeIn.health_status == "FIT" ? "You did not understand waiver" : "You are UNFIT";
+                        return new Response<time_log>
+                        {
+                            Success = false,
+                            Message = $"Not Allowed to Enter. {healthStatusDesc}.",
+                            Data = null
+                        };
+                    }
+                }
+
+                // Step 4: Check for open session (TIME IN without TIME OUT)
                 var openSession = await _timeLogsRepository.GetOpenSession(employee_id);
 
                 if (openSession != null)
@@ -94,7 +114,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 4: Create TIME IN record with FIT status and UNDERSTOOD waiver consent (only if no open session)
+                // Step 5: Create TIME IN record with FIT status and UNDERSTOOD waiver consent (only if no open session)
                 var newTimeLog = new time_log
                 {
                     employee_id = employee_id,

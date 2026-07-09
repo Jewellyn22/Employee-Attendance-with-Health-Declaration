@@ -4,43 +4,52 @@
 const HomePage = {
     // Common utilities
     common: {
-        showSuccess: function(message, title = 'Success') {
+        showSuccess: function(message, title = 'Success', shouldRestoreFocus = false) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'success',
                     title: title,
                     text: message,
                     timer: 2000,
-                    showConfirmButton: false
+                    showConfirmButton: false,
+                    didClose: shouldRestoreFocus ? function() {
+                        HomePage.index.restoreFocus();
+                    } : undefined
                 });
             }
         },
 
-        showError: function(message, title = 'Error') {
+        showError: function(message, title = 'Error', shouldRestoreFocus = false) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'error',
                     title: title,
                     text: message,
                     timer: 3000,
-                    showConfirmButton: false
+                    showConfirmButton: false,
+                    didClose: shouldRestoreFocus ? function() {
+                        HomePage.index.restoreFocus();
+                    } : undefined
                 });
             }
         },
 
-        showWarning: function(message, title = 'Warning') {
+        showWarning: function(message, title = 'Warning', shouldRestoreFocus = false) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'warning',
                     title: title,
                     text: message,
-                    timer: 2000,
-                    showConfirmButton: false
+                    timer: 3000,
+                    showConfirmButton: false,
+                    didClose: shouldRestoreFocus ? function() {
+                        HomePage.index.restoreFocus();
+                    } : undefined
                 });
             }
         },
 
-        showCriticalAlert: function(message, title = 'Critical Alert') {
+        showCriticalAlert: function(message, title = 'Critical Alert', shouldRestoreFocus = false) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'error',
@@ -54,12 +63,15 @@ const HomePage = {
                         title: 'critical-alert-title',
                         content: 'critical-alert-content'
                     },
-                    backdrop: `rgba(0, 0, 0, 0.7)`
+                    backdrop: `rgba(0, 0, 0, 0.7)`,
+                    didClose: shouldRestoreFocus ? function() {
+                        HomePage.index.restoreFocus();
+                    } : undefined
                 });
             }
         },
 
-        showSuccessAlert: function(message, title = 'Success') {
+        showSuccessAlert: function(message, title = 'Success', shouldRestoreFocus = false) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     icon: 'success',
@@ -73,7 +85,10 @@ const HomePage = {
                         title: 'success-alert-title',
                         content: 'success-alert-content'
                     },
-                    backdrop: `rgba(0, 0, 0, 0.4)`
+                    backdrop: `rgba(0, 0, 0, 0.4)`,
+                    didClose: shouldRestoreFocus ? function() {
+                        HomePage.index.restoreFocus();
+                    } : undefined
                 });
             }
         },
@@ -100,6 +115,13 @@ const HomePage = {
         // Global variable for scan-result timeout
         scanResultTimeout: null,
 
+        // Helper function to restore focus to employee_id input
+        restoreFocus: function() {
+            setTimeout(function() {
+                $('#employee_id').focus();
+            }, 100);
+        },
+
         init: function() {
             const self = this;
 
@@ -124,7 +146,8 @@ const HomePage = {
                     // Show blocking message for UNFIT
                     HomePage.common.showCriticalAlert(
                         'You are not allowed to enter company premises due to health status.',
-                        'Not Allowed'
+                        'Not Allowed',
+                        true
                     );
                     self.updateHealthStatus(attendanceId, 'UNFIT', waiverConsent);
                 } else if (selectedStatus === 'FIT') {
@@ -133,7 +156,8 @@ const HomePage = {
                         // Show alert that TIME OUT will still be triggered due to waiver
                         HomePage.common.showCriticalAlert(
                             'You are marked as FIT but do not understand the waiver.',
-                            'You are not allowed to enter'
+                            'You are not allowed to enter',
+                            true
                         );
                     }
                     // Update health status to FIT
@@ -151,7 +175,8 @@ const HomePage = {
                     // Show CRITICAL blocking alert for NOT_UNDERSTOOD (same as UNFIT styling)
                     HomePage.common.showCriticalAlert(
                         'You are marked as FIT but do not understand the waiver.',
-                        'You are not allowed to enter'
+                        'You are not allowed to enter',
+                        true
                     );
 
                     // Update to NOT_UNDERSTOOD consent (this will auto-set TIME_OUT)
@@ -195,15 +220,17 @@ const HomePage = {
                             self.showHealthDeclarationForm(response.data.attendance_id);
                         }
 
-                        // Clear input for next scan
-                        $('#employee_id').val('');
-                        $('#employee_id').focus();
+                        
                     } else {
                         self.displayScanError(response.message);
                     }
+
+                    // Clear input for next scan
+                    $('#employee_id').val('');
+                    $('#employee_id').focus();
                 },
                 error: function() {
-                    HomePage.common.showError('Failed to process scan');
+                    HomePage.common.showError('Failed to process scan', 'Error', true);
                 }
             });
         },
@@ -275,7 +302,7 @@ const HomePage = {
                     $(this).empty().show();
                     self.scanResultTimeout = null;
                 });
-            }, 5000);
+            }, 7000);
 
             // Clear contractor info on error
             $('#contractor-info').hide();
@@ -346,21 +373,21 @@ const HomePage = {
 
                         if (healthStatus === 'FIT' && waiverConsent === 'UNDERSTOOD') {
                             // Success: FIT + UNDERSTOOD = allowed to enter
-                            HomePage.common.showSuccessAlert('FIT and understand the waiver.', 'ALLOWED TO ENTER');
+                            HomePage.common.showSuccessAlert('FIT and understand the waiver.', 'ALLOWED TO ENTER', true);
                         } else if (healthStatus === 'FIT' && waiverConsent === 'NOT_UNDERSTOOD') {
                             // Error: FIT but NOT_UNDERSTOOD = not allowed (TIME_OUT set)
                             // No need to show alert here since it's already shown in the change handler
                             //console.log('TIME OUT set due to NOT_UNDERSTOOD waiver consent');
-                            HomePage.common.showCriticalAlert('You do not understand the waiver.', 'NOT ALLOWED TO ENTER');
+                            HomePage.common.showCriticalAlert('You do not understand the waiver.', 'NOT ALLOWED TO ENTER', true);
                         } else if (healthStatus === 'UNFIT' && waiverConsent === 'UNDERSTOOD') {
-                            HomePage.common.showCriticalAlert('You are UNFIT.', 'NOT ALLOWED TO ENTER');
+                            HomePage.common.showCriticalAlert('You are UNFIT.', 'NOT ALLOWED TO ENTER', true);
                         }
                     } else {
-                        HomePage.common.showError(response.message || 'Failed to update health status and waiver consent', 'Update Failed');
+                        HomePage.common.showError(response.message || 'Failed to update health status and waiver consent', 'Update Failed', true);
                     }
                 },
                 error: function() {
-                    HomePage.common.showError('Failed to update health status and waiver consent');
+                    HomePage.common.showError('Failed to update health status and waiver consent', 'Error', true);
                 }
             });
         }
@@ -411,6 +438,17 @@ const HomePage = {
                                 return '<span class="badge bg-danger">UNFIT</span>';
                             }
                             return data;
+                        }
+                    },
+                    {
+                        data: 'waiver_consent',
+                        render: function(data) {
+                            if (data === 'UNDERSTOOD') {
+                                return '<span class="badge bg-success">Understood</span>';
+                            } else if (data === 'NOT_UNDERSTOOD') {
+                                return '<span class="badge bg-warning">Not Understood</span>';
+                            }
+                            return data || '-';
                         }
                     }
                 ],
@@ -491,7 +529,8 @@ const HomePage = {
                 'Provider': row.provider_code,
                 'Time In': HomePage.common.formatDateTime(row.time_in),
                 'Time Out': row.time_out ? HomePage.common.formatDateTime(row.time_out) : 'Active',
-                'Health Status': row.health_status
+                'Health Status': row.health_status,
+                'Waiver Consent': row.waiver_consent === 'UNDERSTOOD' ? 'Understood' : row.waiver_consent === 'NOT_UNDERSTOOD' ? 'Not Understood' : row.waiver_consent || '-'
             }));
 
             // Create Excel file

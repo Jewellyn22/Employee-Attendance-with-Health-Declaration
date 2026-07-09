@@ -71,6 +71,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
+        public async Task<time_log?> GetTodayTimeIn(string employee_id)
+        {
+            const string storedProc = "sp_time_logs_GetTodayTimeIn";
+            return await _db.QuerySingleOrDefaultAsync<time_log>(
+                storedProc,
+                new { p_employee_id = employee_id },
+                commandType: CommandType.StoredProcedure
+            );
+        }
+
         public async Task<time_log> Create(time_log time_log)
         {
             const string storedProc = "sp_time_logs_Create";
