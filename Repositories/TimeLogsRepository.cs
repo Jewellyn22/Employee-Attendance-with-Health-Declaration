@@ -158,7 +158,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             return result > 0;
         }
 
-        public async Task<IEnumerable<attendance_log_with_employee>> GetAllFiltered(string employee_id = null, DateTime? from_date = null, DateTime? to_date = null, string health_status = null)
+        public async Task<IEnumerable<attendance_log_with_employee>> GetAllFiltered(string? employee_id = null, DateTime? from_date = null, DateTime? to_date = null, string? health_status = null)
         {
             const string storedProc = "sp_time_logs_GetAllFiltered";
             return await _db.QueryAsync<attendance_log_with_employee>(

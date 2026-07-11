@@ -31,7 +31,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
         // POST: Auth/Login
         [HttpPost]
-        public async Task<IActionResult> Login(string username, string password, string returnUrl = null)
+        public async Task<IActionResult> Login(string username, string password, string? returnUrl = null)
         {
             _logger.LogInformation("Login attempt for user: {Username}", username);
 
@@ -49,7 +49,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
             // Step 2: Check Admin Group Membership
             var adminGroupResult = await _systemConfigService.GetAdminADGroup();
-            string adminGroup = adminGroupResult.Data;
+            string? adminGroup = adminGroupResult.Data;
 
             if (ldapResult.Data.member_of == null || !ldapResult.Data.member_of.Contains(adminGroup))
             {
@@ -61,7 +61,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             HttpContext.Session.SetString("EmployeeNumber", ldapResult.Data.office);
             HttpContext.Session.SetString("DisplayName", ldapResult.Data.displayName);
             HttpContext.Session.SetString("Role", "Admin");
-            HttpContext.Session.SetString("Email", ldapResult.Data.mail ?? "");
+            HttpContext.Session.SetString("Email", ldapResult.Data.email ?? "");
 
             _logger.LogInformation("User {Username} logged in successfully as admin", username);
 
@@ -69,7 +69,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             {
                 success = true,
                 message = "Login successful",
-                redirect = returnUrl ?? "/Admin/Providers/Index"
+                redirect = returnUrl ?? "/Admin"
             });
         }
 
@@ -77,9 +77,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public IActionResult Logout()
         {
-            _logger.LogInformation("User logged out: {DisplayName}", HttpContext.Session.GetString("DisplayName"));
+            var displayName = HttpContext.Session.GetString("DisplayName");
+            _logger.LogInformation("User logged out: {DisplayName}", displayName);
 
+            // Clear all session data
             HttpContext.Session.Clear();
+
+            // Set anti-cache headers to prevent back-button access
+            Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+            Response.Headers.Add("Pragma", "no-cache");
+            Response.Headers.Add("Expires", "0");
 
             return Json(new { success = true, message = "Logged out", redirect = "/" });
         }

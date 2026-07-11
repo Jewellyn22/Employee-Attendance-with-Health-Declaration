@@ -176,5 +176,28 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<IEnumerable<contractor_employee>>> GetByProjectCode(string project_code)
+        {
+            try
+            {
+                var contractors = await _contractorRepository.GetByProjectCode(project_code);
+                return new Response<IEnumerable<contractor_employee>>
+                {
+                    Success = true,
+                    Message = "Contractors retrieved successfully",
+                    Data = contractors
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting contractors for project: {ProjectCode}", project_code);
+                return new Response<IEnumerable<contractor_employee>>
+                {
+                    Success = false,
+                    Message = "Error retrieving contractors"
+                };
+            }
+        }
     }
 }

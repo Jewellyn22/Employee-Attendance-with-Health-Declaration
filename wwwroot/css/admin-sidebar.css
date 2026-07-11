@@ -1,0 +1,268 @@
+/* ==========================================
+   Admin Sidebar Navigation Styles
+   ========================================== */
+
+/* Admin Layout Container */
+.admin-container {
+    display: flex;
+    min-height: calc(100vh - 120px); /* Account for navbar and footer */
+}
+
+.footer-admin {
+    padding-top: 1%;
+    height: 20px;
+    margin-bottom: -100px;
+}
+/* ==========================================
+   SIDEBAR STYLING
+   ========================================== */
+
+.admin-sidebar {
+    width: 250px;
+    background-color: #343a40; /* Bootstrap dark */
+    color: #ffffff;
+    min-height: 100%;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-title {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    padding: 0;
+}
+
+.sidebar-nav .nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Sidebar Navigation Links */
+.sidebar-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    position: relative;
+}
+
+.sidebar-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-left-color: rgba(13, 110, 253, 0.5); /* Bootstrap primary with opacity */
+}
+
+.sidebar-link:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+/* Active State */
+.sidebar-link.active {
+    background-color: rgba(13, 110, 253, 0.15); /* Bootstrap primary with opacity */
+    color: #ffffff;
+    border-left-color: #0d6efd; /* Bootstrap primary */
+    font-weight: 500;
+}
+
+.sidebar-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #0d6efd;
+}
+
+/* Icon Styling */
+.sidebar-link i {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+}
+
+/* ==========================================
+   MAIN CONTENT AREA
+   ========================================== */
+
+.admin-main-content {
+    flex: 1;
+    padding: 0;
+    background-color: #f8f9fa; /* Light gray background */
+    min-height: calc(100vh - 140px);
+}
+
+.admin-main-content .container-fluid {
+    padding: 1.5rem;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+/* Tablet (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
+    .admin-sidebar {
+        width: 200px;
+    }
+
+    .sidebar-link {
+        padding: 0.75rem 0.875rem;
+        font-size: 0.9rem;
+    }
+
+    .sidebar-link i {
+        font-size: 0.9rem;
+        width: 18px;
+    }
+}
+
+/* Mobile (0px - 767px) */
+@media (max-width: 767px) {
+    .admin-container {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+        position: relative;
+        max-height: none;
+    }
+
+    .sidebar-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .sidebar-title {
+        font-size: 1rem;
+    }
+
+    .admin-main-content {
+        min-height: auto;
+    }
+
+    .admin-main-content .container-fluid {
+        padding: 1rem;
+    }
+}
+
+/* ==========================================
+   MOBILE HAMBURGER MENU
+   ========================================== */
+
+@media (max-width: 767px) {
+    .mobile-sidebar-toggle {
+        display: block !important;
+    }
+
+    .admin-sidebar {
+        display: none;
+    }
+
+    .admin-sidebar.show {
+        display: block;
+    }
+}
+
+.mobile-sidebar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: #343a40;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.mobile-sidebar-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+/* ==========================================
+   NAVBAR COLLAPSE BUTTON ADJUSTMENT
+   ========================================== */
+
+@media (max-width: 767px) {
+    .navbar-toggler {
+        margin-right: 0.5rem;
+    }
+}
+
+/* ==========================================
+   SCROLLBAR STYLING (for sidebar)
+   ========================================== */
+
+.admin-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-sidebar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ==========================================
+   ACCESSIBILITY ENHANCEMENTS
+   ========================================== */
+
+.sidebar-link:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: -2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .sidebar-link {
+        border-left-width: 4px;
+    }
+
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* ==========================================
+   PRINT STYLES
+   ========================================== */
+
+@media print {
+    .admin-sidebar {
+        display: none;
+    }
+
+    .admin-main-content {
+        margin-left: 0 !important;
+    }
+}

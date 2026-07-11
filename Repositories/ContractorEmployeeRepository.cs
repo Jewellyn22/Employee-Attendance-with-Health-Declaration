@@ -90,5 +90,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
             return result > 0;
         }
+
+        public async Task<IEnumerable<contractor_employee>> GetByProjectCode(string project_code)
+        {
+            const string query = @"
+                SELECT employee_id, name, position, area_of_destination
+                FROM contractor_employee
+                WHERE project_code = @project_code AND active = 1";
+
+            return await _db.QueryAsync<contractor_employee>(
+                query,
+                new { project_code = project_code },
+                commandType: CommandType.Text
+            );
+        }
     }
 }

@@ -24,10 +24,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         /// Get all timelogs with optional filtering for admin management interface
         /// </summary>
         Task<Response<IEnumerable<attendance_log_with_employee>>> GetAllTimeLogs(
-            string employee_id = null,
+            string? employee_id = null,
             DateTime? from_date = null,
             DateTime? to_date = null,
-            string health_status = null
+            string? health_status = null
         );
     }
 }

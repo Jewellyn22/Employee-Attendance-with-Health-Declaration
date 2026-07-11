@@ -30,7 +30,7 @@ const LoginPage = {
             }
 
             // Get return URL from hidden field
-            const returnUrl = $('input[name="returnUrl"]').val() || '/Admin/Providers/Index';
+            const returnUrl = $('input[name="returnUrl"]').val() || '/Admin';
 
             // Show loading state
             self.setLoadingState(true);
@@ -151,3 +151,39 @@ const LoginPage = {
 $(document).ready(function() {
     LoginPage.init();
 });
+
+// Global logout function
+async function logout() {
+    try {
+        const response = await fetch('/Auth/Logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Clear all client-side storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            // Redirect to home
+            window.location.href = result.redirect;
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Logout Failed',
+                text: result.message || 'An error occurred during logout'
+            });
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Logout Error',
+            text: 'An error occurred. Please try again.'
+        });
+    }
+}

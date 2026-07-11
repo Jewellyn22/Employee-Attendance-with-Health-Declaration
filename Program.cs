@@ -23,9 +23,10 @@ builder.Services.AddControllersWithViews()
 // Configure Session
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromHours(8); // 8-hour session timeout
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // 30-minute session timeout
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // HTTPS protection
 });
 
 // Configure Database Connection (Dapper)
@@ -50,6 +51,7 @@ builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IHistoryLogsService, HistoryLogsService>();
 builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
+builder.Services.AddScoped<ITimeLogsManagementService, TimeLogsManagementService>();
 
 // Register LDAP Services
 builder.Services.AddScoped<ILdapRepository, LdapRepository>();
@@ -82,7 +84,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "areas",
-    pattern: "{area:exists}/{controller=Providers}/{action=Index}/{id?}");
+    pattern: "{area:exists}/{controller=Admin}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",

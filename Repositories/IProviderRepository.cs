@@ -6,8 +6,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
     {
         Task<IEnumerable<provider>> GetAll();
         Task<provider?> GetByProviderCode(string provider_code);
-        Task<provider> Create(provider provider);
-        Task<provider> Update(provider provider);
+        Task<provider?> Create(provider provider);
+        Task<provider?> Update(provider provider);
         Task<bool> SetInactive(string provider_code);
     }
 }

@@ -3,70 +3,111 @@
 }
 
 <div class="container-fluid">
-    <div class="row mt-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
         <div class="col-12">
-            <h2>Admin Dashboard</h2>
+            <h2 class="admin-heading">Admin Dashboard</h2>
             <p class="text-muted">Welcome, @ViewBag.AdminName</p>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Providers</h5>
-                    <p class="card-text">Manage provider companies</p>
-                    <a href="@Url.Action("Providers", "Admin")" class="btn btn-primary">Manage Providers</a>
-                </div>
+    <!-- Dashboard Introduction -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Admin Navigation</strong> - Use the sidebar menu to navigate between different admin sections.
+                You can manage projects, contractors, system configuration, and view attendance logs.
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
+    </div>
+
+    <!-- Dashboard Statistics (Optional - can be expanded later) -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card admin-stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-project-diagram fa-3x text-success mb-3"></i>
                     <h5 class="card-title">Projects</h5>
-                    <p class="card-text">Manage projects under providers</p>
-                    <a href="@Url.Action("Projects", "Admin")" class="btn btn-primary">Manage Projects</a>
+                    <p class="card-text text-muted">Manage projects and contractor assignments</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
+        <div class="col-md-6">
+            <div class="card admin-stat-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-info mb-3"></i>
                     <h5 class="card-title">Contractors</h5>
-                    <p class="card-text">Manage contractor employees</p>
-                    <a href="@Url.Action("Contractors", "Admin")" class="btn btn-primary">Manage Contractors</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">System Config</h5>
-                    <p class="card-text">Configure system settings</p>
-                    <a href="@Url.Action("SystemConfig", "Admin")" class="btn btn-primary">System Config</a>
+                    <p class="card-text text-muted">Manage contractor employee records</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6">
+    <!-- Quick Actions Guide -->
+    <div class="row">
+        <div class="col-12">
             <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">TimeLogs Management</h5>
-                    <p class="card-text">Edit or delete attendance records for corrections</p>
-                    <a href="@Url.Action("TimeLogs", "Admin")" class="btn btn-warning">Manage TimeLogs</a>
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fas fa-rocket me-2"></i>Quick Actions</h5>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Public Access</h5>
-                    <p class="card-text">View history logs page (public access)</p>
-                    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-info">View History Logs</a>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="fw-bold"><i class="fas fa-project-diagram me-2 text-success"></i>Projects Management</h6>
+                            <p class="text-muted small">Create and manage projects and contractor assignments. Track project details and monitor progress.</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="fw-bold"><i class="fas fa-users me-2 text-info"></i>Contractors Management</h6>
+                            <p class="text-muted small">Manage contractor employee records, assignments, and status information.</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="fw-bold"><i class="fas fa-cog me-2 text-warning"></i>System Configuration</h6>
+                            <p class="text-muted small">Configure system settings like debounce thresholds and health declaration windows.</p>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <h6 class="fw-bold"><i class="fas fa-clock me-2 text-danger"></i>TimeLogs Management</h6>
+                            <p class="text-muted small">View and edit attendance records. Make corrections to time-in/time-out logs with audit trail.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Additional Styles for Dashboard -->
+<style>
+    .admin-heading {
+        color: #343a40;
+        font-weight: 600;
+    }
+
+    .admin-stat-card {
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .admin-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>
+
+<!-- Initialize Dashboard -->
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Initialize dashboard functionality
+            if (typeof AdminPage !== 'undefined' && AdminPage.index) {
+                AdminPage.index.init();
+            }
+
+            // Initialize sidebar active state
+            if (typeof AdminPage !== 'undefined' && AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
+        });
+    </script>
+}

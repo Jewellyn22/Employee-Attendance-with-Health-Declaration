@@ -42,34 +42,37 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
-        public async Task<project> Create(project project)
+        public async Task<project?> Create(project project)
         {
             const string storedProc = "sp_project_Create";
-            return await _db.QuerySingleOrDefaultAsync<project>(
+            return await _db.QuerySingleOrDefaultAsync<project?>(
                 storedProc,
                 new
                 {
-                    p_project_code = project.project_code,
                     p_project_name = project.project_name,
                     p_provider_code = project.provider_code,
+                    p_provider_pic = project.provider_pic,
+                    p_provider_pic_number = project.provider_pic_number,
                     p_contract_startdate = project.contract_startdate,
                     p_contract_enddate = project.contract_enddate,
-                    active = 1
+                    p_active = project.active
                 },
                 commandType: CommandType.StoredProcedure
             );
         }
 
-        public async Task<project> Update(project project)
+        public async Task<project?> Update(project project)
         {
             const string storedProc = "sp_project_Update";
-            return await _db.QuerySingleOrDefaultAsync<project>(
+            return await _db.QuerySingleOrDefaultAsync<project?>(
                 storedProc,
                 new
                 {
                     p_project_code = project.project_code,
                     p_project_name = project.project_name,
                     p_provider_code = project.provider_code,
+                    p_provider_pic = project.provider_pic,
+                    p_provider_pic_number = project.provider_pic_number,
                     p_contract_startdate = project.contract_startdate,
                     p_contract_enddate = project.contract_enddate,
                     p_active = project.active

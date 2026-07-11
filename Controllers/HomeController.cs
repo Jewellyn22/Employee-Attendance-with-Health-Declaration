@@ -116,10 +116,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         // GET: /Home/GetHistoryLogs
         [HttpGet]
         public async Task<IActionResult> GetHistoryLogs(
-            string employee_id = null,
+            string? employee_id = null,
             DateTime? from_date = null,
             DateTime? to_date = null,
-            string health_status = null)
+            string? health_status = null)
         {
             _logger.LogInformation("History logs request - EmployeeId: {EmployeeId}, FromDate: {FromDate}, ToDate: {ToDate}, HealthStatus: {HealthStatus}",
                 employee_id, from_date, to_date, health_status);
@@ -132,10 +132,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         // GET: /Home/GetHistoryLogsForExport
         [HttpGet]
         public async Task<IActionResult> GetHistoryLogsForExport(
-            string employee_id = null,
+            string? employee_id = null,
             DateTime? from_date = null,
             DateTime? to_date = null,
-            string health_status = null)
+            string? health_status = null)
         {
             _logger.LogInformation("History logs export request - EmployeeId: {EmployeeId}, FromDate: {FromDate}, ToDate: {ToDate}, HealthStatus: {HealthStatus}",
                 employee_id, from_date, to_date, health_status);

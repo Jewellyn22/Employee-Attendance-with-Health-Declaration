@@ -32,36 +32,32 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
-        public async Task<provider> Create(provider provider)
+        public async Task<provider?> Create(provider provider)
         {
             const string storedProc = "sp_provider_Create";
-            return await _db.QuerySingleOrDefaultAsync<provider>(
+            return await _db.QuerySingleOrDefaultAsync<provider?>(
                 storedProc,
                 new
                 {
                     p_provider_code = provider.provider_code,
                     p_provider_name = provider.provider_name,
                     p_provider_address = provider.provider_address,
-                    p_provider_pic = provider.provider_pic,
-                    p_provider_pic_number = provider.provider_pic_number,
-                    active = 1
+                    p_active = provider.active
                 },
                 commandType: CommandType.StoredProcedure
             );
         }
 
-        public async Task<provider> Update(provider provider)
+        public async Task<provider?> Update(provider provider)
         {
             const string storedProc = "sp_provider_Update";
-            return await _db.QuerySingleOrDefaultAsync<provider>(
+            return await _db.QuerySingleOrDefaultAsync<provider?>(
                 storedProc,
                 new
                 {
                     p_provider_code = provider.provider_code,
                     p_provider_name = provider.provider_name,
                     p_provider_address = provider.provider_address,
-                    p_provider_pic = provider.provider_pic,
-                    p_provider_pic_number = provider.provider_pic_number,
                     p_active = provider.active
                 },
                 commandType: CommandType.StoredProcedure

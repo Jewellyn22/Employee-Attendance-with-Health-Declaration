@@ -1,10 +1,31 @@
+using System.Text.Json.Serialization;
+
 namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models
 {
     public class ldap_user
     {
-        public string office { get; set; }  // Employee ID
+        [JsonPropertyName("username")]
+        public string username { get; set; }
+
+        [JsonPropertyName("firstName")]
+        public string first_name { get; set; }
+
+        [JsonPropertyName("lastName")]
+        public string last_name { get; set; }
+
+        [JsonPropertyName("displayName")]
         public string displayName { get; set; }
-        public string[] member_of { get; set; }
-        public string mail { get; set; }
+
+        [JsonPropertyName("description")]
+        public string description { get; set; }
+
+        [JsonPropertyName("email")]
+        public string email { get; set; }
+
+        [JsonPropertyName("office")]
+        public string office { get; set; }
+
+        [JsonPropertyName("memberOf")]
+        public string[] member_of { get; set; }  // This is the critical property!
     }
 }

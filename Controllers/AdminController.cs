@@ -6,28 +6,29 @@ using Microsoft.AspNetCore.Mvc;
 namespace ContractorAttendanceWithHealthDeclaration.Controllers
 {
     [AuthorizeAdmin]
+    [NoCache]
     public class AdminController : Controller
     {
-        private readonly IProviderService _providerService;
         private readonly IProjectService _projectService;
         private readonly IContractorService _contractorService;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ITimeLogsManagementService _timeLogsManagementService;
+        private readonly IProviderService _providerService;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
-            IProviderService providerService,
             IProjectService projectService,
             IContractorService contractorService,
             ISystemConfigService systemConfigService,
             ITimeLogsManagementService timeLogsManagementService,
+            IProviderService providerService,
             ILogger<AdminController> logger)
         {
-            _providerService = providerService;
             _projectService = projectService;
             _contractorService = contractorService;
             _systemConfigService = systemConfigService;
             _timeLogsManagementService = timeLogsManagementService;
+            _providerService = providerService;
             _logger = logger;
         }
 
@@ -37,46 +38,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
             return View();
         }
-
-        #region Provider Management
-
-        // GET: /Admin/Providers
-        public IActionResult Providers()
-        {
-            ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
-            return View();
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetAllProviders()
-        {
-            var result = await _providerService.GetAll();
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> CreateProvider([FromBody] provider provider)
-        {
-            var result = await _providerService.Create(provider);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> UpdateProvider([FromBody] provider provider)
-        {
-            var result = await _providerService.Update(provider);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> SetProviderInactive([FromBody] provider provider)
-        {
-            provider.active = 0;
-            var result = await _providerService.Update(provider);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
-        }
-
-        #endregion
 
         #region Project Management
 
@@ -92,6 +53,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             var result = await _projectService.GetAll();
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllProviders()
+        {
+            var result = await _providerService.GetAll();
+            // Filter to only active providers
+            var activeProviders = result.Data?.Where(p => p.active == 1);
+            return Json(new { success = result.Success, message = result.Message, data = activeProviders });
         }
 
         [HttpPost]
@@ -113,6 +83,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             project.active = 0;
             var result = await _projectService.Update(project);
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectContractors(string project_code)
+        {
+            var result = await _contractorService.GetByProjectCode(project_code);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -194,12 +171,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetAllTimeLogs(
-            string employee_id = null,
+            string? employee_id = null,
             DateTime? from_date = null,
             DateTime? to_date = null,
-            string health_status = null)
+            string? health_status = null)
         {
-            var result = await _timeLogsManagementService.GetAllTimeLogs(employee_id, from_date, to_date, health_status);
+            // Handle null string by converting to empty string
+            var employeeIdParam = employee_id ?? string.Empty;
+            var healthStatusParam = health_status ?? string.Empty;
+
+            var result = await _timeLogsManagementService.GetAllTimeLogs(employeeIdParam, from_date, to_date, healthStatusParam);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -213,7 +194,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public async Task<IActionResult> EditTimeLog([FromBody] time_log timelog)
         {
-            var admin_employee_id = HttpContext.Session.GetString("EmployeeNumber");
+            var admin_employee_id = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
             var result = await _timeLogsManagementService.UpdateTimeLog(timelog, admin_employee_id);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }

@@ -26,29 +26,48 @@
                 <div class="navbar-collapse collapse">
                     <ul class="navbar-nav ms-auto">
                         @{
+                            var isAdminLoggedIn = Context.Session.GetString("Role") == "Admin";
+                            var adminName = Context.Session.GetString("DisplayName");
+                        }
+
+                        @if (isAdminLoggedIn)
+                        {
+                            // Show ONLY Logout link when admin is logged in
+                            <li class="nav-item">
+                                <span class="nav-link text-dark me-3">
+                                    Welcome, @adminName
+                                </span>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" href="#" onclick="logout(); return false;">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            // Show public navigation links when not logged in
                             var controller = ViewContext.RouteData.Values["controller"]?.ToString();
                             var action = ViewContext.RouteData.Values["action"]?.ToString();
                             var isHomePage = controller == "Home" && action == "Index";
                             var isHistoryLogsPage = controller == "Home" && action == "HistoryLogs";
                             var isLoginPage = controller == "Auth" && action == "Login";
+
+                            // Time In/Out link - hidden on Home/Index page, visible on HistoryLogs and Login pages
+                            <li class="nav-item" style="display: @(isHomePage ? "none" : "block")">
+                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Time In/Out</a>
+                            </li>
+
+                            // View History Logs link - visible only on Home/Index page
+                            <li class="nav-item" style="display: @(isHomePage ? "block" : "none")">
+                                <a class="nav-link text-dark" asp-controller="Home" asp-action="HistoryLogs">View History Logs</a>
+                            </li>
+
+                            // Login link - hidden on Login page, visible on Home/Index and HistoryLogs pages
+                            <li class="nav-item" style="display: @(isLoginPage ? "none" : "block")">
+                                <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Login</a>
+                            </li>
                         }
-
-                        @* Time In/Out link - hidden on Home/Index page, visible on HistoryLogs and Login pages *@
-                        <li class="nav-item" style="display: @(isHomePage ? "none" : "block")">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Time In/Out</a>
-                        </li>
-
-                        @* View History Logs link - visible only on Home/Index page *@
-                        <li class="nav-item" style="display: @(isHomePage ? "block" : "none")">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="HistoryLogs">View History Logs</a>
-                        </li>
-
-                        @* Login link - hidden on Login page, visible on Home/Index and HistoryLogs pages *@
-                        @* <li class="nav-item" style="display: @(isLoginPage ? "none" : "block")">
-                            <a class="nav-link text-dark" asp-controller="Auth" asp-action="Login">Login</a>
-                        </li> *@
-
-                        
                     </ul>
                 </div>
             </div>

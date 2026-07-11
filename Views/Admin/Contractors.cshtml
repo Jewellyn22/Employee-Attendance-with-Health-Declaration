@@ -3,10 +3,9 @@
 }
 
 <div class="container-fluid">
-    <div class="row mt-4">
+    <div class="row mb-3">
         <div class="col-12">
             <h2>Contractors Management</h2>
-            <a href="@Url.Action("Index", "Admin")" class="btn btn-secondary float-end">Back to Dashboard</a>
         </div>
     </div>
 
@@ -24,7 +23,6 @@
                             <tr>
                                 <th>Employee ID</th>
                                 <th>Name</th>
-                                <th>Provider</th>
                                 <th>Project</th>
                                 <th>Position</th>
                                 <th>Area</th>
@@ -87,12 +85,6 @@
                                 <input type="text" id="area_of_destination" class="form-control">
                             </div>
                             <div class="mb-3">
-                                <label for="provider_code" class="form-label">Provider:</label>
-                                <select id="provider_code" class="form-control" required>
-                                    <option value="">Select Provider</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
                                 <label for="project_code" class="form-label">Project:</label>
                                 <select id="project_code" class="form-control">
                                     <option value="">Select Project</option>
@@ -115,8 +107,7 @@
 </div>
 
 @section Scripts {
-    <script src="~/lib/select2/select2.min.js"></script>
-    <script src="~/js/admin/admin.js"></script>
+    <script src="~/lib/select2/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.contractors.init();

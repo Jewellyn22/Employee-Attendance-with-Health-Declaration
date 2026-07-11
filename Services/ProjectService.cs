@@ -147,8 +147,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 return new Response<project>
                 {
-                    Success = true,
-                    Message = "Project created successfully",
+                    Success = result != null,
+                    Message = result != null ? "Project created successfully" : "Project creation failed",
                     Data = result
                 };
             }
@@ -197,8 +197,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 return new Response<project>
                 {
-                    Success = true,
-                    Message = "Project updated successfully",
+                    Success = result != null,
+                    Message = result != null ? "Project updated successfully" : "Project update failed",
                     Data = result
                 };
             }

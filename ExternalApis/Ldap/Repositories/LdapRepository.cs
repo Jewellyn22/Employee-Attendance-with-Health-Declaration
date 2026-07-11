@@ -2,6 +2,7 @@ using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
 using ContractorAttendanceWithHealthDeclaration.Models;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories
 {
@@ -24,6 +25,19 @@ namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositori
             _httpClient.BaseAddress = new Uri(ldapUrl);
         }
 
+        // Wrapper class to handle LDAP API Response<T> structure
+        private class LdapApiResponse
+        {
+            [JsonPropertyName("data")]
+            public ldap_user Data { get; set; }
+
+            [JsonPropertyName("success")]
+            public bool Success { get; set; }
+
+            [JsonPropertyName("message")]
+            public string Message { get; set; }
+        }
+
         public async Task<Response<ldap_user>> Login(string username, string password)
         {
             try
@@ -40,13 +54,37 @@ namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositori
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var ldapUser = await response.Content.ReadFromJsonAsync<ldap_user>();
-                    return new Response<ldap_user>
+                    // Temporary debug logging to verify JSON mapping
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation("LDAP API Response: {Response}", responseContent);
+
+                    // Deserialize to wrapper first to handle nested Response<T> structure
+                    var apiResponse = await response.Content.ReadFromJsonAsync<LdapApiResponse>();
+
+                    if (apiResponse != null && apiResponse.Success && apiResponse.Data != null)
                     {
-                        Success = true,
-                        Message = "LDAP authentication successful",
-                        Data = ldapUser
-                    };
+                        // Log the mapped values to verify member_of is populated
+                        _logger.LogInformation("Mapped ldap_user - username: {Username}, office: {Office}, displayName: {DisplayName}, member_of: {MemberOf}, email: {Email}",
+                            apiResponse.Data.username, apiResponse.Data.office, apiResponse.Data.displayName,
+                            apiResponse.Data.member_of, apiResponse.Data.email);
+
+                        return new Response<ldap_user>
+                        {
+                            Success = true,
+                            Message = "LDAP authentication successful",
+                            Data = apiResponse.Data  // Extract the nested ldap_user
+                        };
+                    }
+                    else
+                    {
+                        _logger.LogWarning("LDAP authentication failed for user: {Username} - API returned success: {Success}", username, apiResponse?.Success);
+                        return new Response<ldap_user>
+                        {
+                            Success = false,
+                            Message = apiResponse?.Message ?? "LDAP authentication failed",
+                            Data = null
+                        };
+                    }
                 }
                 else
                 {
