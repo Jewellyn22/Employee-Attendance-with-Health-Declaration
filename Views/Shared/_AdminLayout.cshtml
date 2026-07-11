@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ContractorAttendanceWithHealthDeclaration</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/select2/css/select2.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-sidebar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/ContractorAttendanceWithHealthDeclaration.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Top Navbar -->
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-0">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    Contractor Attendance With Health Declaration
+                </a>
+
+                <button class="navbar-toggler" type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="navbar-collapse collapse">
+                    <ul class="navbar-nav ms-auto">
+                        @{
+                            var adminName = Context.Session.GetString("DisplayName");
+                        }
+
+                        <li class="nav-item">
+                            <span class="nav-link text-dark me-3">
+                                Welcome, @adminName
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" href="#" onclick="logout(); return false;">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Admin Layout Container -->
+    <div class="admin-container">
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <h5 class="sidebar-title">Admin Menu</h5>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="Index">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="Projects">
+                            <i class="fas fa-project-diagram me-2"></i>
+                            Projects
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="Contractors">
+                            <i class="fas fa-users me-2"></i>
+                            Contractors
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="SystemConfig">
+                            <i class="fas fa-cog me-2"></i>
+                            System Config
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="TimeLogs">
+                            <i class="fas fa-clock me-2"></i>
+                            TimeLogs
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="admin-main-content">
+            <div role="main" class="pb-3">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-top footer footer-admin text-muted">
+        <div class="container-fluid align-items-center">
+            &copy; 2026 - MIS_System | version @typeof(Program).Assembly.GetName().Version.ToString()
+        </div>
+    </footer>
+
+    <!-- JavaScript Libraries -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/select2/js/select2.min.js"></script>
+    <script src="~/lib/datatables/datatables.min.js"></script>
+    <script src="~/lib/sweetalert2/sweetalert2.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/admin/admin.js"></script>
+    <script>
+        async function logout() {
+            try {
+                const response = await fetch('/Auth/Logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Clear all client-side storage
+                    sessionStorage.clear();
+                    localStorage.clear();
+
+                    // Redirect to home with cache-busting
+                    window.location.href = '/?t=' + new Date().getTime();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Logout Failed',
+                        text: result.message || 'An error occurred during logout'
+                    });
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Logout Error',
+                    text: 'An error occurred. Please try again.'
+                });
+            }
+        }
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,5 +1,5 @@
 // AdminPage - Organized JavaScript for Admin Controller views
-// Structure: providers, projects, contractors, systemConfig, timeLogs, index
+// Structure: projects, contractors, systemConfig, timeLogs, index
 
 const AdminPage = {
     // Common utilities shared across all admin views
@@ -55,124 +55,11 @@ const AdminPage = {
             if (!dateString) return '';
             const date = new Date(dateString);
             return date.toISOString().slice(0, 19).replace('T', ' ');
-        }
-    },
+        },
 
-    // Providers.cshtml - Providers CRUD
-    providers: {
-        providerTable: null,
-
-        init: function() {
-            const self = this;
-
-            // Initialize DataTable
-            self.providerTable = $('#providers-table').DataTable({
-                ajax: {
-                    url: '/Admin/GetAllProviders',
-                    dataSrc: function(data) {
-                        return data.success ? data.data : [];
-                    }
-                },
-                columns: [
-                    { data: 'provider_code' },
-                    { data: 'provider_name' },
-                    { data: 'provider_pic' },
-                    { data: 'provider_pic_number' },
-                    {
-                        data: 'active',
-                        render: function(data) {
-                            return data === 1 ? 'Active' : 'Inactive';
-                        }
-                    },
-                    {
-                        data: null,
-                        render: function(data) {
-                            return `
-                                <button class="btn btn-sm btn-edit" data-provider-code="${data.provider_code}">Edit</button>
-                                <button class="btn btn-sm btn-set-inactive" data-provider-code="${data.provider_code}">Set Inactive</button>
-                            `;
-                        }
-                    }
-                ],
-                pageLength: 25
-            });
-
-            // Add provider button
-            $('#add-provider').on('click', function() {
-                $('#provider-form')[0].reset();
-                $('#provider_code').val('');
-                $('#provider-modal .modal-title').text('Add New Provider');
-                $('#provider-modal').modal('show');
-            });
-
-            // Edit provider button
-            $(document).on('click', '.btn-edit', function() {
-                const providerCode = $(this).data('provider-code');
-                const provider = self.providerTable.row($(this).closest('tr')).data();
-
-                $('#provider_code').val(provider.provider_code);
-                $('#provider_name').val(provider.provider_name);
-                $('#provider_address').val(provider.provider_address);
-                $('#provider_pic').val(provider.provider_pic);
-                $('#provider_pic_number').val(provider.provider_pic_number);
-
-                $('#provider-modal .modal-title').text('Edit Provider');
-                $('#provider-modal').modal('show');
-            });
-
-            // Set inactive button
-            $(document).on('click', '.btn-set-inactive', function() {
-                const providerCode = $(this).data('provider-code');
-                const provider = self.providerTable.row($(this).closest('tr')).data();
-
-                AdminPage.common.showConfirmation(
-                    `Set ${provider.provider_name} to inactive status?`,
-                    function() {
-                        provider.active = 0;
-                        $.ajax({
-                            url: '/Admin/SetProviderInactive',
-                            method: 'POST',
-                            data: provider,
-                            success: function(response) {
-                                if (response.success) {
-                                    AdminPage.common.showSuccess('Provider set to inactive');
-                                    self.providerTable.ajax.reload();
-                                }
-                            }
-                        });
-                    }
-                );
-            });
-
-            // Save provider
-            $('#save-provider').on('click', function() {
-                const provider = {
-                    provider_code: $('#provider_code').val() || 'PRV-' + Date.now(),
-                    provider_name: $('#provider_name').val(),
-                    provider_address: $('#provider_address').val(),
-                    provider_pic: $('#provider_pic').val(),
-                    provider_pic_number: $('#provider_pic_number').val(),
-                    active: 1
-                };
-
-                const isNewProvider = !$('#provider_code').val();
-                const url = isNewProvider ? '/Admin/CreateProvider' : '/Admin/UpdateProvider';
-
-                $.ajax({
-                    url: url,
-                    method: 'POST',
-                    data: provider,
-                    success: function(response) {
-                        if (response.success) {
-                            $('#provider-modal').modal('hide');
-                            AdminPage.common.showSuccess(response.message);
-                            self.providerTable.ajax.reload();
-                        } else {
-                            AdminPage.common.showError(response.message);
-                        }
-                    }
-                });
-            });
+        formatDateForInput: function(dateString) {
+            if (!dateString) return '';
+            return dateString.split('T')[0];
         }
     },
 
@@ -183,6 +70,27 @@ const AdminPage = {
         init: function() {
             const self = this;
 
+            // Initialize Select2 for provider dropdown
+            $('#provider_name_dropdown').select2({
+                placeholder: 'Select Provider',
+                allowClear: true,
+                width: '100%'
+            });
+
+
+            // Auto-fill provider code when provider is selected
+            $('#provider_name_dropdown').on('change', function() {
+                const selectedOption = $(this).find(':selected');
+                const providerCode = selectedOption.val();
+                const providerName = selectedOption.data('provider-name');
+
+                if (providerCode) {
+                    $('#provider_code').val(providerCode);
+                } else {
+                    $('#provider_code').val('');
+                }
+            });
+
             // Initialize DataTable
             self.projectTable = $('#projects-table').DataTable({
                 ajax: {
@@ -192,24 +100,58 @@ const AdminPage = {
                     }
                 },
                 columns: [
-                    { data: 'project_code' },
-                    { data: 'project_name' },
-                    { data: 'provider_code' },
-                    { data: 'project_address' },
-                    { data: 'project_pic' },
-                    { data: 'project_pic_number' },
+                    {
+                        data: null,
+                        render: function(data) {
+                            return `${data.project_name} (${data.project_code})`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(data) {
+                            return `${data.provider_name} (${data.provider_code})`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function(data) {
+                            if (!data.contract_startdate || !data.contract_enddate) return '-';
+                            const startDate = new Date(data.contract_startdate).toLocaleDateString();
+                            const endDate = new Date(data.contract_enddate).toLocaleDateString();
+                            return `${startDate} ~ ${endDate}`;
+                        }
+                    },
+                    {
+                        data: 'contractor_count',
+                        render: function(data, type, row) {
+                            const count = data || 0;
+                            return `<a href="#" class="contractor-count text-center" data-project-code="${row.project_code}" style="cursor: pointer; text-decoration: underline; font-weight: bold;">${count}</a>`;
+                        }
+                    },
+                    {
+                        data: 'contract_enddate',
+                        render: function(data) {
+                            if (!data) return '-';
+                            return self.calculateDueDate(data);
+                        }
+                    },
                     {
                         data: 'active',
                         render: function(data) {
-                            return data === 1 ? 'Active' : 'Inactive';
+                            if (data === 1) {
+                                return '<span class="badge bg-success">Active</span>';
+                            } else {
+                                return '<span class="badge bg-secondary">Inactive</span>';
+                            }
                         }
                     },
                     {
                         data: null,
                         render: function(data) {
                             return `
-                                <button class="btn btn-sm btn-edit" data-project-code="${data.project_code}">Edit</button>
-                                <button class="btn btn-sm btn-delete" data-project-code="${data.project_code}">Delete</button>
+                                <button class="btn btn-sm btn-warning btn-edit" data-project-code="${data.project_code}">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
                             `;
                         }
                     }
@@ -224,8 +166,27 @@ const AdminPage = {
             $('#add-project').on('click', function() {
                 $('#project-form')[0].reset();
                 $('#project_code').val('');
+                $('#project_code_field').hide();
+                $('#project_code').prop('readonly', true);
+
+                // Re-enable provider dropdown for add mode
+                $('#provider_name_dropdown').prop('disabled', false).trigger('change');
+
+                // Reset provider fields
+                $('#provider_name_dropdown').val(null).trigger('change');
+                $('#provider_code').val('');
+                $('#project_name').val('');
+                $('#provider_pic').val('');
+                $('#provider_pic_number').val('');
+                $('#contract_startdate').val('');
+                $('#contract_enddate').val('');
+                $('#project_active').prop('checked', true);
+                $('#project_active_label').text('Active');
                 $('#project-modal .modal-title').text('Add New Project');
-                $('#project-modal').modal('show');
+
+                // Use Bootstrap 5 native API
+                var modal = new bootstrap.Modal(document.getElementById('project-modal'));
+                modal.show();
             });
 
             // Edit project button
@@ -234,85 +195,191 @@ const AdminPage = {
                 const project = self.projectTable.row($(this).closest('tr')).data();
 
                 $('#project_code').val(project.project_code);
+                $('#project_code_field').show();
+                $('#project_code').prop('readonly', true);
+
+                // Set provider dropdown and auto-fill code
+                $('#provider_name_dropdown').val(project.provider_code).trigger('change');
+                $('#provider_code').val(project.provider_code);
+
+                // Make provider dropdown read-only in edit mode
+                $('#provider_name_dropdown').prop('disabled', true).trigger('change');
+
+                // Editable project fields
                 $('#project_name').val(project.project_name);
-                $('#project_provider_code').val(project.provider_code);
-                $('#project_address').val(project.project_address);
-                $('#project_pic').val(project.project_pic);
-                $('#project_pic_number').val(project.project_pic_number);
+                $('#provider_pic').val(project.provider_pic);
+                $('#provider_pic_number').val(project.provider_pic_number);
+                $('#contract_startdate').val(AdminPage.common.formatDateForInput(project.contract_startdate));
+                $('#contract_enddate').val(AdminPage.common.formatDateForInput(project.contract_enddate));
+
+                // Populate active toggle
+                $('#project_active').prop('checked', project.active === 1);
+                $('#project_active_label').text(project.active === 1 ? 'Active' : 'Inactive');
 
                 $('#project-modal .modal-title').text('Edit Project');
-                $('#project-modal').modal('show');
+
+                // Use Bootstrap 5 native API
+                var modal = new bootstrap.Modal(document.getElementById('project-modal'));
+                modal.show();
             });
 
-            // Delete project button
-            $(document).on('click', '.btn-delete', function() {
+            // Contractor count click handler
+            $(document).on('click', '.contractor-count', function(e) {
+                e.preventDefault();
                 const projectCode = $(this).data('project-code');
-                const project = self.projectTable.row($(this).closest('tr')).data();
+                self.loadContractors(projectCode);
+            });
 
-                AdminPage.common.showConfirmation(
-                    `Delete ${project.project_name}?`,
-                    function() {
-                        $.ajax({
-                            url: '/Admin/DeleteProject',
-                            method: 'POST',
-                            data: { project_code: projectCode },
-                            success: function(response) {
-                                if (response.success) {
-                                    AdminPage.common.showSuccess('Project deleted');
-                                    self.projectTable.ajax.reload();
-                                }
-                            }
-                        });
-                    }
-                );
+            // Handle active toggle state change
+            $('#project_active').on('change', function() {
+                const isActive = $(this).is(':checked');
+                $('#project_active_label').text(isActive ? 'Active' : 'Inactive');
             });
 
             // Save project
             $('#save-project').on('click', function() {
+                // Client-side validation
+                const projectName = $('#project_name').val().trim();
+                if (!projectName) {
+                    AdminPage.common.showError('Project Name is required');
+                    return;
+                }
+
+                const providerCode = $('#provider_code').val();
+                const providerName = $('#provider_name_dropdown').find(':selected').data('provider-name');
+                if (!providerCode || !providerName) {
+                    AdminPage.common.showError('Please select a provider');
+                    return;
+                }
+
                 const project = {
-                    project_code: $('#project_code').val() || 'PRJ-' + Date.now(),
-                    project_name: $('#project_name').val(),
-                    provider_code: $('#project_provider_code').val(),
-                    project_address: $('#project_address').val(),
-                    project_pic: $('#project_pic').val(),
-                    project_pic_number: $('#project_pic_number').val(),
-                    active: 1
+                    project_name: projectName,
+                    provider_code: providerCode,
+                    provider_name: providerName,
+                    provider_pic: $('#provider_pic').val(),
+                    provider_pic_number: $('#provider_pic_number').val(),
+                    contract_startdate: $('#contract_startdate').val(),
+                    contract_enddate: $('#contract_enddate').val(),
+                    active: $('#project_active').is(':checked') ? 1 : 0
                 };
 
                 const isNewProject = !$('#project_code').val();
                 const url = isNewProject ? '/Admin/CreateProject' : '/Admin/UpdateProject';
 
+                // For existing projects, include project_code for updates
+                if (!isNewProject) {
+                    project.project_code = $('#project_code').val();
+                }
+
                 $.ajax({
                     url: url,
                     method: 'POST',
-                    data: project,
+                    contentType: 'application/json',
+                    data: JSON.stringify(project),
                     success: function(response) {
                         if (response.success) {
-                            $('#project-modal').modal('hide');
+                            // Use Bootstrap 5 native API
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('project-modal'));
+                            if (modal) {
+                                modal.hide();
+                            }
                             AdminPage.common.showSuccess(response.message);
                             self.projectTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        AdminPage.common.showError('Failed to save project. Please try again.');
+                        console.error('Save project error:', { xhr, status, error });
                     }
                 });
             });
+
+            // Initialize sidebar
+            if (AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
+        },
+
+        calculateDueDate: function(contractEndDateString) {
+            if (!contractEndDateString) return '-';
+
+            const contractEndDate = new Date(contractEndDateString);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const diffTime = contractEndDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return '<span style="color: red;">Expired</span>';
+            } else if (diffDays <= 30) {
+                return `<span style="color: orange;">${diffDays} days</span>`;
+            } else {
+                return `<span style="color: green;">${diffDays} days</span>`;
+            }
         },
 
         loadProviders: function() {
+            $('#provider_name_dropdown').empty().append('<option value="">Select Provider</option>');
+
             $.ajax({
                 url: '/Admin/GetAllProviders',
                 method: 'GET',
-                success: function(data) {
-                    if (data.success && data.data) {
-                        const dropdown = $('#project_provider_code');
-                        dropdown.empty();
-                        dropdown.append('<option value="">Select Provider</option>');
-                        data.data.forEach(function(provider) {
-                            dropdown.append(`<option value="${provider.provider_code}">${provider.provider_name}</option>`);
+                success: function(response) {
+                    if (response.success && response.data) {
+                        response.data.forEach(provider => {
+                            $('#provider_name_dropdown').append('<option value="' + provider.provider_code + '" data-provider-name="' + provider.provider_name + '">' +
+                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
                         });
+                    } else {
+                        console.error('Failed to load providers:', response.message);
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error loading providers:', { xhr, status, error });
+                    AdminPage.common.showError('Failed to load providers. Please refresh the page.');
                 }
+            });
+        },
+
+        loadContractors: function(projectCode) {
+            const self = this;
+
+            $.ajax({
+                url: '/Admin/GetProjectContractors',
+                method: 'GET',
+                data: { project_code: projectCode },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        self.populateContractorsTable(response.data);
+
+                        // Use Bootstrap 5 native API
+                        var modal = new bootstrap.Modal(document.getElementById('contractors-modal'));
+                        modal.show();
+                    } else {
+                        AdminPage.common.showError('Failed to load contractors.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    AdminPage.common.showError('Failed to load contractors. Please try again.');
+                    console.error('Load contractors error:', { xhr, status, error });
+                }
+            });
+        },
+
+        populateContractorsTable: function(contractors) {
+            const table = $('#contractors-table').DataTable({
+                data: contractors,
+                destroy: true,
+                columns: [
+                    { data: 'employee_id' },
+                    { data: 'name' },
+                    { data: 'position' },
+                    { data: 'area_of_destination' }
+                ],
+                pageLength: 10
             });
         }
     },
@@ -324,13 +391,7 @@ const AdminPage = {
         init: function() {
             const self = this;
 
-            // Initialize Select2 for dropdowns
-            $('#provider_code').select2({
-                placeholder: 'Select Provider',
-                allowClear: true,
-                width: '100%'
-            });
-
+            // Initialize Select2 for project dropdown
             $('#project_code').select2({
                 placeholder: 'Select Project',
                 allowClear: true,
@@ -348,12 +409,6 @@ const AdminPage = {
                 columns: [
                     { data: 'employee_id' },
                     { data: 'name' },
-                    {
-                        data: 'provider_code',
-                        render: function(data, type, row) {
-                            return row.provider_name ? `${row.provider_name} (${data})` : data;
-                        }
-                    },
                     {
                         data: 'project_code',
                         render: function(data, type, row) {
@@ -381,18 +436,19 @@ const AdminPage = {
                 pageLength: 25
             });
 
-            // Load providers and projects for dropdowns
-            self.loadProviders();
+            // Load projects for dropdown
             self.loadProjects();
 
             // Add contractor button
             $('#add-contractor').on('click', function() {
                 $('#contractor-form')[0].reset();
                 $('#employee_id').val('');
-                $('#provider_code').val(null).trigger('change');
                 $('#project_code').val(null).trigger('change');
                 $('#contractor-modal .modal-title').text('Add New Contractor');
-                $('#contractor-modal').modal('show');
+
+                // Use Bootstrap 5 native API
+                var modal = new bootstrap.Modal(document.getElementById('contractor-modal'));
+                modal.show();
             });
 
             // Edit contractor button
@@ -407,12 +463,14 @@ const AdminPage = {
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
                 $('#contact_number').val(contractor.contact_number);
                 $('#area_of_destination').val(contractor.area_of_destination);
-                $('#provider_code').val(contractor.provider_code).trigger('change');
                 $('#project_code').val(contractor.project_code).trigger('change');
                 $('#position').val(contractor.position);
 
                 $('#contractor-modal .modal-title').text('Edit Contractor');
-                $('#contractor-modal').modal('show');
+
+                // Use Bootstrap 5 native API
+                var modal = new bootstrap.Modal(document.getElementById('contractor-modal'));
+                modal.show();
             });
 
             // Set inactive button
@@ -427,7 +485,8 @@ const AdminPage = {
                         $.ajax({
                             url: '/Admin/SetContractorInactive',
                             method: 'POST',
-                            data: contractor,
+                            contentType: 'application/json',
+                            data: JSON.stringify(contractor),
                             success: function(response) {
                                 if (response.success) {
                                     AdminPage.common.showSuccess('Contractor set to inactive');
@@ -435,6 +494,10 @@ const AdminPage = {
                                 } else {
                                     AdminPage.common.showError(response.message);
                                 }
+                            },
+                            error: function(xhr, status, error) {
+                                AdminPage.common.showError('Failed to set contractor inactive. Please try again.');
+                                console.error('Set contractor inactive error:', { xhr, status, error });
                             }
                         });
                     }
@@ -443,9 +506,16 @@ const AdminPage = {
 
             // Save contractor
             $('#save-contractor').on('click', function() {
+                // Client-side validation
+                const name = $('#name').val().trim();
+                if (!name) {
+                    AdminPage.common.showError('Name is required');
+                    return;
+                }
+
                 const contractor = {
                     employee_id: $('#employee_id').val(),
-                    name: $('#name').val(),
+                    name: name,
                     age: $('#age').val() ? parseInt($('#age').val()) : 0,
                     gender: $('#gender').val(),
                     birthdate: $('#birthdate').val(),
@@ -467,39 +537,28 @@ const AdminPage = {
                     data: contractor,
                     success: function(response) {
                         if (response.success) {
-                            $('#contractor-modal').modal('hide');
+                            // Use Bootstrap 5 native API
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('contractor-modal'));
+                            if (modal) {
+                                modal.hide();
+                            }
                             AdminPage.common.showSuccess(response.message);
                             self.contractorTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
                         }
                     },
-                    error: function() {
-                        AdminPage.common.showError('Failed to save contractor');
+                    error: function(xhr, status, error) {
+                        AdminPage.common.showError('Failed to save contractor. Please try again.');
+                        console.error('Save contractor error:', { xhr, status, error });
                     }
                 });
             });
 
-            // Update projects when provider changes
-            $('#provider_code').on('change', function() {
-                const providerCode = $(this).val();
-                self.loadProjects(providerCode);
-            });
-        },
-
-        loadProviders: function() {
-            $.ajax({
-                url: '/Admin/GetAllProviders',
-                method: 'GET',
-                success: function(response) {
-                    if (response.success && response.data) {
-                        response.data.forEach(provider => {
-                            $('#provider_code').append('<option value="' + provider.provider_code + '">' +
-                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
-                        });
-                    }
-                }
-            });
+            // Initialize sidebar
+            if (AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
         },
 
         loadProjects: function(providerCode = null) {
@@ -511,11 +570,9 @@ const AdminPage = {
                 success: function(response) {
                     if (response.success && response.data) {
                         response.data.forEach(project => {
-                            // Filter by provider if specified
-                            if (!providerCode || project.provider_code === providerCode) {
-                                $('#project_code').append('<option value="' + project.project_code + '">' +
-                                    project.project_name + ' (' + project.project_code + ')</option>');
-                            }
+                            // Show all projects (no provider filtering)
+                            $('#project_code').append('<option value="' + project.project_code + '">' +
+                                project.project_name + ' (' + project.project_code + ')</option>');
                         });
                     }
                 }
@@ -524,8 +581,7 @@ const AdminPage = {
 
         formatDateForInput: function(dateString) {
             if (!dateString) return '';
-            const date = new Date(dateString);
-            return date.toISOString().split('T')[0];
+            return dateString.split('T')[0];
         }
     },
 
@@ -572,7 +628,9 @@ const AdminPage = {
                 // Show guidance for specific configs
                 self.showConfigGuidance(config.key);
 
-                $('#config-modal').modal('show');
+                // Use Bootstrap 5 native API
+                var modal = new bootstrap.Modal(document.getElementById('config-modal'));
+                modal.show();
             });
 
             // Save config
@@ -595,21 +653,32 @@ const AdminPage = {
                 $.ajax({
                     url: '/Admin/UpdateSystemConfig',
                     method: 'POST',
-                    data: config,
+                    contentType: 'application/json',
+                    data: JSON.stringify(config),
                     success: function(response) {
                         if (response.success) {
-                            $('#config-modal').modal('hide');
+                            // Use Bootstrap 5 native API
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('config-modal'));
+                            if (modal) {
+                                modal.hide();
+                            }
                             AdminPage.common.showSuccess('Configuration updated successfully');
                             self.configTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
                         }
                     },
-                    error: function() {
-                        AdminPage.common.showError('Failed to update configuration');
+                    error: function(xhr, status, error) {
+                        AdminPage.common.showError('Failed to update configuration. Please try again.');
+                        console.error('Update config error:', { xhr, status, error });
                     }
                 });
             });
+
+            // Initialize sidebar
+            if (AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
         },
 
         showConfigGuidance: function(configKey) {
@@ -752,13 +821,16 @@ const AdminPage = {
                             $('#edit_time_out').val(timelog.time_out ? self.formatDateTimeForInput(timelog.time_out) : '');
                             $('#edit_health_status').val(timelog.health_status);
 
-                            $('#timelog-modal').modal('show');
+                            // Use Bootstrap 5 native API
+                            var modal = new bootstrap.Modal(document.getElementById('timelog-modal'));
+                            modal.show();
                         } else {
                             AdminPage.common.showError('Failed to load timelog data');
                         }
                     },
-                    error: function() {
+                    error: function(xhr, status, error) {
                         AdminPage.common.showError('Failed to load timelog');
+                        console.error('Load timelog error:', { xhr, status, error });
                     }
                 });
             });
@@ -773,7 +845,8 @@ const AdminPage = {
                         $.ajax({
                             url: '/Admin/DeleteTimeLog',
                             method: 'POST',
-                            data: { attendance_id: attendanceId },
+                            contentType: 'application/json',
+                            data: JSON.stringify({ attendance_id: attendanceId }),
                             success: function(response) {
                                 if (response.success) {
                                     AdminPage.common.showSuccess('Attendance record deleted successfully');
@@ -782,8 +855,9 @@ const AdminPage = {
                                     AdminPage.common.showError(response.message);
                                 }
                             },
-                            error: function() {
-                                AdminPage.common.showError('Failed to delete timelog');
+                            error: function(xhr, status, error) {
+                                AdminPage.common.showError('Failed to delete timelog. Please try again.');
+                                console.error('Delete timelog error:', { xhr, status, error });
                             }
                         });
                     }
@@ -792,9 +866,16 @@ const AdminPage = {
 
             // Save timelog
             $('#save-timelog').on('click', function() {
+                // Client-side validation
+                const employeeId = $('#edit_employee_id').val().trim();
+                if (!employeeId) {
+                    AdminPage.common.showError('Employee ID is required');
+                    return;
+                }
+
                 const timelog = {
                     attendance_id: parseInt($('#edit_attendance_id').val()),
-                    employee_id: $('#edit_employee_id').val(),
+                    employee_id: employeeId,
                     time_in: $('#edit_time_in').val(),
                     time_out: $('#edit_time_out').val() || null,
                     health_status: $('#edit_health_status').val()
@@ -803,21 +884,32 @@ const AdminPage = {
                 $.ajax({
                     url: '/Admin/EditTimeLog',
                     method: 'POST',
-                    data: timelog,
+                    contentType: 'application/json',
+                    data: JSON.stringify(timelog),
                     success: function(response) {
                         if (response.success) {
-                            $('#timelog-modal').modal('hide');
+                            // Use Bootstrap 5 native API
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('timelog-modal'));
+                            if (modal) {
+                                modal.hide();
+                            }
                             AdminPage.common.showSuccess('Attendance record updated successfully with audit trail');
                             self.timeLogTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
                         }
                     },
-                    error: function() {
-                        AdminPage.common.showError('Failed to update timelog');
+                    error: function(xhr, status, error) {
+                        AdminPage.common.showError('Failed to update timelog. Please try again.');
+                        console.error('Update timelog error:', { xhr, status, error });
                     }
                 });
             });
+
+            // Initialize sidebar
+            if (AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
         },
 
         applyFilters: function() {
@@ -865,12 +957,141 @@ const AdminPage = {
         }
     },
 
+    // Sidebar component - Admin sidebar navigation
+    sidebar: {
+        init: function() {
+            const self = this;
+
+            // Set active state based on current URL
+            self.setActiveState();
+
+            // Setup mobile toggle functionality
+            self.setupMobileToggle();
+
+            // Handle responsive behavior
+            self.setupResponsiveBehavior();
+        },
+
+        setActiveState: function() {
+            // Get current controller and action from URL
+            const path = window.location.pathname;
+            const pathParts = path.split('/').filter(part => part.length > 0);
+
+            // Determine current page
+            let currentPage = 'dashboard'; // default
+            if (pathParts.length >= 2) {
+                const controller = pathParts[pathParts.length - 2];
+                const action = pathParts[pathParts.length - 1];
+
+                if (controller === 'Admin') {
+                    switch(action) {
+                        case 'Index':
+                            currentPage = 'dashboard';
+                            break;
+                        case 'Projects':
+                            currentPage = 'projects';
+                            break;
+                        case 'Contractors':
+                            currentPage = 'contractors';
+                            break;
+                        case 'SystemConfig':
+                            currentPage = 'systemconfig';
+                            break;
+                        case 'TimeLogs':
+                            currentPage = 'timelogs';
+                            break;
+                    }
+                }
+            }
+
+            // Remove active class from all sidebar links
+            $('.sidebar-link').removeClass('active');
+
+            // Add active class to current page link
+            const activeLinkMap = {
+                'dashboard': 'a[href*="/Admin/Index"]',
+                'projects': 'a[href*="/Admin/Projects"]',
+                'contractors': 'a[href*="/Admin/Contractors"]',
+                'systemconfig': 'a[href*="/Admin/SystemConfig"]',
+                'timelogs': 'a[href*="/Admin/TimeLogs"]'
+            };
+
+            const activeSelector = activeLinkMap[currentPage];
+            if (activeSelector) {
+                $(activeSelector).addClass('active');
+            }
+        },
+
+        setupMobileToggle: function() {
+            // Add mobile toggle button if it doesn't exist
+            if ($('.mobile-sidebar-toggle').length === 0) {
+                const toggleButton = $('<button class="mobile-sidebar-toggle">' +
+                    '<i class="fas fa-bars"></i>' +
+                    '</button>');
+
+                // Insert toggle button after navbar brand
+                $('.navbar-brand').after(toggleButton);
+            }
+
+            // Handle toggle button click
+            $(document).on('click', '.mobile-sidebar-toggle', function() {
+                $('.admin-sidebar').toggleClass('show');
+                $(this).find('i').toggleClass('fa-bars fa-times');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            $(document).on('click', function(e) {
+                // Exclude Select2 elements to prevent dropdown interference
+                if ($(e.target).closest('.select2-container').length ||
+                    $(e.target).closest('.select2-dropdown').length) {
+                    return;
+                }
+
+                if ($(window).width() < 768) {
+                    if (!$(e.target).closest('.admin-sidebar').length &&
+                        !$(e.target).closest('.mobile-sidebar-toggle').length) {
+                        $('.admin-sidebar').removeClass('show');
+                        $('.mobile-sidebar-toggle').find('i')
+                            .removeClass('fa-times').addClass('fa-bars');
+                    }
+                }
+            });
+
+            // Close sidebar when clicking a navigation link on mobile
+            $('.sidebar-link').on('click', function() {
+                if ($(window).width() < 768) {
+                    $('.admin-sidebar').removeClass('show');
+                    $('.mobile-sidebar-toggle').find('i')
+                        .removeClass('fa-times').addClass('fa-bars');
+                }
+            });
+        },
+
+        setupResponsiveBehavior: function() {
+            const self = this;
+
+            // Handle window resize
+            $(window).on('resize', function() {
+                if ($(window).width() >= 768) {
+                    // Remove mobile-specific classes on desktop
+                    $('.admin-sidebar').removeClass('show');
+                    $('.mobile-sidebar-toggle').find('i')
+                        .removeClass('fa-times').addClass('fa-bars');
+                }
+            });
+        }
+    },
+
     // Index.cshtml - Admin dashboard
     index: {
         init: function() {
-            // Dashboard initialization if needed
-            // Load statistics, charts, etc.
+            // Dashboard initialization
             console.log('Admin dashboard initialized');
+
+            // Initialize sidebar
+            if (AdminPage.sidebar) {
+                AdminPage.sidebar.init();
+            }
         }
     }
 };
