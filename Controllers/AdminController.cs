@@ -56,19 +56,109 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllProviders()
+        public async Task<IActionResult> GetAllProviders(string search = null)
         {
             var result = await _providerService.GetAll();
             // Filter to only active providers
             var activeProviders = result.Data?.Where(p => p.active == 1);
+
+            // Apply search filter if provided
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                activeProviders = activeProviders?.Where(p =>
+                    p.provider_name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    p.provider_code.Contains(search, StringComparison.OrdinalIgnoreCase));
+            }
+
             return Json(new { success = result.Success, message = result.Message, data = activeProviders });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateProvider([FromBody] provider newProvider)
+        {
+            try
+            {
+                // Validate provider name
+                if (string.IsNullOrWhiteSpace(newProvider.provider_name))
+                {
+                    return Json(new { success = false, message = "Provider name is required" });
+                }
+
+                // Validate provider code
+                if (string.IsNullOrWhiteSpace(newProvider.provider_code))
+                {
+                    return Json(new { success = false, message = "Provider code is required" });
+                }
+
+                // Check if provider already exists by code
+                var existingByCode = await _providerService.GetByProviderCode(newProvider.provider_code);
+                if (existingByCode != null)
+                {
+                    return Json(new { success = false, message = "Provider with this code already exists" });
+                }
+
+                // Set default values
+                newProvider.active = 1;
+                newProvider.created_at = DateTime.Now;
+                newProvider.updated_at = DateTime.Now;
+
+                // Create provider
+                var result = await _providerService.Create(newProvider);
+                if (result.Success)
+                {
+                    return Json(new { success = true, data = result.Data, message = "Provider created successfully" });
+                }
+                else
+                {
+                    return Json(new { success = false, message = result.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating provider");
+                return Json(new { success = false, message = "Error creating provider" });
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateProject([FromBody] project project)
         {
-            var result = await _projectService.Create(project);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            try
+            {
+                // Check if provider exists
+                var existingProvider = await _providerService.GetByProviderCode(project.provider_code);
+
+                if (existingProvider == null || !existingProvider.Success || existingProvider.Data == null)
+                {
+                    // Create new provider first
+                    var newProvider = new provider
+                    {
+                        provider_code = project.provider_code,
+                        provider_name = project.provider_name,
+                        provider_address = string.Empty,
+                        active = 1,
+                        created_at = DateTime.Now,
+                        updated_at = DateTime.Now
+                    };
+
+                    var createProviderResult = await _providerService.Create(newProvider);
+                    if (!createProviderResult.Success)
+                    {
+                        return Json(new { success = false, message = $"Failed to create new provider: {createProviderResult.Message}" });
+                    }
+
+                    _logger.LogInformation("New provider created during project creation: {ProviderCode}", project.provider_code);
+                }
+
+                // Now create the project
+                var result = await _projectService.Create(project);
+                return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating project with provider");
+                return Json(new { success = false, message = "Error creating project. Please ensure all data is valid." });
+            }
         }
 
         [HttpPost]

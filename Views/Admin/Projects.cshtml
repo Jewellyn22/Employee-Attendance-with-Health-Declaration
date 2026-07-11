@@ -3,22 +3,23 @@
 }
 
 <div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-12">
-            <h2>Projects Management</h2>
-        </div>
-    </div>
-
     <div class="row mt-3">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>Projects</h5>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5>Projects</h5>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button id="export-projects" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-file-excel"></i> Export to Excel
+                            </button>
+                            <button id="add-project" class="btn btn-primary">Add New Project</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-end">
-                        <button id="add-project" class="btn btn-primary">Add New Project</button>
-                    </div>
 
                     <table id="projects-table" class="table table-striped table-bordered">
                         <thead>
@@ -40,6 +41,8 @@
     </div>
 </div>
 
+<!-- New Provider Modal -->
+
 <!-- Project Modal -->
 <div id="project-modal" class="modal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -52,18 +55,19 @@
                 <form id="project-form">
                     
                     <div class="row">
-                        <div class="col-3">
-                            <div class="mb-3">
-                                <label for="provider_code" class="form-label">Provider Code:</label>
-                                <input type="text" id="provider_code" class="form-control" readonly>
-                            </div>
-                        </div>
-                        <div class="col-9">
+                        <div class="col-8">
                             <div class="mb-3">
                                 <label for="provider_name_dropdown" class="form-label">Provider Name:</label>
-                                <select id="provider_name_dropdown" class="form-control" required>
-                                    <option value="">Select Provider</option>
-                                </select>
+                                <input type="text" id="provider_name_dropdown" class="form-control w-100" list="provider-list" placeholder="Type provider name..." required>
+                                <datalist id="provider-list">
+                                    <option value="">Loading providers...</option>
+                                </datalist>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label for="provider_code" class="form-label">Provider Code:</label>
+                                <input type="text" id="provider_code" class="form-control" placeholder="Enter provider code">
                             </div>
                         </div>
                     </div>
@@ -72,13 +76,13 @@
                         <div class="col-6">
                             <div>
                                 <label for="provider_pic" class="form-label">Provider Project PIC:</label>
-                                <input type="text" id="provider_pic" class="form-control">
+                                <input type="text" id="provider_pic" class="form-control" placeholder="Person-In-Charge Full Name">
                             </div>
                         </div>
                         <div class="col-6">
                             <div>
                                 <label for="provider_pic_number" class="form-label">Contact No:</label>
-                                <input type="text" id="provider_pic_number" class="form-control">
+                                <input type="text" oninput="this.value = this.value.replace(/[^0-9]/g, '')"  maxlength="15" id="provider_pic_number" class="form-control" placeholder="09xxxxxxxxx">
                             </div>
                         </div>
                     </div>
@@ -92,12 +96,8 @@
 
                     <div class="mb-3">
                         <label for="project_name" class="form-label">Project Name:</label>
-                        <input type="text" id="project_name" class="form-control" required>
+                        <input type="text" id="project_name" class="form-control" required placeholder="Type project name...">
                     </div>
-
-                    
-                    
-
 
                     <div class="row">
                         <div class="col-6">
@@ -160,6 +160,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/lib/xlsx/xlsx.full.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.projects.init();

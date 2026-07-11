@@ -70,24 +70,22 @@ const AdminPage = {
         init: function() {
             const self = this;
 
-            // Initialize Select2 for provider dropdown
-            $('#provider_name_dropdown').select2({
-                placeholder: 'Select Provider',
-                allowClear: true,
-                width: '100%'
-            });
+            // Load providers into datalist on page load
+            self.loadProvidersForDatalist();
 
+            // Auto-fill provider_code when provider is selected from datalist
+            $('#provider_name_dropdown').on('input', function() {
+                const selectedValue = $(this).val();
+                const $datalist = $('#provider-list');
+                const matchingOption = $datalist.find('option[value="' + selectedValue + '"]');
 
-            // Auto-fill provider code when provider is selected
-            $('#provider_name_dropdown').on('change', function() {
-                const selectedOption = $(this).find(':selected');
-                const providerCode = selectedOption.val();
-                const providerName = selectedOption.data('provider-name');
-
-                if (providerCode) {
-                    $('#provider_code').val(providerCode);
+                if (matchingOption.length > 0) {
+                    // Existing provider found - auto-fill provider_code and make it readonly
+                    const providerCode = matchingOption.data('provider-code');
+                    $('#provider_code').val(providerCode).prop('readonly', true);
                 } else {
-                    $('#provider_code').val('');
+                    // No matching provider - clear code and make field writable
+                    $('#provider_code').val('').prop('readonly', false);
                 }
             });
 
@@ -159,8 +157,17 @@ const AdminPage = {
                 pageLength: 25
             });
 
-            // Load providers for dropdown
-            self.loadProviders();
+
+            // Export to Excel button
+            $('#export-projects').on('click', function() {
+                self.exportToExcel();
+            });
+
+            // Show export button when data exists
+            self.projectTable.on('draw', function() {
+                const hasData = self.projectTable.data().length > 0;
+                $('#export-projects').toggle(hasData);
+            });
 
             // Add project button
             $('#add-project').on('click', function() {
@@ -169,12 +176,16 @@ const AdminPage = {
                 $('#project_code_field').hide();
                 $('#project_code').prop('readonly', true);
 
-                // Re-enable provider dropdown for add mode
-                $('#provider_name_dropdown').prop('disabled', false).trigger('change');
+                // Re-enable provider input for add mode
+                $('#provider_name_dropdown').prop('disabled', false).prop('readonly', false);
 
                 // Reset provider fields
-                $('#provider_name_dropdown').val(null).trigger('change');
-                $('#provider_code').val('');
+                $('#provider_name_dropdown').val('');
+                $('#provider_code').val('').prop('readonly', false); // Enable for add mode
+
+                // Reload providers into datalist
+                self.loadProvidersForDatalist();
+
                 $('#project_name').val('');
                 $('#provider_pic').val('');
                 $('#provider_pic_number').val('');
@@ -198,12 +209,15 @@ const AdminPage = {
                 $('#project_code_field').show();
                 $('#project_code').prop('readonly', true);
 
-                // Set provider dropdown and auto-fill code
-                $('#provider_name_dropdown').val(project.provider_code).trigger('change');
-                $('#provider_code').val(project.provider_code);
+                // Set provider input and auto-fill code
+                if (project.provider_code && project.provider_name) {
+                    $('#provider_name_dropdown').val(project.provider_name);
+                    $('#provider_code').val(project.provider_code);
+                    $('#provider_code').prop('readonly', true); // Always readonly in edit mode
+                }
 
-                // Make provider dropdown read-only in edit mode
-                $('#provider_name_dropdown').prop('disabled', true).trigger('change');
+                // Make provider input read-only in edit mode
+                $('#provider_name_dropdown').prop('readonly', true);
 
                 // Editable project fields
                 $('#project_name').val(project.project_name);
@@ -245,10 +259,16 @@ const AdminPage = {
                     return;
                 }
 
-                const providerCode = $('#provider_code').val();
-                const providerName = $('#provider_name_dropdown').find(':selected').data('provider-name');
-                if (!providerCode || !providerName) {
-                    AdminPage.common.showError('Please select a provider');
+                const providerCode = $('#provider_code').val().trim();
+                const providerName = $('#provider_name_dropdown').val().trim();
+
+                if (!providerName) {
+                    AdminPage.common.showError('Provider Name is required');
+                    return;
+                }
+
+                if (!providerCode) {
+                    AdminPage.common.showError('Provider Code is required. Enter existing provider code or create a new one.');
                     return;
                 }
 
@@ -302,6 +322,26 @@ const AdminPage = {
             }
         },
 
+        loadProvidersForDatalist: function() {
+            $.ajax({
+                url: '/Admin/GetAllProviders',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.data) {
+                        const $datalist = $('#provider-list');
+                        $datalist.empty();
+
+                        response.data.forEach(provider => {
+                            $datalist.append('<option value="' + provider.provider_name + '" data-provider-code="' + provider.provider_code + '">');
+                        });
+                    }
+                },
+                error: function() {
+                    $('#provider-list').html('<option value="">Failed to load providers</option>');
+                }
+            });
+        },
+
         calculateDueDate: function(contractEndDateString) {
             if (!contractEndDateString) return '-';
 
@@ -319,29 +359,6 @@ const AdminPage = {
             } else {
                 return `<span style="color: green;">${diffDays} days</span>`;
             }
-        },
-
-        loadProviders: function() {
-            $('#provider_name_dropdown').empty().append('<option value="">Select Provider</option>');
-
-            $.ajax({
-                url: '/Admin/GetAllProviders',
-                method: 'GET',
-                success: function(response) {
-                    if (response.success && response.data) {
-                        response.data.forEach(provider => {
-                            $('#provider_name_dropdown').append('<option value="' + provider.provider_code + '" data-provider-name="' + provider.provider_name + '">' +
-                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
-                        });
-                    } else {
-                        console.error('Failed to load providers:', response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error loading providers:', { xhr, status, error });
-                    AdminPage.common.showError('Failed to load providers. Please refresh the page.');
-                }
-            });
         },
 
         loadContractors: function(projectCode) {
@@ -381,6 +398,45 @@ const AdminPage = {
                 ],
                 pageLength: 10
             });
+        },
+
+        exportToExcel: function() {
+            // Get current filtered data from DataTable (respecting search and filters)
+            const tableData = this.projectTable.rows({ search: 'applied' }).data().toArray();
+
+            if (tableData.length === 0) {
+                AdminPage.common.showWarning('No data available to export', 'No Data');
+                return;
+            }
+
+            // Transform data for export with friendly column names
+            const exportData = tableData.map(row => ({
+                'Provider Code': row.provider_code,
+                'Provider Name': row.provider_name,
+                'Provider PIC': row.provider_pic || '',
+                'PIC Contact Number': row.provider_pic_number || '',
+                'Project Code': row.project_code,
+                'Project Name': row.project_name,
+                'Contract Start Date': row.contract_startdate ? AdminPage.common.formatDateTime(row.contract_startdate) : '',
+                'Contract End Date': row.contract_enddate ? AdminPage.common.formatDateTime(row.contract_enddate) : '',
+                'Active Contractors': row.contractor_count || 0,
+                'Status': row.active === 1 ? 'Active' : 'Inactive'
+            }));
+
+            // Create Excel file using SheetJS
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Projects');
+
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+            const filename = `ContractorProjects_${timestamp}.xlsx`;
+
+            // Download file
+            XLSX.writeFile(wb, filename);
+
+            // Show success message
+            AdminPage.common.showSuccess(`Exported ${tableData.length} projects to Excel`, 'Export Successful');
         }
     },
 
