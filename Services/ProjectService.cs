@@ -130,18 +130,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Validate project_code doesn't already exist
-                var existing = await _projectRepository.GetByProjectCode(project.project_code);
-                if (existing != null)
-                {
-                    return new Response<project>
-                    {
-                        Success = false,
-                        Message = "Project with this Project Code already exists",
-                        Data = null
-                    };
-                }
-
+                // Note: project_code uniqueness validation removed since stored procedure auto-generates project_code
+                // Format: ProviderCode-YY-### (e.g., PROV-001-26-005) which is guaranteed unique
                 var result = await _projectRepository.Create(project);
                 _logger.LogInformation("Project created: {ProjectCode}", project.project_code);
 

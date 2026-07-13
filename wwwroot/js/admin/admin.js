@@ -272,6 +272,20 @@ const AdminPage = {
                     return;
                 }
 
+                // Validate contract dates
+                const startDate = $('#contract_startdate').val();
+                const endDate = $('#contract_enddate').val();
+
+                if (startDate && endDate) {
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+
+                    if (start > end) {
+                        AdminPage.common.showError('Contract Start Date cannot be later than Contract End Date');
+                        return;
+                    }
+                }
+
                 const project = {
                     project_name: projectName,
                     provider_code: providerCode,

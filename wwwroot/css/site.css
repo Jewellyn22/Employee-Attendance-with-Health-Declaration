@@ -151,3 +151,21 @@ h3{
     letter-spacing: 1px;
     font-size: 80px !important;
 }
+
+/* Datalist styling for provider suggestions - white background */
+datalist option {
+    background-color: white !important;
+    color: #333;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 1px solid #e0e0e0;
+    margin: 2px 0;
+}
+
+datalist option:hover,
+datalist option:focus {
+    background-color: #f0f0f0 !important;
+    color: #000;
+    cursor: pointer;
+}

@@ -2,6 +2,13 @@
     ViewData["Title"] = "Projects Management";
 }
 
+<style>
+    .datalist{
+        background-color: white;
+        padding: 2%;
+    }
+</style>
+
 <div class="container-fluid">
     <div class="row mt-3">
         <div class="col-12">
@@ -59,7 +66,7 @@
                             <div class="mb-3">
                                 <label for="provider_name_dropdown" class="form-label">Provider Name:</label>
                                 <input type="text" id="provider_name_dropdown" class="form-control w-100" list="provider-list" placeholder="Type provider name..." required>
-                                <datalist id="provider-list">
+                                <datalist class="datalist" id="provider-list">
                                     <option value="">Loading providers...</option>
                                 </datalist>
                             </div>
