@@ -73,19 +73,169 @@ const AdminPage = {
             // Load providers into datalist on page load
             self.loadProvidersForDatalist();
 
-            // Auto-fill provider_code when provider is selected from datalist
+            // Keyboard navigation state variables
+            let focusedIndex = -1;
+            let isDatalistVisible = false;
+
+            // Don't auto-show on focus - let user initiate typing
+            $('#provider_name_dropdown').on('focus', function() {
+                focusedIndex = -1;
+                // Only show if there's already content
+                if ($(this).val().length > 0) {
+                    $('#provider-list').show();
+                    isDatalistVisible = true;
+                }
+            });
+
+            // Hide datalist when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#provider_name_dropdown').length &&
+                    !$(e.target).closest('#provider-list').length) {
+                    $('#provider-list').hide();
+                    isDatalistVisible = false;
+                    focusedIndex = -1;
+                }
+            });
+
+            // Handle keyboard navigation
+            $('#provider_name_dropdown').on('keydown', function(e) {
+                const $datalist = $('#provider-list');
+                const $items = $datalist.find('li').not('[style*="display: none"]').not('.no-results');
+
+                // Show datalist on arrow keys if hidden
+                if (!isDatalistVisible && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault();
+                    $datalist.show();
+                    isDatalistVisible = true;
+                    return;
+                }
+
+                switch(e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        focusedIndex = Math.min(focusedIndex + 1, $items.length - 1);
+                        updateFocusHighlight($items);
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        focusedIndex = Math.max(focusedIndex - 1, 0);
+                        updateFocusHighlight($items);
+                        break;
+
+                    case 'Enter':
+                        if (focusedIndex >= 0 && focusedIndex < $items.length) {
+                            e.preventDefault();
+                            const $focusedItem = $($items[focusedIndex]);
+                            selectProvider($focusedItem);
+                        }
+                        break;
+
+                    case 'Escape':
+                        e.preventDefault();
+                        $datalist.hide();
+                        isDatalistVisible = false;
+                        focusedIndex = -1;
+                        break;
+                }
+            });
+
+            // Update visual highlighting for keyboard navigation
+            function updateFocusHighlight($items) {
+                $items.removeClass('keyboard-focused');
+                if (focusedIndex >= 0 && focusedIndex < $items.length) {
+                    $($items[focusedIndex]).addClass('keyboard-focused');
+                    // Scroll into view if needed
+                    const $item = $($items[focusedIndex]);
+                    if ($item.length > 0) {
+                        $item[0].scrollIntoView({ block: 'nearest' });
+                    }
+                }
+            }
+
+            // Select provider and update fields
+            function selectProvider($item) {
+                const providerName = $item.attr('value');
+                const providerCode = $item.data('provider-code');
+
+                $('#provider_name_dropdown').val(providerName);
+                $('#provider_code').val(providerCode).prop('readonly', true);
+                $('#provider-list').hide();
+                isDatalistVisible = false;
+                focusedIndex = -1;
+            }
+
+            // Handle input with filtering, auto-show, and auto-fill provider_code
             $('#provider_name_dropdown').on('input', function() {
                 const selectedValue = $(this).val();
                 const $datalist = $('#provider-list');
-                const matchingOption = $datalist.find('option[value="' + selectedValue + '"]');
+                const $items = $datalist.find('li').not('.no-results');
 
-                if (matchingOption.length > 0) {
-                    // Existing provider found - auto-fill provider_code and make it readonly
-                    const providerCode = matchingOption.data('provider-code');
+                // Show dropdown when user starts typing
+                if (selectedValue.length > 0 && $datalist.is(':hidden')) {
+                    $datalist.show();
+                    isDatalistVisible = true;
+                }
+
+                // Hide dropdown if input is cleared
+                if (selectedValue.length === 0) {
+                    $datalist.hide();
+                    isDatalistVisible = false;
+                    focusedIndex = -1;
+                    return;
+                }
+
+                // Reset keyboard navigation when user types
+                focusedIndex = -1;
+                $items.removeClass('keyboard-focused');
+
+                // Filter options as user types
+                let hasVisibleResults = false;
+                $items.each(function() {
+                    const $item = $(this);
+                    const text = $item.text().toLowerCase();
+                    const filter = selectedValue.toLowerCase();
+
+                    if (text.includes(filter)) {
+                        $item.show();
+                        hasVisibleResults = true;
+                    } else {
+                        $item.hide();
+                    }
+                });
+
+                // Show/hide "No results found" message
+                const $noResults = $datalist.find('.no-results');
+                if (!hasVisibleResults) {
+                    //if ($noResults.length === 0) {
+                    //    $datalist.append('<li class="no-results">No providers found. Type to add new provider.</li>');
+                    //} else {
+                    //    $noResults.show();
+                    //}
+                    if ($noResults.length === 0) {
+                        $noResults.show();
+                    }
+                } else {
+                    $noResults.hide();
+                }
+
+                // Check for exact match to auto-fill provider_code
+                const matchingItem = $items.filter(function() {
+                    return $(this).attr('value') === selectedValue;
+                });
+
+                if (matchingItem.length > 0) {
+                    const providerCode = matchingItem.data('provider-code');
                     $('#provider_code').val(providerCode).prop('readonly', true);
                 } else {
-                    // No matching provider - clear code and make field writable
                     $('#provider_code').val('').prop('readonly', false);
+                }
+            });
+
+            // Handle click on provider list items
+            $(document).on('click', '#provider-list li', function() {
+                if (!$(this).hasClass('no-results')) {
+                    selectProvider($(this));
                 }
             });
 
@@ -346,12 +496,12 @@ const AdminPage = {
                         $datalist.empty();
 
                         response.data.forEach(provider => {
-                            $datalist.append('<option value="' + provider.provider_name + '" data-provider-code="' + provider.provider_code + '">');
+                            $datalist.append('<li value="' + provider.provider_name + '" data-provider-code="' + provider.provider_code + '">' + provider.provider_name + '</li>');
                         });
                     }
                 },
                 error: function() {
-                    $('#provider-list').html('<option value="">Failed to load providers</option>');
+                    $('#provider-list').html('<li value="">Failed to load providers</li>');
                 }
             });
         },
