@@ -68,7 +68,14 @@ const AttendancePage = {
                     dataSrc: 'data'
                 },
                 columns: [
-                    { data: 'employee_id' },
+                    {
+                        data: 'employee_id',
+                        render: function(data) {
+                            if (!data) return '';
+                            // Convert each character to a bullet symbol
+                            return '•'.repeat(data.length);
+                        }
+                    },
                     { data: 'name' },
                     { data: 'provider_code' },
                     {
