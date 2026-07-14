@@ -11,5 +11,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<project>> Create(project project);
         Task<Response<project>> Update(project project);
         Task<Response<bool>> SetInactive(string project_code);
+        Task<Response<int>> GetActiveCount();
     }
 }

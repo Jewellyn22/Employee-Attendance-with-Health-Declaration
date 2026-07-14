@@ -7,102 +7,171 @@
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="admin-heading">Admin Dashboard</h2>
-            <p class="text-muted">Welcome, @ViewBag.AdminName</p>
+            <p class="text-muted">Welcome back, @ViewBag.AdminName</p>
         </div>
     </div>
 
-    <!-- Dashboard Introduction -->
+    <!-- Statistics Cards Row -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Admin Navigation</strong> - Use the sidebar menu to navigate between different admin sections.
-                You can manage projects, contractors, system configuration, and view attendance logs.
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard Statistics (Optional - can be expanded later) -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card admin-stat-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-project-diagram fa-3x text-success mb-3"></i>
-                    <h5 class="card-title">Projects</h5>
-                    <p class="card-text text-muted">Manage projects and contractor assignments</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card admin-stat-card">
-                <div class="card-body text-center">
-                    <i class="fas fa-users fa-3x text-info mb-3"></i>
-                    <h5 class="card-title">Contractors</h5>
-                    <p class="card-text text-muted">Manage contractor employee records</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Actions Guide -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0"><i class="fas fa-rocket me-2"></i>Quick Actions</h5>
-                </div>
+        <!-- Active Projects Card -->
+        <div class="col-md-3">
+            <div class="card bg-primary text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Projects", "Admin")'">
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <h6 class="fw-bold"><i class="fas fa-project-diagram me-2 text-success"></i>Projects Management</h6>
-                            <p class="text-muted small">Create and manage projects and contractor assignments. Track project details and monitor progress.</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Active Projects</h5>
+                            <h2 class="display-4 font-weight-bold">@ViewBag.ActiveProjects</h2>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="fw-bold"><i class="fas fa-users me-2 text-info"></i>Contractors Management</h6>
-                            <p class="text-muted small">Manage contractor employee records, assignments, and status information.</p>
+                        <div class="display-4 opacity-50">
+                            <i class="fas fa-folder"></i>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="fw-bold"><i class="fas fa-cog me-2 text-warning"></i>System Configuration</h6>
-                            <p class="text-muted small">Configure system settings like debounce thresholds and health declaration windows.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Providers Card -->
+        <div class="col-md-3">
+            <div class="card bg-success text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Projects", "Admin")'">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Active Providers</h5>
+                            <h2 class="display-4 font-weight-bold">@ViewBag.ActiveProviders</h2>
                         </div>
-                        <div class="col-md-12 mb-3">
-                            <h6 class="fw-bold"><i class="fas fa-clock me-2 text-danger"></i>TimeLogs Management</h6>
-                            <p class="text-muted small">View and edit attendance records. Make corrections to time-in/time-out logs with audit trail.</p>
+                        <div class="display-4 opacity-50">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Contractors Card -->
+        <div class="col-md-3">
+            <div class="card bg-info text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Contractors", "Admin")'">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Active Contractors</h5>
+                            <h2 class="display-4 font-weight-bold">@ViewBag.ActiveContractors</h2>
+                        </div>
+                        <div class="display-4 opacity-50">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Open Sessions Card -->
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">On Premises</h5>
+                            <h2 class="display-4 font-weight-bold">@ViewBag.OpenSessions</h2>
+                        </div>
+                        <div class="display-4 opacity-50">
+                            <i class="fas fa-user-check"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Recent Time Logs Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Activity (Last 7 Days)</h5>
+                    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-sm btn-outline-primary">
+                        View All History
+                    </a>
+                </div>
+                <div class="card-body">
+                    <table id="recentTimeLogsTable" class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Provider</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Health Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Additional Styles for Dashboard -->
 <style>
     .admin-heading {
         color: #343a40;
         font-weight: 600;
     }
 
-    .admin-stat-card {
-        border: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .admin-stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
     }
 </style>
 
-<!-- Initialize Dashboard -->
 @section Scripts {
     <script>
         $(document).ready(function() {
-            // Initialize dashboard functionality
-            if (typeof AdminPage !== 'undefined' && AdminPage.index) {
-                AdminPage.index.init();
-            }
+            // Initialize DataTable for recent time logs
+            $('#recentTimeLogsTable').DataTable({
+                ajax: {
+                    url: '@Url.Action("GetRecentTimeLogs", "Admin")',
+                    dataSrc: 'data',
+                    type: 'GET'
+                },
+                columns: [
+                    { data: 'employee_id' },
+                    { data: 'name' },
+                    { data: 'provider_code' },
+                    {
+                        data: 'time_in',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
+                        }
+                    },
+                    {
+                        data: 'time_out',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : '<span class="badge bg-success">Active</span>';
+                        }
+                    },
+                    {
+                        data: 'health_status',
+                        render: function(data) {
+                            if (data === 'FIT') {
+                                return '<span class="badge bg-success">FIT</span>';
+                            } else if (data === 'UNFIT') {
+                                return '<span class="badge bg-danger">UNFIT</span>';
+                            }
+                            return data;
+                        }
+                    }
+                ],
+                order: [[3, 'desc']],
+                pageLength: 10,
+                language: {
+                    emptyTable: 'No recent activity found'
+                }
+            });
 
             // Initialize sidebar active state
             if (typeof AdminPage !== 'undefined' && AdminPage.sidebar) {

@@ -82,5 +82,58 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<int>> GetOpenSessionsCount()
+        {
+            try
+            {
+                var count = await _timeLogsRepository.GetOpenSessionsCount();
+                _logger.LogInformation("Open sessions count retrieved: {Count}", count);
+
+                return new Response<int>
+                {
+                    Success = true,
+                    Message = "Open sessions count retrieved successfully",
+                    Data = count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting open sessions count");
+                return new Response<int>
+                {
+                    Success = false,
+                    Message = "Error retrieving open sessions count",
+                    Data = 0
+                };
+            }
+        }
+
+        public async Task<Response<IEnumerable<attendance_log_with_employee>>> GetRecentForDashboard()
+        {
+            try
+            {
+                _logger.LogInformation("Getting recent time logs for dashboard");
+
+                var recentLogs = await _timeLogsRepository.GetRecentForDashboard();
+
+                return new Response<IEnumerable<attendance_log_with_employee>>
+                {
+                    Success = true,
+                    Message = "Recent time logs retrieved successfully",
+                    Data = recentLogs
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting recent time logs for dashboard");
+                return new Response<IEnumerable<attendance_log_with_employee>>
+                {
+                    Success = false,
+                    Message = "Error retrieving recent time logs",
+                    Data = null
+                };
+            }
+        }
     }
 }

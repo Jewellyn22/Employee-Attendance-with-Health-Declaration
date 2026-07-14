@@ -24,5 +24,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             DateTime? to_date = null,
             string? health_status = null
         );
+
+        /// <summary>
+        /// Get count of open sessions (contractors currently on premises)
+        /// </summary>
+        Task<Response<int>> GetOpenSessionsCount();
+
+        /// <summary>
+        /// Get recent time logs for admin dashboard (last 7 days, limited to 50 records)
+        /// </summary>
+        Task<Response<IEnumerable<attendance_log_with_employee>>> GetRecentForDashboard();
     }
 }

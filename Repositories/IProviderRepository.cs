@@ -9,5 +9,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         Task<provider?> Create(provider provider);
         Task<provider?> Update(provider provider);
         Task<bool> SetInactive(string provider_code);
+        Task<int> GetActiveCount();
     }
 }

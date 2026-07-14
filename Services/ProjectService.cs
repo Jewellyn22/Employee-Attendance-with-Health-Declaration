@@ -229,5 +229,29 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<int>> GetActiveCount()
+        {
+            try
+            {
+                var count = await _projectRepository.GetActiveCount();
+                return new Response<int>
+                {
+                    Success = true,
+                    Message = "Active projects count retrieved successfully",
+                    Data = count
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active projects count");
+                return new Response<int>
+                {
+                    Success = false,
+                    Message = "Error retrieving active projects count",
+                    Data = 0
+                };
+            }
+        }
     }
 }

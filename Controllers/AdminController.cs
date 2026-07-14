@@ -14,6 +14,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         private readonly ISystemConfigService _systemConfigService;
         private readonly ITimeLogsManagementService _timeLogsManagementService;
         private readonly IProviderService _providerService;
+        private readonly IHistoryLogsService _historyLogsService;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
@@ -22,6 +23,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             ISystemConfigService systemConfigService,
             ITimeLogsManagementService timeLogsManagementService,
             IProviderService providerService,
+            IHistoryLogsService historyLogsService,
             ILogger<AdminController> logger)
         {
             _projectService = projectService;
@@ -29,14 +31,38 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             _systemConfigService = systemConfigService;
             _timeLogsManagementService = timeLogsManagementService;
             _providerService = providerService;
+            _historyLogsService = historyLogsService;
             _logger = logger;
         }
 
         // GET: /Admin
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            // Fetch all dashboard statistics
+            var activeProjects = await _projectService.GetActiveCount();
+            var activeProviders = await _providerService.GetActiveCount();
+            var activeContractors = await _contractorService.GetActiveCount();
+            var openSessions = await _historyLogsService.GetOpenSessionsCount();
+
+            // Pass to view
+            ViewBag.ActiveProjects = activeProjects.Success ? activeProjects.Data : 0;
+            ViewBag.ActiveProviders = activeProviders.Success ? activeProviders.Data : 0;
+            ViewBag.ActiveContractors = activeContractors.Success ? activeContractors.Data : 0;
+            ViewBag.OpenSessions = openSessions.Success ? openSessions.Data : 0;
             ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
+
             return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetRecentTimeLogs()
+        {
+            var result = await _historyLogsService.GetRecentForDashboard();
+            if (!result.Success)
+            {
+                return Json(new { success = false, message = result.Message });
+            }
+            return Json(new { success = true, data = result.Data });
         }
 
         #region Project Management

@@ -173,5 +173,23 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.StoredProcedure
             );
         }
+
+        public async Task<int> GetOpenSessionsCount()
+        {
+            const string storedProc = "sp_time_logs_GetOpenSessionsCount";
+            return await _db.QuerySingleAsync<int>(
+                storedProc,
+                commandType: CommandType.StoredProcedure
+            );
+        }
+
+        public async Task<IEnumerable<attendance_log_with_employee>> GetRecentForDashboard()
+        {
+            const string storedProc = "sp_time_logs_GetRecentForDashboard";
+            return await _db.QueryAsync<attendance_log_with_employee>(
+                storedProc,
+                commandType: CommandType.StoredProcedure
+            );
+        }
     }
 }

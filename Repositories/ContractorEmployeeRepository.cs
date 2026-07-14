@@ -104,5 +104,14 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.Text
             );
         }
+
+        public async Task<int> GetActiveCount()
+        {
+            const string storedProc = "sp_contractor_employee_GetActiveCount";
+            return await _db.QuerySingleAsync<int>(
+                storedProc,
+                commandType: CommandType.StoredProcedure
+            );
+        }
     }
 }

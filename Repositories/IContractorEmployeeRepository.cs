@@ -10,5 +10,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         Task<contractor_employee?> Create(contractor_employee employee);
         Task<contractor_employee?> Update(contractor_employee employee);
         Task<bool> SetInactive(string employee_id);
+        Task<int> GetActiveCount();
     }
 }
