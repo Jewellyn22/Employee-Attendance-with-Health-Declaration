@@ -640,15 +640,20 @@ const AdminPage = {
                     {
                         data: 'active',
                         render: function(data) {
-                            return data === 1 ? 'Active' : 'Inactive';
+                            if (data === 1) {
+                                return '<span class="badge bg-success">Active</span>';
+                            } else {
+                                return '<span class="badge bg-secondary">Inactive</span>';
+                            }
                         }
                     },
                     {
                         data: null,
                         render: function(data) {
                             return `
-                                <button class="btn btn-sm btn-edit" data-employee-id="${data.employee_id}">Edit</button>
-                                <button class="btn btn-sm btn-set-inactive" data-employee-id="${data.employee_id}">Set Inactive</button>
+                                <button class="btn btn-sm btn-warning btn-edit" data-employee-id="${data.employee_id}">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
                             `;
                         }
                     }
@@ -664,6 +669,11 @@ const AdminPage = {
                 $('#contractor-form')[0].reset();
                 $('#employee_id').val('');
                 $('#project_code').val(null).trigger('change');
+
+                // Reset toggle to Active state for new contractors
+                $('#contractor_active').prop('checked', true);
+                $('#contractor_active_label').text('Active');
+
                 $('#contractor-modal .modal-title').text('Add New Contractor');
 
                 // Use Bootstrap 5 native API
@@ -686,6 +696,10 @@ const AdminPage = {
                 $('#project_code').val(contractor.project_code).trigger('change');
                 $('#position').val(contractor.position);
 
+                // Set toggle state based on contractor status
+                $('#contractor_active').prop('checked', contractor.active === 1);
+                $('#contractor_active_label').text(contractor.active === 1 ? 'Active' : 'Inactive');
+
                 $('#contractor-modal .modal-title').text('Edit Contractor');
 
                 // Use Bootstrap 5 native API
@@ -693,35 +707,10 @@ const AdminPage = {
                 modal.show();
             });
 
-            // Set inactive button
-            $(document).on('click', '.btn-set-inactive', function() {
-                const employeeId = $(this).data('employee-id');
-                const contractor = self.contractorTable.row($(this).closest('tr')).data();
-
-                AdminPage.common.showConfirmation(
-                    `Set ${contractor.name} (${employeeId}) to inactive status?`,
-                    function() {
-                        contractor.active = 0;
-                        $.ajax({
-                            url: '/Admin/SetContractorInactive',
-                            method: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify(contractor),
-                            success: function(response) {
-                                if (response.success) {
-                                    AdminPage.common.showSuccess('Contractor set to inactive');
-                                    self.contractorTable.ajax.reload();
-                                } else {
-                                    AdminPage.common.showError(response.message);
-                                }
-                            },
-                            error: function(xhr, status, error) {
-                                AdminPage.common.showError('Failed to set contractor inactive. Please try again.');
-                                console.error('Set contractor inactive error:', { xhr, status, error });
-                            }
-                        });
-                    }
-                );
+            // Toggle state change handler
+            $('#contractor_active').on('change', function() {
+                const isActive = $(this).is(':checked');
+                $('#contractor_active_label').text(isActive ? 'Active' : 'Inactive');
             });
 
             // Save contractor
@@ -745,7 +734,7 @@ const AdminPage = {
                     provider_code: $('#provider_code').val(),
                     project_code: $('#project_code').val(),
                     position: $('#position').val(),
-                    active: 1
+                    active: $('#contractor_active').is(':checked') ? 1 : 0
                 };
 
                 const isNewContractor = !$('#employee_id').val() || $('#employee_id').val() === '';

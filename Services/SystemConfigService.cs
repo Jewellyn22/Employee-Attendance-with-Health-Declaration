@@ -139,6 +139,50 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
+        public async Task<Response<bool>> GetScanInputReadOnly()
+        {
+            try
+            {
+                var config = await _systemConfigRepository.GetByKey("ScanInputReadOnly");
+                if (config == null)
+                {
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "ScanInputReadOnly configuration not found",
+                        Data = true // default to readonly (safer)
+                    };
+                }
+
+                if (bool.TryParse(config.value, out bool readOnly))
+                {
+                    return new Response<bool>
+                    {
+                        Success = true,
+                        Message = "Configuration retrieved successfully",
+                        Data = readOnly
+                    };
+                }
+
+                return new Response<bool>
+                {
+                    Success = false,
+                    Message = "Invalid configuration value",
+                    Data = true // default to readonly (safer)
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting scan input readonly configuration");
+                return new Response<bool>
+                {
+                    Success = false,
+                    Message = "Error retrieving configuration",
+                    Data = true // default to readonly (safer)
+                };
+            }
+        }
+
         public async Task<Response<system_config>> GetByKey(string key)
         {
             try

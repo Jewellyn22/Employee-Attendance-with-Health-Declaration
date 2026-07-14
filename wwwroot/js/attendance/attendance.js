@@ -70,10 +70,10 @@ const AttendancePage = {
                 columns: [
                     {
                         data: 'employee_id',
-                        render: function(data) {
-                            if (!data) return '';
-                            // Convert each character to a bullet symbol
-                            return '•'.repeat(data.length);
+                        render: function(data, type, row, meta) {
+                            if (!data || type !== 'display') return data;
+                            // Convert each character to circular dot (password-style)
+                            return '●'.repeat(data.length);
                         }
                     },
                     { data: 'name' },

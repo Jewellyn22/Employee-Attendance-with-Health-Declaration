@@ -12,7 +12,7 @@
                     <div class="text-center">
                         <div class="mb-3">
                             <label for="employee_id" class="form-label">Scan ID:</label>
-                            <input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
+                            <input type="password" id="employee_id" name="scan_field" class="form-control" required autofocus autocomplete="off" autocomplete="nope" readonly onfocus="this.removeAttribute('readonly')">
                         </div>
 
                         <div id="contractor-info" class="row mt-3" style="display: none;">
@@ -108,9 +108,13 @@
 
 @section Scripts {
     <script src="~/lib/signalr/signalr.js"></script>
-    <script src="~/js/attendance/attendance.js?v=2.2.5.1"></script>
+    <script src="~/js/attendance/attendance.js?v=2.2.5.2"></script>
+    <script src="~/js/scanner-detection.js?v=2.2.6.0"></script>
     <script>
         $(document).ready(function() {
+            // Initialize scanner detection
+            ScannerDetection.init('employee_id', @(ViewBag.ScanInputReadOnly == true ? "true" : "false"));
+
             AttendancePage.index.init();
         });
     </script>

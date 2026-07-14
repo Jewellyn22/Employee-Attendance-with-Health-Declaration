@@ -191,7 +191,14 @@ const HomePage = {
         processScan: function() {
             const self = this;
             const employeeId = $('#employee_id').val().trim();
-            if (!employeeId) return;
+
+            // Debug logging to track scan processing
+            console.log('processScan called - employee_id:', employeeId);
+
+            if (!employeeId) {
+                console.error('Employee ID is empty - scan aborted');
+                return;
+            }
 
             // Clear any existing health declaration timer
             self.clearHealthDeclarationTimer();
@@ -207,6 +214,7 @@ const HomePage = {
                 method: 'POST',
                 data: { employee_id: employeeId },
                 success: function(response) {
+                    console.log('Scan response:', response);
                     if (response.success) {
                         self.displayContractorInfo(response.data.contractor_info);
                         self.displayScanResult(response.message);

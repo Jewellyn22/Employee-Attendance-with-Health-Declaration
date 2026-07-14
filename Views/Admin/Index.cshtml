@@ -4,12 +4,12 @@
 
 <div class="container-fluid">
     <!-- Dashboard Header -->
-    <div class="row mb-4">
+    @* <div class="row mb-4">
         <div class="col-12">
             <h2 class="admin-heading">Admin Dashboard</h2>
             <p class="text-muted">Welcome back, @ViewBag.AdminName</p>
         </div>
-    </div>
+    </div> *@
 
     <!-- Statistics Cards Row -->
     <div class="row mb-4">
@@ -88,22 +88,22 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Activity (Last 7 Days)</h5>
-                    <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-sm btn-outline-primary">
+                    @* <a href="@Url.Action("HistoryLogs", "Home")" class="btn btn-sm btn-outline-primary">
                         View All History
-                    </a>
+                    </a> *@
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="margin-top: -1%;">
                     <table id="recentTimeLogsTable" class="table table-striped">
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
-                                <th>Name</th>
-                                <th>Provider</th>
-                                <th>Project</th>
-                                <th>Time In</th>
-                                <th>Time Out</th>
-                                <th>Health Status</th>
-                                <th>Waiver Consent</th>
+                                <th style="width: 10%">Employee ID</th>
+                                <th style="width: 15%">Name</th>
+                                <th style="width: 17%">Provider</th>
+                                <th style="width: 18%">Project</th>
+                                <th style="width: 15%">Time In</th>
+                                <th style="width: 15%"> Time Out</th>
+                                <th style="width: 5%">Health</th>
+                                <th style="width: 5%">Consent</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

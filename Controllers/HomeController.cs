@@ -38,7 +38,22 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             var sicknessItemsConfig = await _systemConfigService.GetHealthDeclarationSicknessItems();
             ViewBag.SicknessItems = sicknessItemsConfig.Data;
 
+            // Get scan input readonly configuration
+            var scanInputConfig = await _systemConfigService.GetScanInputReadOnly();
+            ViewBag.ScanInputReadOnly = scanInputConfig.Data;
+
             return View();
+        }
+
+        // GET: /Attendance/Index
+        public async Task<IActionResult> Attendance()
+        {
+            // Real-time attendance monitoring dashboard
+            // Get scan input readonly configuration
+            var scanInputConfig = await _systemConfigService.GetScanInputReadOnly();
+            ViewBag.ScanInputReadOnly = scanInputConfig.Data;
+
+            return View("Index", "Attendance");
         }
 
         // POST: /Home/Scan

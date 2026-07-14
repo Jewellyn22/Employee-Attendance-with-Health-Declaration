@@ -13,21 +13,26 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>Contractor Employees</h5>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5>Contractor Employees</h5>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button id="add-contractor" class="btn btn-primary">Add New Contractor</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <button id="add-contractor" class="btn btn-primary mb-3">Add New Contractor</button>
-
+                <div class="card-body" style="margin-top: -1%">
                     <table id="contractors-table" class="table table-striped table-bordered">
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
-                                <th>Name</th>
-                                <th>Project</th>
-                                <th>Position</th>
-                                <th>Area</th>
-                                <th>Active</th>
-                                <th>Actions</th>
+                                <th style="width:10%">Employee ID</th>
+                                <th style="width:20%">Name</th>
+                                <th style="width:30%">Project</th>
+                                <th style="width:15%">Position</th>
+                                <th style="width:15%">Area</th>
+                                <th style="width:5%">Active</th>
+                                <th style="width:5%">Actions</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -93,6 +98,13 @@
                             <div class="mb-3">
                                 <label for="position" class="form-label">Position:</label>
                                 <input type="text" id="position" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="contractor_active" class="form-label">Status:</label>
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" id="contractor_active" class="form-check-input" role="switch">
+                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
+                                </div>
                             </div>
                         </div>
                     </div>

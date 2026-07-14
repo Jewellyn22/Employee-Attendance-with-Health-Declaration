@@ -12,7 +12,7 @@
                     <div class="text-center">
                         <div class="mb-3">
                             <label for="employee_id" class="form-label">Scan ID:</label>
-                            <input type="text" id="employee_id" name="employee_id" class="form-control" required autofocus>
+                            <input type="password" id="employee_id" name="scan_field" class="form-control" required autofocus autocomplete="off" autocomplete="nope" readonly onfocus="this.removeAttribute('readonly')">
                         </div>
 
                         <div id="scan-result" class="mt-3"></div>
@@ -205,11 +205,15 @@
 
 @section Scripts {
     <script src="~/js/home/home.js"></script>
+    <script src="~/js/scanner-detection.js?v=2.2.6.0"></script>
     <script>
         // Initialize health declaration window from server config
         window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120.0);
 
         $(document).ready(function() {
+            // Initialize scanner detection
+            ScannerDetection.init('employee_id', @(ViewBag.ScanInputReadOnly == true ? "true" : "false"));
+
             HomePage.index.init();
         });
     </script>
