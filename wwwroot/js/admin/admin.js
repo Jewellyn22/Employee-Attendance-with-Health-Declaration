@@ -607,16 +607,10 @@ const AdminPage = {
     // Contractors.cshtml - Contractors CRUD
     contractors: {
         contractorTable: null,
+        currentEditingProject: null,
 
         init: function() {
             const self = this;
-
-            // Initialize Select2 for project dropdown
-            $('#project_code').select2({
-                placeholder: 'Select Project',
-                allowClear: true,
-                width: '100%'
-            });
 
             // Initialize DataTable
             self.contractorTable = $('#contractors-table').DataTable({
@@ -664,10 +658,33 @@ const AdminPage = {
             // Load projects for dropdown
             self.loadProjects();
 
+            // Initialize Select2 and setup modal event handler
+            $('#contractor-modal').on('shown.bs.modal', function() {
+                // Initialize Select2 with dropdownParent configuration for Bootstrap modal
+                // Initialize Select2 with dropdownParent for Bootstrap modal
+                if (!$('#project_code').data('select2')) {
+                    $('#project_code').select2({
+                        placeholder: 'Select Project',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#contractor-modal')
+                    });
+                }
+
+                // Load projects and set value after loading
+                self.loadProjects(self.currentEditingProject);
+
+                // Trigger resize to ensure Select2 recalculates position
+                $(window).trigger('resize');
+
+                // Reset editing project variable
+                self.currentEditingProject = null;
+            });
+
             // Add contractor button
             $('#add-contractor').on('click', function() {
                 $('#contractor-form')[0].reset();
-                $('#employee_id').val('');
+                $('#employee_id').val('').prop('readonly', false);
                 $('#project_code').val(null).trigger('change');
 
                 // Reset toggle to Active state for new contractors
@@ -686,14 +703,16 @@ const AdminPage = {
                 const employeeId = $(this).data('employee-id');
                 const contractor = self.contractorTable.row($(this).closest('tr')).data();
 
+                // Store current project for later use
+                self.currentEditingProject = contractor.project_code;
+
                 $('#employee_id').val(contractor.employee_id);
+                $('#employee_id').prop('readonly', true);
                 $('#name').val(contractor.name);
-                $('#age').val(contractor.age);
                 $('#gender').val(contractor.gender);
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
                 $('#contact_number').val(contractor.contact_number);
                 $('#area_of_destination').val(contractor.area_of_destination);
-                $('#project_code').val(contractor.project_code).trigger('change');
                 $('#position').val(contractor.position);
 
                 // Set toggle state based on contractor status
@@ -725,7 +744,6 @@ const AdminPage = {
                 const contractor = {
                     employee_id: $('#employee_id').val(),
                     name: name,
-                    age: $('#age').val() ? parseInt($('#age').val()) : 0,
                     gender: $('#gender').val(),
                     birthdate: $('#birthdate').val(),
                     contact_number: $('#contact_number').val(),
@@ -770,20 +788,41 @@ const AdminPage = {
             }
         },
 
-        loadProjects: function(providerCode = null) {
-            $('#project_code').empty().append('<option value="">Select Project</option>');
+        loadProjects: function(selectedProjectCode = null) {
+            const $dropdown = $('#project_code');
+
+            // Clear existing options
+            $dropdown.empty().append('<option value="">Select Project</option>');
 
             $.ajax({
                 url: '/Admin/GetAllProjects',
                 method: 'GET',
                 success: function(response) {
                     if (response.success && response.data) {
+                        console.log('Loading projects:', response.data.length, 'projects found');
+
                         response.data.forEach(project => {
-                            // Show all projects (no provider filtering)
-                            $('#project_code').append('<option value="' + project.project_code + '">' +
+                            $dropdown.append('<option value="' + project.project_code + '">' +
                                 project.project_name + ' (' + project.project_code + ')</option>');
                         });
+
+                        // Set selected project if provided (for edit mode)
+                        if (selectedProjectCode) {
+                            $dropdown.val(selectedProjectCode).trigger('change.select2');
+                            console.log('Project selected:', selectedProjectCode);
+                        }
+
+                        // Notify Select2 that options have changed
+                        $dropdown.trigger('change.select2');
+
+                        console.log('Projects loaded successfully');
+                    } else {
+                        console.error('Invalid response format:', response);
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to load projects:', { xhr, status, error });
+                    AdminPage.common.showError('Failed to load projects. Please try again.');
                 }
             });
         },
@@ -806,7 +845,9 @@ const AdminPage = {
                 ajax: {
                     url: '/Admin/GetAllSystemConfigs',
                     dataSrc: function(data) {
-                        return data.success ? data.data : [];
+                        if (!data.success) return [];
+                        // Filter out AdminADGroup - admins cannot edit LDAP security settings
+                        return data.data.filter(config => config.key !== 'AdminADGroup');
                     }
                 },
                 columns: [
@@ -816,8 +857,25 @@ const AdminPage = {
                     {
                         data: null,
                         render: function(data) {
+                            // Show toggle switch for ScanInputReadOnly boolean config
+                            if (data.key === 'ScanInputReadOnly') {
+                                const isChecked = data.value === 'true' || data.value === '1' || data.value === true;
+                                return `
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox"
+                                               class="form-check-input config-toggle"
+                                               data-config-key="${data.key}"
+                                               ${isChecked ? 'checked' : ''}
+                                               style="cursor: pointer;">
+                                    </div>
+                                `;
+                            }
+
+                            // Show edit button for other configs
                             return `
-                                <button class="btn btn-sm btn-edit" data-config-key="${data.key}">Edit</button>
+                                <button class="btn btn-sm btn-warning btn-edit" data-config-key="${data.key}">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
                             `;
                         }
                     }
@@ -884,6 +942,46 @@ const AdminPage = {
                 });
             });
 
+            // Handle direct toggle change for boolean configs
+            $(document).on('change', '.config-toggle', function() {
+                const $toggle = $(this);
+                const configKey = $toggle.data('config-key');
+                const newValue = $toggle.is(':checked') ? 'true' : 'false';
+
+                // Visual feedback - disable toggle during save
+                $toggle.prop('disabled', true);
+
+                $.ajax({
+                    url: '/Admin/UpdateSystemConfig',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        key: configKey,
+                        value: newValue
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            AdminPage.common.showSuccess('Configuration updated successfully');
+                            // No need to reload - toggle already reflects new state
+                        } else {
+                            // Revert toggle on error
+                            $toggle.prop('checked', !$toggle.is(':checked'));
+                            AdminPage.common.showError(response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // Revert toggle on error
+                        $toggle.prop('checked', !$toggle.is(':checked'));
+                        AdminPage.common.showError('Failed to update configuration. Please try again.');
+                        console.error('Update config error:', { xhr, status, error });
+                    },
+                    complete: function() {
+                        // Re-enable toggle
+                        $toggle.prop('disabled', false);
+                    }
+                });
+            });
+
             // Initialize sidebar
             if (AdminPage.sidebar) {
                 AdminPage.sidebar.init();
@@ -916,6 +1014,13 @@ const AdminPage = {
                         '<strong>Admin Active Directory Group</strong><br>' +
                         'AD group name that grants admin access to this system.<br>' +
                         'Only users in this group can access the admin interface.' +
+                        '</div>';
+                    break;
+                case 'ScanInputReadOnly':
+                    guidance = '<div class="alert alert-info">' +
+                        '<strong>Scan Input Read-Only Mode</strong><br>' +
+                        'When enabled (toggle ON), employee ID field only accepts scanner input.<br>' +
+                        'When disabled (toggle OFF), manual typing is allowed in addition to scanning.' +
                         '</div>';
                     break;
                 default:

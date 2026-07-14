@@ -3,11 +3,11 @@
 }
 
 <div class="container-fluid">
-    <div class="row mb-3">
+    @* <div class="row mb-3">
         <div class="col-12">
             <h2>Contractors Management</h2>
         </div>
-    </div>
+    </div> *@
 
     <div class="row mt-3">
         <div class="col-12">
@@ -15,7 +15,7 @@
                 <div class="card-header">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h5>Contractor Employees</h5>
+                            <h5>Contractor Employees Management</h5>
                         </div>
                         <div class="col-md-4 text-end">
                             <button id="add-contractor" class="btn btn-primary">Add New Contractor</button>
@@ -64,10 +64,6 @@
                                 <input type="text" id="name" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label for="age" class="form-label">Age:</label>
-                                <input type="number" id="age" class="form-control">
-                            </div>
-                            <div class="mb-3">
                                 <label for="gender" class="form-label">Gender:</label>
                                 <select id="gender" class="form-control">
                                     <option value="">Select Gender</option>
@@ -78,6 +74,13 @@
                             <div class="mb-3">
                                 <label for="birthdate" class="form-label">Birthdate:</label>
                                 <input type="date" id="birthdate" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="contractor_active" class="form-label">Status:</label>
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" id="contractor_active" class="form-check-input" role="switch">
+                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -99,13 +102,6 @@
                                 <label for="position" class="form-label">Position:</label>
                                 <input type="text" id="position" class="form-control">
                             </div>
-                            <div class="mb-3">
-                                <label for="contractor_active" class="form-label">Status:</label>
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="contractor_active" class="form-check-input" role="switch">
-                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </form>
@@ -119,7 +115,6 @@
 </div>
 
 @section Scripts {
-    <script src="~/lib/select2/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.contractors.init();
