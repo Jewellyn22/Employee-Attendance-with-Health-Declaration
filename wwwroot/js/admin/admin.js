@@ -671,14 +671,16 @@ const AdminPage = {
                     });
                 }
 
-                // Load projects and set value after loading
+                // Load providers and projects
+                self.loadProviders(self.currentEditingProvider);
                 self.loadProjects(self.currentEditingProject);
 
                 // Trigger resize to ensure Select2 recalculates position
                 $(window).trigger('resize');
 
-                // Reset editing project variable
+                // Reset editing variables
                 self.currentEditingProject = null;
+                self.currentEditingProvider = null;
             });
 
             // Add contractor button
@@ -686,6 +688,7 @@ const AdminPage = {
                 $('#contractor-form')[0].reset();
                 $('#employee_id').val('').prop('readonly', false);
                 $('#project_code').val(null).trigger('change');
+                $('#provider_code').val(null).trigger('change');
 
                 // Reset toggle to Active state for new contractors
                 $('#contractor_active').prop('checked', true);
@@ -705,6 +708,7 @@ const AdminPage = {
 
                 // Store current project for later use
                 self.currentEditingProject = contractor.project_code;
+                self.currentEditingProvider = contractor.provider_code;
 
                 $('#employee_id').val(contractor.employee_id);
                 $('#employee_id').prop('readonly', true);
@@ -713,6 +717,7 @@ const AdminPage = {
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
                 $('#contact_number').val(contractor.contact_number);
                 $('#area_of_destination').val(contractor.area_of_destination);
+                $('#provider_code').val(contractor.provider_code);
                 $('#position').val(contractor.position);
 
                 // Set toggle state based on contractor status

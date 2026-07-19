@@ -82,7 +82,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllProviders(string search = null)
+        public async Task<IActionResult> GetAllProviders(string? search = null)
         {
             var result = await _providerService.GetAll();
             // Filter to only active providers
@@ -230,15 +230,73 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateContractor([FromBody] contractor_employee contractor)
         {
-            var result = await _contractorService.Create(contractor);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            try
+            {
+                // Check if contractor object is null
+                if (contractor == null)
+                {
+                    return Json(new { success = false, message = "Contractor data is required" });
+                }
+
+                // Validate ModelState
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Validation failed: " + string.Join(", ", errors)
+                    });
+                }
+
+                var result = await _contractorService.Create(contractor);
+                return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating contractor");
+                return Json(new { success = false, message = "An error occurred while creating the contractor" });
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> UpdateContractor([FromBody] contractor_employee contractor)
         {
-            var result = await _contractorService.Update(contractor);
-            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            try
+            {
+                // Check if contractor object is null
+                if (contractor == null)
+                {
+                    return Json(new { success = false, message = "Contractor data is required" });
+                }
+
+                // Validate ModelState
+                if (!ModelState.IsValid)
+                {
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Validation failed: " + string.Join(", ", errors)
+                    });
+                }
+
+                var result = await _contractorService.Update(contractor);
+                return Json(new { success = result.Success, message = result.Message, data = result.Data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating contractor");
+                return Json(new { success = false, message = "An error occurred while updating the contractor" });
+            }
         }
 
         [HttpPost]

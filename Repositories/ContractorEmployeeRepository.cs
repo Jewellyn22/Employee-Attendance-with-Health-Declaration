@@ -41,7 +41,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 {
                     p_employee_id = employee.employee_id,
                     p_name = employee.name,
-                    p_age = employee.age,
                     p_gender = employee.gender,
                     p_birthdate = employee.birthdate,
                     p_contact_number = employee.contact_number,
@@ -65,7 +64,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 {
                     p_employee_id = employee.employee_id,
                     p_name = employee.name,
-                    p_age = employee.age,
                     p_gender = employee.gender,
                     p_birthdate = employee.birthdate,
                     p_contact_number = employee.contact_number,

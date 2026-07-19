@@ -7,13 +7,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     public class ContractorService : IContractorService
     {
         private readonly IContractorEmployeeRepository _contractorRepository;
+        private readonly IProjectRepository _projectRepository;
+        private readonly IProviderRepository _providerRepository;
         private readonly ILogger<ContractorService> _logger;
 
         public ContractorService(
             IContractorEmployeeRepository contractorRepository,
+            IProjectRepository projectRepository,
+            IProviderRepository providerRepository,
             ILogger<ContractorService> logger)
         {
             _contractorRepository = contractorRepository;
+            _projectRepository = projectRepository;
+            _providerRepository = providerRepository;
             _logger = logger;
         }
 
@@ -79,6 +85,67 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         {
             try
             {
+                // Validate required fields
+                if (employee == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Contractor data is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.employee_id))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Employee ID is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.name))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Name is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.project_code))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Project code is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.provider_code))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Provider code is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.position))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Position is required",
+                        Data = null
+                    };
+                }
+
                 // Validate employee_id doesn't already exist
                 var existing = await _contractorRepository.GetByEmployeeId(employee.employee_id);
                 if (existing != null)
@@ -87,6 +154,30 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     {
                         Success = false,
                         Message = "Contractor with this Employee ID already exists",
+                        Data = null
+                    };
+                }
+
+                // Validate project exists
+                var project = await _projectRepository.GetByProjectCode(employee.project_code);
+                if (project == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Project not found",
+                        Data = null
+                    };
+                }
+
+                // Validate provider exists
+                var provider = await _providerRepository.GetByProviderCode(employee.provider_code);
+                if (provider == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Provider not found",
                         Data = null
                     };
                 }
@@ -117,6 +208,67 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         {
             try
             {
+                // Validate required fields
+                if (employee == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Contractor data is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.employee_id))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Employee ID is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.name))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Name is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.project_code))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Project code is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.provider_code))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Provider code is required",
+                        Data = null
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(employee.position))
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Position is required",
+                        Data = null
+                    };
+                }
+
                 // Validate contractor exists
                 var existing = await _contractorRepository.GetByEmployeeId(employee.employee_id);
                 if (existing == null)
@@ -125,6 +277,30 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     {
                         Success = false,
                         Message = "Contractor not found",
+                        Data = null
+                    };
+                }
+
+                // Validate project exists
+                var project = await _projectRepository.GetByProjectCode(employee.project_code);
+                if (project == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Project not found",
+                        Data = null
+                    };
+                }
+
+                // Validate provider exists
+                var provider = await _providerRepository.GetByProviderCode(employee.provider_code);
+                if (provider == null)
+                {
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Provider not found",
                         Data = null
                     };
                 }
