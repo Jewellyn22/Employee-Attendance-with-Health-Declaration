@@ -766,7 +766,8 @@ const AdminPage = {
                 $.ajax({
                     url: url,
                     method: 'POST',
-                    data: contractor,
+                    contentType: 'application/json',
+                    data: JSON.stringify(contractor),
                     success: function(response) {
                         if (response.success) {
                             // Use Bootstrap 5 native API
@@ -828,6 +829,45 @@ const AdminPage = {
                 error: function(xhr, status, error) {
                     console.error('Failed to load projects:', { xhr, status, error });
                     AdminPage.common.showError('Failed to load projects. Please try again.');
+                }
+            });
+        },
+
+        loadProviders: function(selectedProviderCode = null) {
+            const $dropdown = $('#provider_code');
+
+            // Clear existing options
+            $dropdown.empty().append('<option value="">Select Provider</option>');
+
+            $.ajax({
+                url: '/Admin/GetAllProviders',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.data) {
+                        console.log('Loading providers:', response.data.length, 'providers found');
+
+                        response.data.forEach(provider => {
+                            $dropdown.append('<option value="' + provider.provider_code + '">' +
+                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
+                        });
+
+                        // Set selected provider if provided (for edit mode)
+                        if (selectedProviderCode) {
+                            $dropdown.val(selectedProviderCode).trigger('change.select2');
+                            console.log('Provider selected:', selectedProviderCode);
+                        }
+
+                        // Notify Select2 that options have changed
+                        $dropdown.trigger('change.select2');
+
+                        console.log('Providers loaded successfully');
+                    } else {
+                        console.error('Invalid response format:', response);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to load providers:', { xhr, status, error });
+                    AdminPage.common.showError('Failed to load providers. Please try again.');
                 }
             });
         },
