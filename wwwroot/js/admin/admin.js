@@ -165,6 +165,33 @@ const AdminPage = {
                 focusedIndex = -1;
             }
 
+            // Auto-derive a provider code from the provider name
+            // (e.g. "Alpha Circuits Inc" -> "ACI").
+            // Field stays read-only; on collision the backend rejects and the admin renames the provider.
+            function generateProviderCode(name) {
+                if (!name) return '';
+                const words = name.trim().toUpperCase()
+                    .replace(/[^A-Z0-9\s]/g, ' ')   // strip punctuation/symbols
+                    .split(/\s+/)
+                    .filter(Boolean);
+
+                if (words.length === 0) {
+                    // Fallback: nothing alphanumeric -> timestamp-based code
+                    return 'PRV' + String(Date.now()).slice(-5);
+                }
+
+                // Primary: first letter of every word -> "Alpha Circuits Inc" = "ACI"
+                let code = words.map(function(w) { return w[0]; }).join('');
+
+                // Fallback: initials too short (single short word) -> consonants of the name
+                if (code.length < 2) {
+                    const consonants = words.join('').replace(/[AEIOU0-9]/g, '');
+                    code = (consonants || words.join('')).substring(0, 4);
+                }
+
+                return code.substring(0, 10); // sane cap well under varchar(50)
+            }
+
             // Handle input with filtering, auto-show, and auto-fill provider_code
             $('#provider_name_dropdown').on('input', function() {
                 const selectedValue = $(this).val();
@@ -182,6 +209,7 @@ const AdminPage = {
                     $datalist.hide();
                     isDatalistVisible = false;
                     focusedIndex = -1;
+                    $('#provider_code').val('');   // clear any stale auto-generated code
                     return;
                 }
 
@@ -228,7 +256,8 @@ const AdminPage = {
                     const providerCode = matchingItem.data('provider-code');
                     $('#provider_code').val(providerCode).prop('readonly', true);
                 } else {
-                    $('#provider_code').val('').prop('readonly', true);
+                    // New provider: auto-generate a read-only code from the name
+                    $('#provider_code').val(generateProviderCode(selectedValue)).prop('readonly', true);
                 }
             });
 
