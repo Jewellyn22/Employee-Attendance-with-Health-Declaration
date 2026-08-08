@@ -285,8 +285,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Validate contractor exists
-                var existing = await _contractorRepository.GetByEmployeeId(employee.employee_id);
+                // Validate contractor exists (include inactive so they can be reactivated)
+                var existing = await _contractorRepository.GetByEmployeeIdForUpdate(employee.employee_id);
                 if (existing == null)
                 {
                     return new Response<contractor_employee>

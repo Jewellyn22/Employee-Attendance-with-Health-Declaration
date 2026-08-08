@@ -32,6 +32,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
+        // Finds a contractor regardless of active status (no active filter in the SP).
+        // Used ONLY by ContractorService.Update() existence check so inactive contractors
+        // can be edited/reactivated. Scan flow keeps using GetByEmployeeId (active-only).
+        public async Task<contractor_employee?> GetByEmployeeIdForUpdate(string employee_id)
+        {
+            const string storedProc = "sp_contractor_employee_GetByEmployeeIdForUpdate";
+            return await _db.QuerySingleOrDefaultAsync<contractor_employee>(
+                storedProc,
+                new { p_employee_id = employee_id },
+                commandType: CommandType.StoredProcedure
+            );
+        }
+
         public async Task<contractor_employee?> Create(contractor_employee employee)
         {
             const string storedProc = "sp_contractor_employee_Create";
