@@ -17,18 +17,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             _logger = logger;
         }
 
-        public async Task<Response<double>> GetDebounceThresholdMinutes()
+        public async Task<Response<double>> GetDebounceThresholdSeconds()
         {
             try
             {
-                var config = await _systemConfigRepository.GetByKey("DebounceThresholdMinutes");
+                var config = await _systemConfigRepository.GetByKey("DebounceThresholdSeconds");
                 if (config == null)
                 {
                     return new Response<double>
                     {
                         Success = false,
-                        Message = "DebounceThresholdMinutes configuration not found",
-                        Data = 15.0 // default
+                        Message = "DebounceThresholdSeconds configuration not found",
+                        Data = 30.0 // default in seconds
                     };
                 }
 
@@ -46,7 +46,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     Success = false,
                     Message = "Invalid configuration value",
-                    Data = 15.0 // default
+                    Data = 30.0 // default in seconds
                 };
             }
             catch (Exception ex)
@@ -56,7 +56,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     Success = false,
                     Message = "Error retrieving configuration",
-                    Data = 15.0 // default
+                    Data = 30.0 // default in seconds
                 };
             }
         }
@@ -241,28 +241,28 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<double>> GetHealthDeclarationWindowMinutes()
+        public async Task<Response<double>> GetHealthDeclarationWindowSeconds()
         {
             try
             {
-                var config = await _systemConfigRepository.GetByKey("HealthDeclarationWindowMinutes");
+                var config = await _systemConfigRepository.GetByKey("HealthDeclarationWindowSeconds");
                 if (config == null)
                 {
                     return new Response<double>
                     {
                         Success = false,
-                        Message = "HealthDeclarationWindowMinutes configuration not found",
-                        Data = 2.0 // default to 2 minutes
+                        Message = "HealthDeclarationWindowSeconds configuration not found",
+                        Data = 120.0 // default to 120 seconds
                     };
                 }
 
-                if (double.TryParse(config.value, out double minutes))
+                if (double.TryParse(config.value, out double seconds))
                 {
                     return new Response<double>
                     {
                         Success = true,
                         Message = "Configuration retrieved successfully",
-                        Data = minutes
+                        Data = seconds
                     };
                 }
 
@@ -270,17 +270,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     Success = false,
                     Message = "Invalid configuration value",
-                    Data = 2.0 // default
+                    Data = 120.0 // default in seconds
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health declaration window minutes");
+                _logger.LogError(ex, "Error getting health declaration window seconds");
                 return new Response<double>
                 {
                     Success = false,
                     Message = "Error retrieving configuration",
-                    Data = 2.0 // default
+                    Data = 120.0 // default in seconds
                 };
             }
         }

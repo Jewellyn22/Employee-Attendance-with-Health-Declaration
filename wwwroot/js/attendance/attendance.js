@@ -53,7 +53,7 @@ const AttendancePage = {
     index: {
         table: null,
         healthDeclarationTimer: null,
-        timerCountdown: 120,
+        timerCountdown: window.healthDeclarationWindowSeconds || 120,
 
         init: function() {
             const self = this;
@@ -274,7 +274,7 @@ const AttendancePage = {
 
         startHealthDeclarationTimer: function() {
             const self = this;
-            self.timerCountdown = 120; // 2 minutes in seconds
+            self.timerCountdown = window.healthDeclarationWindowSeconds || 120;
 
             self.healthDeclarationTimer = setInterval(function() {
                 self.timerCountdown--;

@@ -52,7 +52,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 // Step 2: Check duplicate scan debounce (applies to both TIME IN and TIME OUT)
-                var debounceThresholdMinutes = await _systemConfigService.GetDebounceThresholdMinutes();
+                var debounceThresholdSeconds = await _systemConfigService.GetDebounceThresholdSeconds();
                 var lastScan = await _timeLogsRepository.GetLastScan(employee_id);
 
                 // Check against the MOST RECENT scan event:
@@ -60,13 +60,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 // - For open sessions: time_out is null, so check time_in
                 var lastScanTime = lastScan?.time_out ?? lastScan?.time_in;
 
-                if (lastScan != null && IsWithin2Minutes(lastScanTime, debounceThresholdMinutes.Data))
+                if (lastScan != null && IsWithinThreshold(lastScanTime, debounceThresholdSeconds.Data))
                 {
-                    var debounceThresholdSeconds = debounceThresholdMinutes.Data * 60;
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = @"Duplicate scan - wait " + debounceThresholdSeconds + "secs." ,
+                        Message = "Duplicate scan - wait " + debounceThresholdSeconds.Data + " seconds.",
                         Data = null
                     };
                 }
@@ -247,13 +246,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 // Check if within health declaration window from TIME IN (same window for both health status and waiver consent)
-                var healthWindowMinutes = await _systemConfigService.GetHealthDeclarationWindowMinutes();
-                if (!IsWithin2Minutes(attendance.time_in, healthWindowMinutes.Data))
+                var healthWindowSeconds = await _systemConfigService.GetHealthDeclarationWindowSeconds();
+                if (!IsWithinThreshold(attendance.time_in, healthWindowSeconds.Data))
                 {
                     return new Response<bool>
                     {
                         Success = false,
-                        Message = $"Health declaration and waiver consent window has expired. Changes allowed only within {healthWindowMinutes.Data} minutes of TIME IN.",
+                        Message = $"Health declaration and waiver consent window has expired. Changes allowed only within {healthWindowSeconds.Data} seconds of TIME IN.",
                         Data = false
                     };
                 }
@@ -277,7 +276,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                         attendance.time_out = DateTime.Now;
                         _logger.LogInformation("Waiver consent set to NOT_UNDERSTOOD for {AttendanceId}, TIME OUT set even though health is FIT", attendance_id);
                     }
-                    else if (attendance.time_out != null && IsWithin2Minutes(attendance.time_out, healthWindowMinutes.Data))
+                    else if (attendance.time_out != null && IsWithinThreshold(attendance.time_out, healthWindowSeconds.Data))
                     {
                         // If changing back to UNDERSTOOD + FIT within window, remove auto TIME_OUT
                         attendance.time_out = null;
@@ -331,8 +330,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                var healthWindowMinutes = await _systemConfigService.GetHealthDeclarationWindowMinutes();
-                var canChange = IsWithin2Minutes(attendance.time_in, healthWindowMinutes.Data);
+                var healthWindowSeconds = await _systemConfigService.GetHealthDeclarationWindowSeconds();
+                var canChange = IsWithinThreshold(attendance.time_in, healthWindowSeconds.Data);
 
                 return new Response<bool>
                 {
@@ -377,11 +376,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        private bool IsWithin2Minutes(DateTime? timestamp, double thresholdMinutes)
+        private bool IsWithinThreshold(DateTime? timestamp, double thresholdSeconds)
         {
             if (!timestamp.HasValue) return false;
             var timeDiff = DateTime.Now - timestamp.Value;
-            return timeDiff.TotalMinutes < thresholdMinutes;
+            return timeDiff.TotalSeconds < thresholdSeconds;
         }
     }
 }

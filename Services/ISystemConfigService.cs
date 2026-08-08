@@ -5,9 +5,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 {
     public interface ISystemConfigService
     {
-        Task<Response<double>> GetDebounceThresholdMinutes();
+        Task<Response<double>> GetDebounceThresholdSeconds();
         Task<Response<int>> GetHealthDeclarationValidityHours();
-        Task<Response<double>> GetHealthDeclarationWindowMinutes();
+        Task<Response<double>> GetHealthDeclarationWindowSeconds();
         Task<Response<string>> GetAdminADGroup();
         Task<Response<bool>> GetScanInputReadOnly();
         Task<Response<system_config>> GetByKey(string key);

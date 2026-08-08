@@ -1109,10 +1109,10 @@ const AdminPage = {
                 };
 
                 // Validate numeric configs
-                if (config.key === 'DebounceThresholdMinutes' || config.key === 'HealthDeclarationWindowMinutes') {
+                if (config.key === 'DebounceThresholdSeconds' || config.key === 'HealthDeclarationWindowSeconds') {
                     const numValue = parseFloat(config.value);
-                    if (isNaN(numValue) || numValue < 0.1 || numValue > 60) {
-                        AdminPage.common.showError('Value must be between 0.1 and 60 minutes', 'Validation Error');
+                    if (isNaN(numValue) || numValue < 5 || numValue > 300) {
+                        AdminPage.common.showError('Value must be between 5 and 300 seconds', 'Validation Error');
                         return;
                     }
                 }
@@ -1192,21 +1192,19 @@ const AdminPage = {
             let guidance = '';
 
             switch(configKey) {
-                case 'DebounceThresholdMinutes':
+                case 'DebounceThresholdSeconds':
                     guidance = '<div class="alert alert-info">' +
                         '<strong>Duplicate Scan Prevention</strong><br>' +
-                        'Time in minutes that must pass before the same contractor can scan again.<br>' +
-                        'Decimals are supported (e.g., 0.5 = 30 seconds).<br>' +
-                        'Current: 2 minutes. Range: 0.1-60 minutes.' +
+                        'Time in seconds that must pass before the same contractor can scan again.<br>' +
+                        'Current: 30 seconds. Range: 5-300 seconds.' +
                         '</div>';
                     break;
-                case 'HealthDeclarationWindowMinutes':
+                case 'HealthDeclarationWindowSeconds':
                     guidance = '<div class="alert alert-info">' +
                         '<strong>Health Declaration Window</strong><br>' +
-                        'Time in minutes that contractors can change their health status after scanning.<br>' +
+                        'Time in seconds that contractors can change their health status after scanning.<br>' +
                         'Also controls how long the health declaration form remains visible.<br>' +
-                        'Decimals are supported (e.g., 0.5 = 30 seconds).<br>' +
-                        'Current: 2 minutes. Range: 0.1-60 minutes.' +
+                        'Current: 30 seconds. Range: 5-300 seconds.' +
                         '</div>';
                     break;
                 case 'AdminADGroup':

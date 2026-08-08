@@ -333,7 +333,7 @@ const HomePage = {
             // Reset waiver consent to default "I understand"
             $('#understood').prop('checked', true);  // Reset waiver consent to UNDERSTOOD
 
-            // Start 2-minute timer
+            // Start health declaration timer (server-configured seconds)
             this.startHealthDeclarationTimer();
         },
 

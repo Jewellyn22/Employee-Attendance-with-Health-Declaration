@@ -31,8 +31,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         public async Task<IActionResult> Index()
         {
             // Main kiosk interface (ID scanning + health declaration)
-            var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowMinutes();
-            ViewBag.HealthDeclarationWindowSeconds = healthWindowConfig.Data * 60;  // Convert minutes to seconds with default
+            var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowSeconds();
+            ViewBag.HealthDeclarationWindowSeconds = healthWindowConfig.Data;  // Value is already in seconds
 
             // Get sickness items from database configuration
             var sicknessItemsConfig = await _systemConfigService.GetHealthDeclarationSicknessItems();
@@ -49,6 +49,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         public async Task<IActionResult> Attendance()
         {
             // Real-time attendance monitoring dashboard
+            var healthWindowConfig = await _systemConfigService.GetHealthDeclarationWindowSeconds();
+            ViewBag.HealthDeclarationWindowSeconds = healthWindowConfig.Data;  // Value is already in seconds
+
             // Get scan input readonly configuration
             var scanInputConfig = await _systemConfigService.GetScanInputReadOnly();
             ViewBag.ScanInputReadOnly = scanInputConfig.Data;

@@ -316,8 +316,8 @@ HttpContext.Session.SetString("Role", "Admin");
 - LDAP API URL: `http://127.0.0.1:9008`
 
 **Runtime configuration** in `system_config` table (business rules):
-- `DebounceThresholdMinutes`: 2 (duplicate scan prevention)
-- `HealthDeclarationWindowMinutes`: 2 (health declaration form visibility)
+- `DebounceThresholdSeconds`: 30 (duplicate scan prevention)
+- `HealthDeclarationWindowSeconds`: 30 (health declaration form visibility)
 - `AdminADGroup`: `app.your_app.admin` (LDAP group name)
 
 ### 10. Frontend Stack
@@ -340,8 +340,8 @@ HttpContext.Session.SetString("Role", "Admin");
 - **Attendance Cycle**: Determined dynamically by time-in/time-out scans (no pre-configured schedules)
 - **Health Status**: FIT (default) or UNFIT (self-administered via radio buttons)
 - **2-Minute Rules**: 
-  - Duplicate scan debounce (configurable via `DebounceThresholdMinutes`)
-  - Health declaration window (configurable via `HealthDeclarationWindowMinutes`)
+  - Duplicate scan debounce (configurable via `DebounceThresholdSeconds`)
+  - Health declaration window (configurable via `HealthDeclarationWindowSeconds`)
 - **History Logs**: Publicly accessible, read-only view with export (no authentication)
 - **Admin Correction**: Authenticated admins can edit/delete timelogs with audit trail
 
