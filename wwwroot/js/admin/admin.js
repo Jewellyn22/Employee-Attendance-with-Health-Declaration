@@ -337,6 +337,20 @@ const AdminPage = {
             });
 
 
+            // Client-side Active/Inactive filter (DataTables custom search).
+            // Guarded to #projects-table so it never affects another table.
+            $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
+                if (settings.nTable.id !== 'projects-table') return true;
+                const filterVal = $('#filter-project-status').val();
+                if (!filterVal) return true;                          // "All" -> show every row
+                return String(rowData.active) === String(filterVal);  // "1"=Active, "0"=Inactive
+            });
+
+            // Re-run the filter whenever the dropdown changes
+            $('#filter-project-status').on('change', function() {
+                self.projectTable.draw();
+            });
+
             // Export to Excel button
             $('#export-projects').on('click', function() {
                 self.exportToExcel();
@@ -683,6 +697,20 @@ const AdminPage = {
                     }
                 ],
                 pageLength: 25
+            });
+
+            // Client-side Active/Inactive filter (DataTables custom search).
+            // Guarded to #contractors-table so it never affects another table.
+            $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
+                if (settings.nTable.id !== 'contractors-table') return true;
+                const filterVal = $('#filter-active-status').val();
+                if (!filterVal) return true;                          // "All" -> show every row
+                return String(rowData.active) === String(filterVal);  // "1"=Active, "0"=Inactive
+            });
+
+            // Re-run the filter whenever the dropdown changes
+            $('#filter-active-status').on('change', function() {
+                self.contractorTable.draw();
             });
 
             // Initialize Select2 and setup modal event handler
