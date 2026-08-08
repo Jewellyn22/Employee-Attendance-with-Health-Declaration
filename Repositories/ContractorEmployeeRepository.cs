@@ -39,7 +39,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 storedProc,
                 new
                 {
-                    p_employee_id = employee.employee_id,
                     p_name = employee.name,
                     p_gender = employee.gender,
                     p_birthdate = employee.birthdate,

@@ -228,7 +228,7 @@ const AdminPage = {
                     const providerCode = matchingItem.data('provider-code');
                     $('#provider_code').val(providerCode).prop('readonly', true);
                 } else {
-                    $('#provider_code').val('').prop('readonly', false);
+                    $('#provider_code').val('').prop('readonly', true);
                 }
             });
 
@@ -331,7 +331,7 @@ const AdminPage = {
 
                 // Reset provider fields
                 $('#provider_name_dropdown').val('');
-                $('#provider_code').val('').prop('readonly', false); // Enable for add mode
+                $('#provider_code').val('').prop('readonly', true); // Read-only in add mode (auto-filled from Provider Name)
 
                 // Reload providers into datalist
                 self.loadProvidersForDatalist();
@@ -607,6 +607,7 @@ const AdminPage = {
     // Contractors.cshtml - Contractors CRUD
     contractors: {
         contractorTable: null,
+        isEditing: false,
         currentEditingProject: null,
 
         init: function() {
@@ -626,7 +627,7 @@ const AdminPage = {
                     {
                         data: 'project_code',
                         render: function(data, type, row) {
-                            return row.project_name ? `${row.project_name} (${data})` : data;
+                            return row.project_name || data;   // show Project Name; fall back to code
                         }
                     },
                     { data: 'position' },
@@ -655,9 +656,6 @@ const AdminPage = {
                 pageLength: 25
             });
 
-            // Load projects for dropdown
-            self.loadProjects();
-
             // Initialize Select2 and setup modal event handler
             $('#contractor-modal').on('shown.bs.modal', function() {
                 // Initialize Select2 with dropdownParent configuration for Bootstrap modal
@@ -671,9 +669,17 @@ const AdminPage = {
                     });
                 }
 
-                // Load providers and projects
+                // Always load providers (for both add and edit modes)
                 self.loadProviders(self.currentEditingProvider);
-                self.loadProjects(self.currentEditingProject);
+
+                if (self.isEditing) {
+                    // Edit mode: load this provider's projects and pre-select the current project
+                    self.loadProjectsByProvider(self.currentEditingProvider, self.currentEditingProject);
+                    // Lock Provider and Project so the contractor can't be reassigned mid-contract
+                    $('#provider_code').prop('disabled', true);
+                    $('#project_code').prop('disabled', true).trigger('change'); // Select2 reflects disabled state
+                }
+                // Add mode: project dropdown stays disabled ("Select Provider first") until a provider is chosen
 
                 // Trigger resize to ensure Select2 recalculates position
                 $(window).trigger('resize');
@@ -685,10 +691,18 @@ const AdminPage = {
 
             // Add contractor button
             $('#add-contractor').on('click', function() {
+                self.isEditing = false;
                 $('#contractor-form')[0].reset();
-                $('#employee_id').val('').prop('readonly', false);
-                $('#project_code').val(null).trigger('change');
-                $('#provider_code').val(null).trigger('change');
+
+                // Employee ID is auto-generated on save - hide the field for new contractors
+                $('#employee_id').val('');
+                $('#employee_id_field').hide();
+
+                // Reset provider; project depends on provider, so disable it until one is chosen
+                $('#provider_code').val('');
+                $('#provider_code').prop('disabled', false);
+                $('#project_code').empty().append('<option value="">Select Provider first</option>')
+                    .val(null).trigger('change.select2').prop('disabled', true);
 
                 // Reset toggle to Active state for new contractors
                 $('#contractor_active').prop('checked', true);
@@ -706,12 +720,16 @@ const AdminPage = {
                 const employeeId = $(this).data('employee-id');
                 const contractor = self.contractorTable.row($(this).closest('tr')).data();
 
-                // Store current project for later use
+                self.isEditing = true;
+
+                // Store current provider/project for the filtered cascade load
                 self.currentEditingProject = contractor.project_code;
                 self.currentEditingProvider = contractor.provider_code;
 
+                // Employee ID is auto-generated and read-only
                 $('#employee_id').val(contractor.employee_id);
                 $('#employee_id').prop('readonly', true);
+                $('#employee_id_field').show();
                 $('#name').val(contractor.name);
                 $('#gender').val(contractor.gender);
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
@@ -737,6 +755,18 @@ const AdminPage = {
                 $('#contractor_active_label').text(isActive ? 'Active' : 'Inactive');
             });
 
+            // Provider change -> reload projects filtered by the selected provider (cascade)
+            $('#provider_code').on('change', function() {
+                const providerCode = $(this).val();
+                if (providerCode) {
+                    self.loadProjectsByProvider(providerCode, null);
+                } else {
+                    // No provider selected: clear and disable the project dropdown
+                    $('#project_code').empty().append('<option value="">Select Provider first</option>')
+                        .val(null).trigger('change.select2').prop('disabled', true);
+                }
+            });
+
             // Save contractor
             $('#save-contractor').on('click', function() {
                 // Client-side validation
@@ -746,22 +776,66 @@ const AdminPage = {
                     return;
                 }
 
+                const gender = $('#gender').val();
+                if (!gender) {
+                    AdminPage.common.showError('Gender is required');
+                    return;
+                }
+
+                const providerCode = $('#provider_code').val();
+                if (!providerCode) {
+                    AdminPage.common.showError('Provider is required');
+                    return;
+                }
+
+                const projectCode = $('#project_code').val();
+                if (!projectCode) {
+                    AdminPage.common.showError('Project is required');
+                    return;
+                }
+
+                // Birthdate: required, not a future date, and at least 18 years old (DOLE)
+                const birthdateStr = $('#birthdate').val();
+                if (!birthdateStr) {
+                    AdminPage.common.showError('Birthdate is required');
+                    return;
+                }
+                const birthdate = new Date(birthdateStr);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (birthdate > today) {
+                    AdminPage.common.showError('Birthdate cannot be a future date');
+                    return;
+                }
+                let age = today.getFullYear() - birthdate.getFullYear();
+                const monthDiff = today.getMonth() - birthdate.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+                    age--;
+                }
+                if (age < 18) {
+                    AdminPage.common.showError('The employee is under 18 years old and is not eligible for employment under DOLE regulations.');
+                    return;
+                }
+
                 const contractor = {
-                    employee_id: $('#employee_id').val(),
                     name: name,
-                    gender: $('#gender').val(),
-                    birthdate: $('#birthdate').val(),
+                    gender: gender,
+                    birthdate: birthdateStr,
                     contact_number: $('#contact_number').val(),
                     address: '',
                     area_of_destination: $('#area_of_destination').val(),
-                    provider_code: $('#provider_code').val(),
-                    project_code: $('#project_code').val(),
+                    provider_code: providerCode,
+                    project_code: projectCode,
                     position: $('#position').val(),
                     active: $('#contractor_active').is(':checked') ? 1 : 0
                 };
 
-                const isNewContractor = !$('#employee_id').val() || $('#employee_id').val() === '';
-                const url = isNewContractor ? '/Admin/CreateContractor' : '/Admin/UpdateContractor';
+                // employee_id is auto-generated on create; include it only when editing
+                if (self.isEditing) {
+                    contractor.employee_id = $('#employee_id').val();
+                }
+
+                const url = self.isEditing ? '/Admin/UpdateContractor' : '/Admin/CreateContractor';
 
                 $.ajax({
                     url: url,
@@ -775,7 +849,11 @@ const AdminPage = {
                             if (modal) {
                                 modal.hide();
                             }
-                            AdminPage.common.showSuccess(response.message);
+                            // Surface the auto-generated Employee ID after create
+                            const empIdSuffix = (!self.isEditing && response.data && response.data.employee_id)
+                                ? ' (Employee ID: ' + response.data.employee_id + ')'
+                                : '';
+                            AdminPage.common.showSuccess(response.message + empIdSuffix);
                             self.contractorTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
@@ -828,6 +906,54 @@ const AdminPage = {
                 },
                 error: function(xhr, status, error) {
                     console.error('Failed to load projects:', { xhr, status, error });
+                    AdminPage.common.showError('Failed to load projects. Please try again.');
+                }
+            });
+        },
+
+        loadProjectsByProvider: function(providerCode, selectedProjectCode) {
+            const $dropdown = $('#project_code');
+            $dropdown.prop('disabled', false);
+            $dropdown.empty().append('<option value="">Select Project</option>');
+
+            if (!providerCode) {
+                $dropdown.val(null).trigger('change.select2');
+                return;
+            }
+
+            $.ajax({
+                url: '/Admin/GetProjectsByProvider',
+                method: 'GET',
+                data: { provider_code: providerCode },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        response.data.forEach(function(project) {
+                            // Skip expired projects (contract_enddate in the past).
+                            // Null enddate = open-ended contract (not expired).
+                            const isExpired = project.contract_enddate && new Date(project.contract_enddate) < today;
+                            // In edit mode, always keep the contractor's currently-assigned project visible.
+                            const isCurrentAssignment = selectedProjectCode && project.project_code === selectedProjectCode;
+                            if (isExpired && !isCurrentAssignment) {
+                                return;
+                            }
+                            $dropdown.append('<option value="' + project.project_code + '">' +
+                                project.project_name + ' (' + project.project_code + ')</option>');
+                        });
+
+                        if (selectedProjectCode) {
+                            $dropdown.val(selectedProjectCode).trigger('change.select2');
+                        } else {
+                            $dropdown.val(null).trigger('change.select2');
+                        }
+                    } else {
+                        $dropdown.val(null).trigger('change.select2');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to load projects for provider:', { xhr, status, error });
                     AdminPage.common.showError('Failed to load projects. Please try again.');
                 }
             });

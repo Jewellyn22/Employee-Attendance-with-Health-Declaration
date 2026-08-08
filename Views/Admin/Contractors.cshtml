@@ -55,9 +55,9 @@
                 <form id="contractor-form">
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
+                            <div class="mb-3" id="employee_id_field">
                                 <label for="employee_id" class="form-label">Employee ID:</label>
-                                <input type="text" id="employee_id" class="form-control" required>
+                                <input type="text" id="employee_id" class="form-control" readonly placeholder="Auto-generated on save">
                             </div>
                             <div class="mb-3">
                                 <label for="name" class="form-label">Name:</label>
@@ -73,7 +73,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="birthdate" class="form-label">Birthdate:</label>
-                                <input type="date" id="birthdate" class="form-control">
+                                <input type="date" id="birthdate" class="form-control" required>
                             </div>
                             <div class="mb-3">
                                 <label for="contractor_active" class="form-label">Status:</label>
