@@ -1377,10 +1377,20 @@ const AdminPage = {
         init: function() {
             const self = this;
 
+            // Default the view to the last 7 days (today + 6 prior days, inclusive)
+            const today = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(today.getDate() - 6);
+            $('#filter-from-date').val(self.toDateInputValue(sevenDaysAgo));
+            $('#filter-to-date').val(self.toDateInputValue(today));
+
+            const defaultFromDate = $('#filter-from-date').val();
+            const defaultToDate = $('#filter-to-date').val();
+
             // Initialize DataTable
             self.timeLogTable = $('#timelogs-table').DataTable({
                 ajax: {
-                    url: '/Admin/GetAllTimeLogs',
+                    url: self.buildFilterUrl('', defaultFromDate, defaultToDate, ''),
                     dataSrc: function(data) {
                         if (data.success && data.data) {
                             $('#no-data-message').hide();
@@ -1435,13 +1445,17 @@ const AdminPage = {
                         data: null,
                         render: function(data) {
                             return `
-                                <button class="btn btn-sm btn-edit" data-attendance-id="${data.attendance_id}">Edit</button>
-                                <button class="btn btn-sm btn-delete" data-attendance-id="${data.attendance_id}">Delete</button>
+                                <button class="btn btn-sm btn-warning btn-edit" data-attendance-id="${data.attendance_id}" title="Edit">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger btn-delete" data-attendance-id="${data.attendance_id}" title="Delete">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
                             `;
                         }
                     }
                 ],
-                order: [[2, 'desc']], // Sort by Time In descending
+                order: [[0, 'desc']], // Sort by ID descending
                 pageLength: 25
             });
 
@@ -1605,6 +1619,15 @@ const AdminPage = {
             if (healthStatus) params.push('health_status=' + encodeURIComponent(healthStatus));
 
             return url + params.join('&');
+        },
+
+        toDateInputValue: function(date) {
+            // Format a Date as YYYY-MM-DD using LOCAL date parts
+            // (avoids the UTC off-by-one that toISOString() would cause for early-hours local times)
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
         },
 
         formatDateTimeForInput: function(dateString) {
