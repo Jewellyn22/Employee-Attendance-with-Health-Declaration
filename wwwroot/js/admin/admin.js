@@ -336,6 +336,7 @@ const AdminPage = {
                     },
                     {
                         data: null,
+                        className: 'text-center',
                         render: function(data) {
                             return `
                                 <button class="btn btn-sm btn-warning btn-edit" data-project-code="${data.project_code}">
@@ -701,6 +702,7 @@ const AdminPage = {
                     },
                     {
                         data: null,
+                        className: 'text-center',
                         render: function(data) {
                             return `
                                 <button class="btn btn-sm btn-warning btn-edit" data-employee-id="${data.employee_id}">
@@ -1196,6 +1198,7 @@ const AdminPage = {
                     { data: 'description' },
                     {
                         data: null,
+                        className: 'text-center',
                         render: function(data) {
                             // Show toggle switch for ScanInputReadOnly boolean config
                             if (data.key === 'ScanInputReadOnly') {
@@ -1390,7 +1393,7 @@ const AdminPage = {
             // Initialize DataTable
             self.timeLogTable = $('#timelogs-table').DataTable({
                 ajax: {
-                    url: self.buildFilterUrl('', defaultFromDate, defaultToDate, ''),
+                    url: self.buildFilterUrl(defaultFromDate, defaultToDate, ''),
                     dataSrc: function(data) {
                         if (data.success && data.data) {
                             $('#no-data-message').hide();
@@ -1402,7 +1405,7 @@ const AdminPage = {
                 },
                 columns: [
                     { data: 'attendance_id' },
-                    { data: 'employee_id' },
+                    { data: 'name' },
                     {
                         data: 'time_in',
                         render: function(data) {
@@ -1419,6 +1422,7 @@ const AdminPage = {
                     },
                     {
                         data: 'health_status',
+                        className: 'text-center',
                         render: function(data) {
                             if (data === 'FIT') {
                                 return '<span class="badge bg-success">FIT</span>';
@@ -1426,6 +1430,18 @@ const AdminPage = {
                                 return '<span class="badge bg-danger">UNFIT</span>';
                             }
                             return data;
+                        }
+                    },
+                    {
+                        data: 'waiver_consent',
+                        className: 'text-center',
+                        render: function(data) {
+                            if (data === 'UNDERSTOOD') {
+                                return '<span class="badge bg-success">Understood</span>';
+                            } else if (data === 'NOT_UNDERSTOOD') {
+                                return '<span class="badge bg-warning">Not Understood</span>';
+                            }
+                            return data || '-';
                         }
                     },
                     {
@@ -1443,6 +1459,7 @@ const AdminPage = {
                     },
                     {
                         data: null,
+                        className: 'text-center',
                         render: function(data) {
                             return `
                                 <button class="btn btn-sm btn-warning btn-edit" data-attendance-id="${data.attendance_id}" title="Edit">
@@ -1472,6 +1489,7 @@ const AdminPage = {
             // Edit timelog button
             $(document).on('click', '.btn-edit', function() {
                 const attendanceId = $(this).data('attendance-id');
+                const rowData = self.timeLogTable.row($(this).closest('tr')).data();
 
                 $.ajax({
                     url: '/Admin/GetTimeLogById',
@@ -1482,7 +1500,8 @@ const AdminPage = {
                             const timelog = response.data;
 
                             $('#edit_attendance_id').val(timelog.attendance_id);
-                            $('#edit_employee_id').val(timelog.employee_id);
+                            $('#edit_employee_id').val(timelog.employee_id || '');
+                            $('#edit_employee_name').val(rowData ? rowData.name : '');
                             $('#edit_time_in').val(self.formatDateTimeForInput(timelog.time_in));
                             $('#edit_time_out').val(timelog.time_out ? self.formatDateTimeForInput(timelog.time_out) : '');
                             $('#edit_health_status').val(timelog.health_status);
@@ -1590,17 +1609,15 @@ const AdminPage = {
         },
 
         applyFilters: function() {
-            const employeeId = $('#filter-employee-id').val();
             const fromDate = $('#filter-from-date').val();
             const toDate = $('#filter-to-date').val();
             const healthStatus = $('#filter-health-status').val();
 
             // Reload DataTable with filters
-            this.timeLogTable.ajax.url(this.buildFilterUrl(employeeId, fromDate, toDate, healthStatus)).load();
+            this.timeLogTable.ajax.url(this.buildFilterUrl(fromDate, toDate, healthStatus)).load();
         },
 
         clearFilters: function() {
-            $('#filter-employee-id').val('');
             $('#filter-from-date').val('');
             $('#filter-to-date').val('');
             $('#filter-health-status').val('');
@@ -1609,11 +1626,10 @@ const AdminPage = {
             this.timeLogTable.ajax.url('/Admin/GetAllTimeLogs').load();
         },
 
-        buildFilterUrl: function(employeeId, fromDate, toDate, healthStatus) {
+        buildFilterUrl: function(fromDate, toDate, healthStatus) {
             let url = '/Admin/GetAllTimeLogs?';
             const params = [];
 
-            if (employeeId) params.push('employee_id=' + encodeURIComponent(employeeId));
             if (fromDate) params.push('from_date=' + encodeURIComponent(fromDate));
             if (toDate) params.push('to_date=' + encodeURIComponent(toDate));
             if (healthStatus) params.push('health_status=' + encodeURIComponent(healthStatus));
@@ -1658,6 +1674,7 @@ const AdminPage = {
                 'Time In': row.time_in ? AdminPage.common.formatDateTime(row.time_in) : '-',
                 'Time Out': row.time_out ? AdminPage.common.formatDateTime(row.time_out) : 'Active',
                 'Health Status': row.health_status,
+                'Waiver Consent': row.waiver_consent === 'UNDERSTOOD' ? 'Understood' : row.waiver_consent === 'NOT_UNDERSTOOD' ? 'Not Understood' : row.waiver_consent || '-',
                 'Updated By': row.updated_by || '-',
                 'Updated At': row.updated_at ? AdminPage.common.formatDateTime(row.updated_at) : '-'
             }));

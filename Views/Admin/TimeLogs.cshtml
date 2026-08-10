@@ -22,19 +22,15 @@
                 <div class="card-body">
                     <!-- Filter Form -->
                     <div class="row mb-3">
-                        <div class="col-md-3">
-                            <label for="filter-employee-id" class="form-label">Employee ID:</label>
-                            <input type="text" id="filter-employee-id" class="form-control" placeholder="Filter by ID">
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="filter-from-date" class="form-label">From Date:</label>
                             <input type="date" id="filter-from-date" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="filter-to-date" class="form-label">To Date:</label>
                             <input type="date" id="filter-to-date" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="filter-health-status" class="form-label">Health Status:</label>
                             <select id="filter-health-status" class="form-control">
                                 <option value="">All</option>
@@ -60,12 +56,13 @@
                         <thead>
                             <tr class="text-center">
                                 <th style="width: 4%;">ID</th>
-                                <th style="width: 20%;">Employee ID</th>
-                                <th style="width: 15%;">Time In</th>
-                                <th style="width: 15%;">Time Out</th>
+                                <th style="width: 18%;">Employee Name</th>
+                                <th style="width: 13%;">Time In</th>
+                                <th style="width: 13%;">Time Out</th>
                                 <th style="width: 9%;">Health Status</th>
-                                <th style="width: 15%;">Updated By</th>
-                                <th style="width: 15%;">Updated At</th>
+                                <th style="width: 12%;">Waiver Consent</th>
+                                <th style="width: 12%;">Updated By</th>
+                                <th style="width: 12%;">Updated At</th>
                                 <th style="width: 7%;">Actions</th>
                             </tr>
                         </thead>
@@ -92,11 +89,12 @@
             <div class="modal-body">
                 <form id="timelog-form">
                     <input type="hidden" id="edit_attendance_id">
+                    <input type="hidden" id="edit_employee_id">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_employee_id" class="form-label">Employee ID:</label>
-                                <input type="text" id="edit_employee_id" class="form-control" readonly>
+                                <label for="edit_employee_name" class="form-label">Employee Name:</label>
+                                <input type="text" id="edit_employee_name" class="form-control" readonly>
                             </div>
                             <div class="mb-3">
                                 <label for="edit_time_in" class="form-label">Time In:</label>
@@ -105,16 +103,16 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_time_out" class="form-label">Time Out:</label>
-                                <input type="datetime-local" id="edit_time_out" class="form-control">
-                                <small class="text-muted">Leave empty for active attendance</small>
-                            </div>
-                            <div class="mb-3">
                                 <label for="edit_health_status" class="form-label">Health Status:</label>
                                 <select id="edit_health_status" class="form-control" required>
                                     <option value="FIT">FIT</option>
                                     <option value="UNFIT">UNFIT</option>
                                 </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_time_out" class="form-label">Time Out:</label>
+                                <input type="datetime-local" id="edit_time_out" class="form-control">
+                                <small class="text-muted">Leave empty for active attendance</small>
                             </div>
                         </div>
                     </div>
