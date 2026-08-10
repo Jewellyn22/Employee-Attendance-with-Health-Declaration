@@ -664,6 +664,8 @@ const AdminPage = {
         contractorTable: null,
         isEditing: false,
         currentEditingProject: null,
+        currentEditingProjectName: null,
+        skipProjectCascade: false,   // suppress cascade during programmatic provider set (edit init)
 
         init: function() {
             const self = this;
@@ -738,15 +740,36 @@ const AdminPage = {
                     });
                 }
 
-                // Always load providers (for both add and edit modes)
-                self.loadProviders(self.currentEditingProvider);
+                // Always load providers (for both add and edit modes).
+                // In edit mode, suppress the provider->project cascade while we programmatically
+                // set the provider value, so it doesn't fire a second loadProjectsByProvider(..., null)
+                // that would clobber the pre-selected project.
+                if (self.isEditing) {
+                    self.skipProjectCascade = true;
+                }
+                self.loadProviders(self.currentEditingProvider, self.isEditing ? function () {
+                    self.skipProjectCascade = false;
+                } : null);
 
                 if (self.isEditing) {
-                    // Edit mode: load this provider's projects and pre-select the current project
-                    self.loadProjectsByProvider(self.currentEditingProvider, self.currentEditingProject);
-                    // Lock Provider and Project so the contractor can't be reassigned mid-contract
+                    // Provider + Project are locked once a contractor is registered. Populate the
+                    // Project dropdown directly from the contractor's own row data (no AJAX, so no
+                    // race with the provider load), pre-select the assigned project, then lock both.
+                    const $project = $('#project_code');
+                    $project.prop('disabled', false);
+                    $project.empty();
+                    if (self.currentEditingProject) {
+                        const label = self.currentEditingProjectName
+                            ? self.currentEditingProjectName + ' (' + self.currentEditingProject + ')'
+                            : self.currentEditingProject;
+                        $project.append('<option value="' + self.currentEditingProject + '">' + label + '</option>');
+                        $project.val(self.currentEditingProject);
+                    } else {
+                        $project.append('<option value="">No project assigned</option>');
+                    }
+                    $project.trigger('change.select2');   // render the selected option in Select2 (while enabled)
                     $('#provider_code').prop('disabled', true);
-                    $('#project_code').prop('disabled', true).trigger('change'); // Select2 reflects disabled state
+                    $project.prop('disabled', true).trigger('change'); // lock project (read-only) — Select2 greys it out, keeps showing the value
                 }
                 // Add mode: project dropdown stays disabled ("Select Provider first") until a provider is chosen
 
@@ -755,12 +778,14 @@ const AdminPage = {
 
                 // Reset editing variables
                 self.currentEditingProject = null;
+                self.currentEditingProjectName = null;
                 self.currentEditingProvider = null;
             });
 
             // Add contractor button
             $('#add-contractor').on('click', function() {
                 self.isEditing = false;
+                self.skipProjectCascade = false;   // re-enable cascade after a possibly-aborted edit
                 $('#contractor-form')[0].reset();
 
                 // Employee ID is auto-generated on save - hide the field for new contractors
@@ -791,8 +816,9 @@ const AdminPage = {
 
                 self.isEditing = true;
 
-                // Store current provider/project for the filtered cascade load
+                // Store current provider/project for the edit modal (project is locked + shown directly)
                 self.currentEditingProject = contractor.project_code;
+                self.currentEditingProjectName = contractor.project_name;
                 self.currentEditingProvider = contractor.provider_code;
 
                 // Employee ID is auto-generated and read-only
@@ -826,6 +852,8 @@ const AdminPage = {
 
             // Provider change -> reload projects filtered by the selected provider (cascade)
             $('#provider_code').on('change', function() {
+                // Skip the cascade while we programmatically set the provider during edit init
+                if (self.skipProjectCascade) return;
                 const providerCode = $(this).val();
                 if (providerCode) {
                     self.loadProjectsByProvider(providerCode, null);
@@ -1028,7 +1056,7 @@ const AdminPage = {
             });
         },
 
-        loadProviders: function(selectedProviderCode = null) {
+        loadProviders: function(selectedProviderCode = null, onComplete = null) {
             const $dropdown = $('#provider_code');
 
             // Clear existing options
@@ -1063,6 +1091,9 @@ const AdminPage = {
                 error: function(xhr, status, error) {
                     console.error('Failed to load providers:', { xhr, status, error });
                     AdminPage.common.showError('Failed to load providers. Please try again.');
+                },
+                complete: function() {
+                    if (onComplete) onComplete();
                 }
             });
         },
