@@ -748,6 +748,13 @@ const AdminPage = {
                 self.contractorTable.draw();
             });
 
+            // Reset all filters (Project + Status dropdowns and global search) and redraw
+            $('#reset-contractor-filters').on('click', function() {
+                $('#filter-project').val('');
+                $('#filter-active-status').val('');
+                self.contractorTable.search('').draw();
+            });
+
             // Export to Excel button
             $('#export-contractors').on('click', function() {
                 self.exportToExcel();
