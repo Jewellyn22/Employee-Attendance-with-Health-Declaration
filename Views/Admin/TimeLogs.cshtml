@@ -14,7 +14,16 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>Attendance Records with Audit Trail</h5>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5>Attendance Records with Audit Trail</h5>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button id="export-timelogs" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-file-excel"></i> Export to Excel
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <!-- Filter Form -->
@@ -130,6 +139,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/lib/xlsx/xlsx.full.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.timeLogs.init();

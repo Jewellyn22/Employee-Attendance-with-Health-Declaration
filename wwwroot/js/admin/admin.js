@@ -28,6 +28,18 @@ const AdminPage = {
             }
         },
 
+        showWarning: function(message, title = 'Warning') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: title,
+                    text: message,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+        },
+
         showConfirmation: function(message, onConfirm) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
@@ -1446,6 +1458,17 @@ const AdminPage = {
                 });
             });
 
+            // Export to Excel button
+            $('#export-timelogs').on('click', function() {
+                self.exportToExcel();
+            });
+
+            // Show export button only when data exists
+            self.timeLogTable.on('draw', function() {
+                const hasData = self.timeLogTable.data().length > 0;
+                $('#export-timelogs').toggle(hasData);
+            });
+
             // Initialize sidebar
             if (AdminPage.sidebar) {
                 AdminPage.sidebar.init();
@@ -1494,6 +1517,42 @@ const AdminPage = {
             const hours = String(date.getHours()).padStart(2, '0');
             const minutes = String(date.getMinutes()).padStart(2, '0');
             return `${year}-${month}-${day}T${hours}:${minutes}`;
+        },
+
+        exportToExcel: function() {
+            // Get current filtered data from DataTable (respecting search and filters)
+            const tableData = this.timeLogTable.rows({ search: 'applied' }).data().toArray();
+
+            if (tableData.length === 0) {
+                AdminPage.common.showWarning('No data available to export', 'No Data');
+                return;
+            }
+
+            // Transform data for export with friendly column names (matches visible table)
+            const exportData = tableData.map(row => ({
+                'Attendance ID': row.attendance_id,
+                'Employee ID': row.employee_id,
+                'Time In': row.time_in ? AdminPage.common.formatDateTime(row.time_in) : '-',
+                'Time Out': row.time_out ? AdminPage.common.formatDateTime(row.time_out) : 'Active',
+                'Health Status': row.health_status,
+                'Updated By': row.updated_by || '-',
+                'Updated At': row.updated_at ? AdminPage.common.formatDateTime(row.updated_at) : '-'
+            }));
+
+            // Create Excel file using SheetJS
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'TimeLogs');
+
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+            const filename = `TimeLogs_${timestamp}.xlsx`;
+
+            // Download file
+            XLSX.writeFile(wb, filename);
+
+            // Show success message
+            AdminPage.common.showSuccess(`Exported ${tableData.length} records to Excel`, 'Export Successful');
         }
     },
 
