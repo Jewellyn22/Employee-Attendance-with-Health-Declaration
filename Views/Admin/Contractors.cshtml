@@ -18,13 +18,22 @@
                             <h5>Contractor Employees Management</h5>
                         </div>
                         <div class="col-md-4 text-end">
+                            <button id="export-contractors" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-file-excel"></i> Export to Excel
+                            </button>
                             <button id="add-contractor" class="btn btn-primary">Add New Contractor</button>
                         </div>
                     </div>
                 </div>
                 <div class="card-body" style="margin-top: -1%">
-                    <!-- Status Filter -->
+                    <!-- Project + Status Filters -->
                     <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="filter-project" class="form-label">Project:</label>
+                            <select id="filter-project" class="form-control">
+                                <option value="">All</option>
+                            </select>
+                        </div>
                         <div class="col-md-3">
                             <label for="filter-active-status" class="form-label">Status:</label>
                             <select id="filter-active-status" class="form-control">
@@ -133,6 +142,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/lib/xlsx/xlsx.full.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.contractors.init();

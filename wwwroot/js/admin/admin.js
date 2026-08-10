@@ -710,21 +710,53 @@ const AdminPage = {
                         }
                     }
                 ],
-                pageLength: 25
+                pageLength: 25,
+                initComplete: function() {
+                    // Build the Project filter dropdown once, from the loaded contractor data.
+                    const projects = {};
+                    self.contractorTable.data().each(function(row) {
+                        if (row.project_code && !projects[row.project_code]) {
+                            projects[row.project_code] = row.project_name || row.project_code;
+                        }
+                    });
+                    const $sel = $('#filter-project');
+                    Object.keys(projects).sort().forEach(function(code) {
+                        $sel.append($('<option></option>').val(code).text(projects[code] + ' (' + code + ')'));
+                    });
+                }
             });
 
-            // Client-side Active/Inactive filter (DataTables custom search).
+            // Client-side Status + Project filters (DataTables custom search).
             // Guarded to #contractors-table so it never affects another table.
             $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
                 if (settings.nTable.id !== 'contractors-table') return true;
-                const filterVal = $('#filter-active-status').val();
-                if (!filterVal) return true;                          // "All" -> show every row
-                return String(rowData.active) === String(filterVal);  // "1"=Active, "0"=Inactive
+
+                const statusVal = $('#filter-active-status').val();
+                if (statusVal && String(rowData.active) !== String(statusVal)) return false;
+
+                const projectVal = $('#filter-project').val();
+                if (projectVal && rowData.project_code !== projectVal) return false;
+
+                return true;
             });
 
-            // Re-run the filter whenever the dropdown changes
+            // Re-run the filters whenever either dropdown changes
             $('#filter-active-status').on('change', function() {
                 self.contractorTable.draw();
+            });
+            $('#filter-project').on('change', function() {
+                self.contractorTable.draw();
+            });
+
+            // Export to Excel button
+            $('#export-contractors').on('click', function() {
+                self.exportToExcel();
+            });
+
+            // Show export button only when data exists
+            self.contractorTable.on('draw', function() {
+                const hasData = self.contractorTable.data().length > 0;
+                $('#export-contractors').toggle(hasData);
             });
 
             // Initialize Select2 and setup modal event handler
@@ -1101,6 +1133,36 @@ const AdminPage = {
         formatDateForInput: function(dateString) {
             if (!dateString) return '';
             return dateString.split('T')[0];
+        },
+
+        exportToExcel: function() {
+            // Export only the rows currently shown (respects global search + Status/Project filters)
+            const tableData = this.contractorTable.rows({ search: 'applied' }).data().toArray();
+
+            if (tableData.length === 0) {
+                AdminPage.common.showWarning('No data available to export', 'No Data');
+                return;
+            }
+
+            const exportData = tableData.map(row => ({
+                'Employee ID': row.employee_id,
+                'Name': row.name,
+                'Provider Name': row.provider_name || '',
+                'Project Name': row.project_name || '',
+                'Project Code': row.project_code || '',
+                'Position': row.position || '',
+                'Area of Destination': row.area_of_destination || '',
+                'Status': row.active === 1 ? 'Active' : 'Inactive'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+            XLSX.writeFile(wb, `Contractors_${timestamp}.xlsx`);
+
+            AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
         }
     },
 
