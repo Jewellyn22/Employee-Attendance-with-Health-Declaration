@@ -11,9 +11,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         private readonly ILogger<AuditLogService> _logger;
 
         // Snake_case JSON so audit payloads match the rest of the API serialization.
+        // WriteIndented so the stored data_from/data_to are human-readable in the DB
+        // (the columns are LONGTEXT, which preserves indentation unlike MySQL JSON).
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            WriteIndented = true
         };
 
         public AuditLogService(IAuditLogRepository repository, ILogger<AuditLogService> logger)
