@@ -255,6 +255,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 // so exclude it from ModelState validation (non-nullable string is otherwise required)
                 ModelState.Remove("employee_id");
 
+                // contact_number is optional: skip [Phone] format validation when blank
+                if (string.IsNullOrWhiteSpace(contractor.contact_number))
+                {
+                    contractor.contact_number = string.Empty;
+                    ModelState.Remove("contact_number");
+                }
+
                 // Validate ModelState
                 if (!ModelState.IsValid)
                 {
@@ -289,6 +296,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 if (contractor == null)
                 {
                     return Json(new { success = false, message = "Contractor data is required" });
+                }
+
+                // contact_number is optional: skip [Phone] format validation when blank
+                if (string.IsNullOrWhiteSpace(contractor.contact_number))
+                {
+                    contractor.contact_number = string.Empty;
+                    ModelState.Remove("contact_number");
                 }
 
                 // Validate ModelState
