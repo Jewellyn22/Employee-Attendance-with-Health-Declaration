@@ -873,6 +873,7 @@ const AdminPage = {
                 $('#gender').val(contractor.gender);
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
                 $('#contact_number').val(contractor.contact_number);
+                $('#address').val(contractor.address || '');
                 $('#area_of_destination').val(contractor.area_of_destination);
                 $('#provider_code').val(contractor.provider_code);
                 $('#position').val(contractor.position);
@@ -963,7 +964,7 @@ const AdminPage = {
                     gender: gender,
                     birthdate: birthdateStr,
                     contact_number: $('#contact_number').val(),
-                    address: '',
+                    address: $('#address').val(),
                     area_of_destination: $('#area_of_destination').val(),
                     provider_code: providerCode,
                     project_code: projectCode,
@@ -1206,6 +1207,58 @@ const AdminPage = {
             return this._bulkSampleRows.some(function(s) { return self._bulkRowSignature(s) === sig; });
         },
 
+        // Duplicate key for a contractor: name (case-insensitive) + birthdate (yyyy-mm-dd).
+        // Matches the server-side rule (sp_contractor_employee_CheckDuplicate).
+        _bulkDuplicateKey: function(name, birthdate) {
+            const n = String(name || '').trim().toLowerCase();
+            const b = String(birthdate || '').split('T')[0];   // JSON birthdate may be ISO "...T00:00:00"
+            return n + '|' + b;
+        },
+
+        // Build the set of already-enrolled contractor keys for the selected project from
+        // the loaded contractors DataTable (active + inactive, per the duplicate policy).
+        // No new endpoint — reuses the data behind /Admin/GetAllContractors.
+        _buildBulkDuplicateKeys: function() {
+            const keys = new Set();
+            const projectCode = $('#bulk_project_code').val();
+            if (!projectCode || !this.contractorTable) return keys;
+            this.contractorTable.data().each(function(row) {
+                if (!row || !row.project_code) return;
+                if (row.project_code !== projectCode) return;
+                const key = AdminPage.contractors._bulkDuplicateKey(row.name, row.birthdate);
+                if (key && key !== '|') keys.add(key);
+            });
+            return keys;
+        },
+
+        // Flag duplicate rows in the preview: against existing project contractors AND
+        // within the file itself. Idempotent — clears prior duplicate flags first so it
+        // can be re-run when the selected project changes. Duplicates are stored as a
+        // normal row.error (red badge, blocks Process Import) plus a row.duplicate flag.
+        _flagBulkDuplicates: function() {
+            const self = this;
+            // Reset previously-flagged duplicates (leave field errors intact).
+            this.parsedBulkRows.forEach(function(r) {
+                if (r.duplicate) { r.error = null; r.duplicate = false; }
+            });
+            const dbKeys = this._buildBulkDuplicateKeys();
+            const batchSeen = {};
+            this.parsedBulkRows.forEach(function(r) {
+                if (r.skipped || r.error) return;   // only check otherwise-valid rows
+                const key = self._bulkDuplicateKey(r.name, r.birthdate);
+                if (!key || key === '|') return;
+                if (dbKeys.has(key)) {
+                    r.error = 'Duplicate — already enrolled';
+                    r.duplicate = true;
+                } else if (batchSeen[key]) {
+                    r.error = 'Duplicate of another row in this file';
+                    r.duplicate = true;
+                } else {
+                    batchSeen[key] = true;
+                }
+            });
+        },
+
         initBulkImport: function() {
             const self = this;
 
@@ -1248,6 +1301,16 @@ const AdminPage = {
                 } else {
                     $('#bulk_project_code').empty().append('<option value="">Select Provider first</option>')
                         .val(null).trigger('change.select2').prop('disabled', true);
+                }
+            });
+
+            // The duplicate set depends on the selected project. A file may already be
+            // loaded, so re-run duplicate detection (and re-render) whenever the project
+            // changes.
+            $('#bulk_project_code').on('change', function() {
+                if (self.parsedBulkRows.length) {
+                    self._flagBulkDuplicates();
+                    self.renderBulkPreview();
                 }
             });
 
@@ -1402,6 +1465,8 @@ const AdminPage = {
                 }
                 return row;
             });
+            // Flag duplicates (against existing project contractors + within the file).
+            this._flagBulkDuplicates();
             this.renderBulkPreview();
         },
 

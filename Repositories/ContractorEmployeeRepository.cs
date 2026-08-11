@@ -115,6 +115,20 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
+        // Duplicate-enrollment guard used by ContractorService.Create(). The stored
+        // procedure matches name case-insensitively (LOWER(TRIM)) + birthdate within the
+        // same project, including inactive contractors, and returns at most one row.
+        public async Task<bool> ExistsByDetails(string project_code, string name, DateTime birthdate)
+        {
+            const string storedProc = "sp_contractor_employee_CheckDuplicate";
+            var match = await _db.QuerySingleOrDefaultAsync<contractor_employee>(
+                storedProc,
+                new { p_project_code = project_code, p_name = name, p_birthdate = birthdate },
+                commandType: CommandType.StoredProcedure
+            );
+            return match != null;
+        }
+
         public async Task<int> GetActiveCount()
         {
             const string storedProc = "sp_contractor_employee_GetActiveCount";
