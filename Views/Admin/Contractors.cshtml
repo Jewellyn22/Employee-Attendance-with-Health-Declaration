@@ -21,6 +21,9 @@
                             <button id="export-contractors" class="btn btn-success" style="display: none;">
                                 <i class="fas fa-file-excel"></i> Export to Excel
                             </button>
+                            <button id="bulk-import" class="btn btn-outline-primary">
+                                <i class="fas fa-file-import"></i> Bulk Import
+                            </button>
                             <button id="add-contractor" class="btn btn-primary">Add New Contractor</button>
                         </div>
                     </div>
@@ -141,6 +144,82 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" id="save-contractor" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Import Modal -->
+<div id="bulk-import-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Import Contractors</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Provider + Project (cascade) -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="bulk_provider_code" class="form-label">Provider: <span class="text-danger">*</span></label>
+                            <select id="bulk_provider_code" class="form-control">
+                                <option value="">Select Provider</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="bulk_project_code" class="form-label">Project: <span class="text-danger">*</span></label>
+                            <select id="bulk_project_code" class="form-control">
+                                <option value="">Select Provider first</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: File -->
+                <div class="mb-2">
+                    <label for="bulk_file" class="form-label">CSV / Excel file: <span class="text-danger">*</span></label>
+                    <input type="file" id="bulk_file" class="form-control" accept=".csv,.xlsx,.xls">
+                    <div class="form-text">
+                        Required columns: <strong>name, gender (Male/Female), birthdate (YYYY-MM-DD), position, area_of_destination</strong>.
+                        Optional: contact_number, address. Provider &amp; Project come from the selects above.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <button type="button" id="bulk-download-template" class="btn btn-sm btn-link p-0">
+                        <i class="fas fa-download"></i> Download Excel template
+                    </button>
+                </div>
+
+                <!-- Step 3: Preview -->
+                <div id="bulk-preview-wrap" style="display:none;">
+                    <h6>Preview <span id="bulk-preview-summary" class="text-muted small"></span></h6>
+                    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                        <table id="bulk-preview" class="table table-sm table-bordered mb-0">
+                            <thead class="sticky-top bg-light">
+                                <tr>
+                                    <th style="width:5%">#</th>
+                                    <th style="width:20%">Name</th>
+                                    <th style="width:10%">Gender</th>
+                                    <th style="width:13%">Birthdate</th>
+                                    <th style="width:16%">Position</th>
+                                    <th style="width:15%">Area</th>
+                                    <th style="width:14%">Status</th>
+                                    <th class="text-center" style="width:7%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="process-bulk-import" class="btn btn-primary" disabled>
+                    <i class="fas fa-check"></i> Process Import
+                </button>
             </div>
         </div>
     </div>

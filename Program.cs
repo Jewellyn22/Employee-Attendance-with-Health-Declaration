@@ -43,6 +43,7 @@ builder.Services.AddScoped<IProviderRepository, ProviderRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITimeLogsRepository, TimeLogsRepository>();
 builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 // Register Services
 builder.Services.AddScoped<IContractorService, ContractorService>();
@@ -52,6 +53,7 @@ builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IHistoryLogsService, HistoryLogsService>();
 builder.Services.AddScoped<ISystemConfigService, SystemConfigService>();
 builder.Services.AddScoped<ITimeLogsManagementService, TimeLogsManagementService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 // Register LDAP Services
 builder.Services.AddScoped<ILdapRepository, LdapRepository>();

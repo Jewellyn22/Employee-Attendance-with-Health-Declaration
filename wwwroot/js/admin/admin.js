@@ -762,6 +762,9 @@ const AdminPage = {
                 self.exportToExcel();
             });
 
+            // Bulk import modal + handlers
+            self.initBulkImport();
+
             // Show export button only when data exists
             self.contractorTable.on('draw', function() {
                 const hasData = self.contractorTable.data().length > 0;
@@ -1172,6 +1175,630 @@ const AdminPage = {
             XLSX.writeFile(wb, `Contractors_${timestamp}.xlsx`);
 
             AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
+        },
+
+        // ===== Bulk Import Contractors =====
+        parsedBulkRows: [],          // validated rows ready to submit
+        _currentBulkFileName: '',
+
+        // Example rows embedded in the downloadable template. If an uploaded file still
+        // contains them, they are auto-detected and skipped (never inserted). Shared by
+        // downloadBulkTemplate and the skip-detector so the two never drift apart.
+        _bulkSampleRows: [
+            { name: 'Juan Dela Cruz', gender: 'Male', birthdate: '1990-01-15', position: 'Welder', area_of_destination: 'Building A', contact_number: '09171234567', address: 'Quezon City' },
+            { name: 'Maria Santos', gender: 'Female', birthdate: '1995-07-22', position: 'Admin Clerk', area_of_destination: 'Building B', contact_number: '', address: '' }
+        ],
+
+        // Normalized signature of a row's 7 user fields. Matching all fields makes a
+        // real-contractor collision effectively impossible.
+        _bulkRowSignature: function(row) {
+            return [
+                (row.name || ''), (row.gender || ''), (row.birthdate || ''),
+                (row.position || ''), (row.area_of_destination || ''),
+                (row.contact_number || ''), (row.address || '')
+            ].map(function(v) { return String(v).trim().toLowerCase(); }).join('|');
+        },
+
+        // True when a parsed row matches one of the template samples exactly (all fields).
+        _isBulkSampleRow: function(row) {
+            const sig = this._bulkRowSignature(row);
+            const self = this;
+            return this._bulkSampleRows.some(function(s) { return self._bulkRowSignature(s) === sig; });
+        },
+
+        initBulkImport: function() {
+            const self = this;
+
+            // Open the bulk-import modal
+            $('#bulk-import').on('click', function() {
+                self.openBulkImportModal();
+            });
+
+            // Select2 on the bulk project select, scoped to the bulk modal
+            $('#bulk-import-modal').on('shown.bs.modal', function() {
+                if (!$('#bulk_project_code').data('select2')) {
+                    $('#bulk_project_code').select2({
+                        placeholder: 'Select Project',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#bulk-import-modal')
+                    });
+                }
+                self.loadBulkProviders();
+                $(window).trigger('resize');
+            });
+
+            // Reset everything when the modal closes
+            $('#bulk-import-modal').on('hidden.bs.modal', function() {
+                $('#bulk_file').val('');
+                $('#bulk_provider_code').empty().append('<option value="">Select Provider</option>');
+                $('#bulk_project_code').empty().append('<option value="">Select Provider first</option>')
+                    .val(null).trigger('change.select2').prop('disabled', true);
+                $('#bulk-preview-wrap').hide();
+                $('#bulk-preview tbody').empty();
+                $('#process-bulk-import').prop('disabled', true);
+                self.parsedBulkRows = [];
+            });
+
+            // Provider -> Project cascade (bulk selects)
+            $('#bulk_provider_code').on('change', function() {
+                const providerCode = $(this).val();
+                if (providerCode) {
+                    self.loadBulkProjectsByProvider(providerCode);
+                } else {
+                    $('#bulk_project_code').empty().append('<option value="">Select Provider first</option>')
+                        .val(null).trigger('change.select2').prop('disabled', true);
+                }
+            });
+
+            // Download Excel template
+            $('#bulk-download-template').on('click', function() {
+                self.downloadBulkTemplate();
+            });
+
+            // File chosen -> parse + preview
+            $('#bulk_file').on('change', function(e) {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    self.handleBulkFile(file);
+                }
+            });
+
+            // Process the import
+            $('#process-bulk-import').on('click', function() {
+                self.processBulkImport();
+            });
+
+            // Delete a row directly in the preview (delegated so it survives re-renders).
+            // Uses the array index encoded in data-index.
+            $('#bulk-preview tbody').on('click', '.bulk-row-delete', function() {
+                const idx = parseInt($(this).data('index'), 10);
+                if (!isNaN(idx)) {
+                    self.parsedBulkRows.splice(idx, 1);
+                    self.renderBulkPreview();
+                }
+            });
+        },
+
+        openBulkImportModal: function() {
+            this.parsedBulkRows = [];
+            this._currentBulkFileName = '';
+            $('#bulk_file').val('');
+            $('#bulk-preview-wrap').hide();
+            $('#bulk-preview tbody').empty();
+            $('#bulk-preview-summary').text('');
+            $('#process-bulk-import').prop('disabled', true);
+            $('#bulk_project_code').empty().append('<option value="">Select Provider first</option>')
+                .val(null).trigger('change.select2').prop('disabled', true);
+
+            var modal = new bootstrap.Modal(document.getElementById('bulk-import-modal'));
+            modal.show();
+        },
+
+        loadBulkProviders: function() {
+            const $dropdown = $('#bulk_provider_code');
+            $dropdown.empty().append('<option value="">Select Provider</option>');
+
+            $.ajax({
+                url: '/Admin/GetAllProviders',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.data) {
+                        response.data.forEach(function(provider) {
+                            $dropdown.append('<option value="' + provider.provider_code + '">' +
+                                provider.provider_name + ' (' + provider.provider_code + ')</option>');
+                        });
+                    }
+                },
+                error: function() {
+                    AdminPage.common.showError('Failed to load providers. Please try again.');
+                }
+            });
+        },
+
+        loadBulkProjectsByProvider: function(providerCode) {
+            const $dropdown = $('#bulk_project_code');
+            $dropdown.prop('disabled', false);
+            $dropdown.empty().append('<option value="">Select Project</option>');
+
+            $.ajax({
+                url: '/Admin/GetProjectsByProvider',
+                method: 'GET',
+                data: { provider_code: providerCode },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        response.data.forEach(function(project) {
+                            // Hide expired projects for new enrollment
+                            const isExpired = project.contract_enddate && new Date(project.contract_enddate) < today;
+                            if (isExpired) return;
+                            $dropdown.append('<option value="' + project.project_code + '">' +
+                                project.project_name + ' (' + project.project_code + ')</option>');
+                        });
+                    }
+                    $dropdown.val(null).trigger('change.select2');
+                },
+                error: function() {
+                    AdminPage.common.showError('Failed to load projects. Please try again.');
+                }
+            });
+        },
+
+        downloadBulkTemplate: function() {
+            const ws = XLSX.utils.json_to_sheet(this._bulkSampleRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
+            XLSX.writeFile(wb, 'BulkContractorTemplate.xlsx');
+        },
+
+        handleBulkFile: function(file) {
+            const self = this;
+            const reader = new FileReader();
+            const isCsv = /\.csv$/i.test(file.name);
+
+            if (isCsv) {
+                reader.onload = function(e) {
+                    try {
+                        const wb = XLSX.read(e.target.result, { type: 'string', raw: false });
+                        self._parseBulkWorkbook(wb, file.name);
+                    } catch (err) {
+                        console.error(err);
+                        AdminPage.common.showError('Could not read the CSV file.');
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                reader.onload = function(e) {
+                    try {
+                        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true, raw: false });
+                        self._parseBulkWorkbook(wb, file.name);
+                    } catch (err) {
+                        console.error(err);
+                        AdminPage.common.showError('Could not read the Excel file.');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        },
+
+        _parseBulkWorkbook: function(wb, fileName) {
+            const self = this;
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            if (!ws) {
+                AdminPage.common.showError('The file has no sheets.');
+                return;
+            }
+            // raw:false -> formatted strings (handles Excel date cells); defval:'' keeps blanks.
+            const rows = XLSX.utils.sheet_to_json(ws, { raw: false, defval: '' });
+            this._currentBulkFileName = fileName;
+            this.parsedBulkRows = rows.map(function(raw, idx) {
+                return self._mapBulkRow(raw, idx + 2);   // +2: header row + 1-based numbering
+            }).map(function(row) {
+                // Auto-skip template sample rows the admin forgot to remove. They stay in
+                // the preview (shown as skipped) but are never sent to the server.
+                if (self._isBulkSampleRow(row)) {
+                    row.skipped = true;
+                    row.error = null;
+                }
+                return row;
+            });
+            this.renderBulkPreview();
+        },
+
+        _mapBulkRow: function(raw, rowNumber) {
+            // Match headers leniently (case/space/underscore insensitive)
+            const get = function(key) {
+                const norm = key.replace(/[\s_]/g, '').toLowerCase();
+                const keys = Object.keys(raw);
+                for (let i = 0; i < keys.length; i++) {
+                    if (keys[i].replace(/[\s_]/g, '').toLowerCase() === norm) {
+                        const v = raw[keys[i]];
+                        return (v === null || v === undefined) ? '' : String(v).trim();
+                    }
+                }
+                return '';
+            };
+
+            const genderRaw = get('gender');
+            const g = genderRaw.toLowerCase();
+            let gender = '';
+            if (g === 'male' || g === 'm') gender = 'Male';
+            else if (g === 'female' || g === 'f') gender = 'Female';
+
+            const birthdateRaw = get('birthdate');
+
+            const row = {
+                row_number: rowNumber,
+                name: get('name'),
+                gender: gender,
+                birthdate: birthdateRaw,
+                contact_number: get('contact_number') || get('contact'),
+                address: get('address'),
+                area_of_destination: get('area_of_destination') || get('area'),
+                position: get('position'),
+                error: null
+            };
+
+            // Light client-side validation. The server is still authoritative, but this
+            // gives the admin an instant preview and avoids sending obviously bad rows.
+            const dob = birthdateRaw ? new Date(birthdateRaw) : null;
+            const validDob = dob && !isNaN(dob.getTime());
+
+            if (!row.name) row.error = 'Name is required';
+            else if (!gender) row.error = 'Gender must be Male or Female';
+            else if (!birthdateRaw) row.error = 'Birthdate is required';
+            else if (!validDob) row.error = 'Birthdate is not a valid date';
+            else if (!row.position) row.error = 'Position is required';
+            else if (!row.area_of_destination) row.error = 'Area of Destination is required';
+            else {
+                // DOLE 18+ pre-check (mirrors ContractorService.ValidateBirthdate)
+                const d = new Date(dob); d.setHours(0, 0, 0, 0);
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                if (d > today) row.error = 'Birthdate cannot be a future date';
+                else {
+                    let age = today.getFullYear() - d.getFullYear();
+                    const m = today.getMonth() - d.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+                    if (age < 18) row.error = 'Under 18 — not eligible (DOLE)';
+                }
+            }
+
+            // Normalize birthdate to YYYY-MM-DD for the server
+            if (!row.error && validDob) {
+                row.birthdate = dob.getFullYear() + '-' +
+                    String(dob.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(dob.getDate()).padStart(2, '0');
+            }
+
+            return row;
+        },
+
+        renderBulkPreview: function() {
+            const $tbody = $('#bulk-preview tbody');
+            $tbody.empty();
+
+            const valid = this.parsedBulkRows.filter(function(r) { return !r.error && !r.skipped; });
+            const invalid = this.parsedBulkRows.filter(function(r) { return r.error; });
+            const skipped = this.parsedBulkRows.filter(function(r) { return r.skipped; });
+
+            this.parsedBulkRows.forEach(function(r, idx) {
+                let badge;
+                if (r.skipped) {
+                    badge = '<span class="badge bg-secondary">Sample — skipped</span>';
+                } else if (r.error) {
+                    badge = '<span class="badge bg-danger">' + r.error + '</span>';
+                } else {
+                    badge = '<span class="badge bg-success">OK</span>';
+                }
+                $tbody.append(
+                    '<tr>' +
+                    '<td>' + r.row_number + '</td>' +
+                    '<td>' + (r.name || '') + '</td>' +
+                    '<td>' + (r.gender || '') + '</td>' +
+                    '<td>' + (r.birthdate || '') + '</td>' +
+                    '<td>' + (r.position || '') + '</td>' +
+                    '<td>' + (r.area_of_destination || '') + '</td>' +
+                    '<td>' + badge + '</td>' +
+                    '<td class="text-center">' +
+                        '<button type="button" class="btn btn-sm btn-link text-danger p-0 bulk-row-delete" data-index="' + idx + '" title="Remove row">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</td>' +
+                    '</tr>'
+                );
+            });
+
+            // Total count at the top of the preview, with a valid/error/skipped breakdown.
+            const parts = [valid.length + ' valid'];
+            if (invalid.length) parts.push('<span class="text-danger">' + invalid.length + ' with errors</span>');
+            if (skipped.length) parts.push('<span class="text-secondary">' + skipped.length + ' sample skipped</span>');
+            $('#bulk-preview-summary').html(
+                '<strong>Total rows: ' + this.parsedBulkRows.length + '</strong>' +
+                ' <span class="text-muted">(' + parts.join(', ') + ')</span>'
+            );
+
+            $('#bulk-preview-wrap').show();
+            // Block processing while any row still has an error.
+            $('#process-bulk-import').prop('disabled', !(valid.length > 0 && invalid.length === 0));
+
+            if (this.parsedBulkRows.length === 0) {
+                AdminPage.common.showWarning('No rows found in the file.');
+            }
+        },
+
+        processBulkImport: function() {
+            const self = this;
+            const providerCode = $('#bulk_provider_code').val();
+            const projectCode = $('#bulk_project_code').val();
+
+            if (!providerCode) { AdminPage.common.showError('Please select a Provider.'); return; }
+            if (!projectCode) { AdminPage.common.showError('Please select a Project.'); return; }
+
+            // Hard block: the preview must have zero error rows before importing.
+            const invalidRows = this.parsedBulkRows.filter(function(r) { return r.error; });
+            if (invalidRows.length > 0) {
+                AdminPage.common.showError('Please fix or remove all rows with errors before importing (' + invalidRows.length + ' remaining).');
+                return;
+            }
+
+            // Skipped template samples are never sent.
+            const validRows = this.parsedBulkRows.filter(function(r) { return !r.error && !r.skipped; });
+            if (validRows.length === 0) {
+                AdminPage.common.showError('There are no valid rows to import.');
+                return;
+            }
+
+            const payload = {
+                provider_code: providerCode,
+                project_code: projectCode,
+                file_name: this._currentBulkFileName || '',
+                contractors: validRows.map(function(r) {
+                    return {
+                        row_number: r.row_number,
+                        name: r.name,
+                        gender: r.gender,
+                        birthdate: r.birthdate,
+                        contact_number: r.contact_number,
+                        address: r.address,
+                        area_of_destination: r.area_of_destination,
+                        position: r.position
+                    };
+                })
+            };
+
+            const $btn = $('#process-bulk-import').prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+
+            $.ajax({
+                url: '/Admin/BulkCreateContractors',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(response) {
+                    $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Process Import');
+                    if (response.success && response.data) {
+                        self._showBulkResult(response.data);
+                        self.contractorTable.ajax.reload();
+                    } else {
+                        AdminPage.common.showError(response.message || 'Bulk import failed.');
+                    }
+                },
+                error: function() {
+                    $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Process Import');
+                    AdminPage.common.showError('Failed to process the import. Please try again.');
+                }
+            });
+        },
+
+        _showBulkResult: function(data) {
+            const self = this;
+            const errorRows = (data.errors && data.errors.length)
+                ? '<hr><div class="text-start"><strong>Failed rows (' + data.error_count + '):</strong>' +
+                  '<table class="table table-sm table-bordered mt-2 mb-0"><thead><tr>' +
+                  '<th>Row</th><th>Name</th><th>Reason</th></tr></thead><tbody>' +
+                  data.errors.map(function(e) {
+                      return '<tr><td>' + e.row + '</td><td>' + (e.name || '') + '</td><td>' + e.message + '</td></tr>';
+                  }).join('') +
+                  '</tbody></table></div>'
+                : '';
+
+            // Hide the import modal so the result popup is not trapped behind it
+            const modalEl = document.getElementById('bulk-import-modal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            Swal.fire({
+                icon: data.error_count > 0 ? 'warning' : 'success',
+                title: 'Bulk Import Complete',
+                html: '<div>Successfully enrolled: <strong>' + data.success_count + '</strong> of ' +
+                      data.total + '</div>' +
+                      (data.enrolled_employee_ids && data.enrolled_employee_ids.length
+                          ? '<div class="text-muted small mt-1">IDs: ' + data.enrolled_employee_ids.join(', ') + '</div>'
+                          : '') +
+                      errorRows,
+                confirmButtonText: 'OK',
+                width: data.error_count > 0 ? '640px' : undefined
+            }).then(function() {
+                self.parsedBulkRows = [];
+            });
+        }
+    },
+
+    // AuditLogs.cshtml - Audit log viewer
+    auditLogs: {
+        auditTable: null,
+
+        init: function() {
+            const self = this;
+
+            self.auditTable = $('#audit-logs-table').DataTable({
+                ajax: {
+                    url: '/Admin/GetAllAuditLogs',
+                    dataSrc: function(data) { return data.success ? data.data : []; }
+                },
+                columns: [
+                    {
+                        data: 'created_at',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : '';
+                        }
+                    },
+                    { data: 'updated_by', defaultContent: '' },
+                    {
+                        data: 'entity_type',
+                        render: function(data) {
+                            return '<span class="badge bg-info text-dark">' + (data || '') + '</span>';
+                        }
+                    },
+                    { data: 'action', defaultContent: '' },
+                    { data: 'reference_id', defaultContent: '' },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            return self._summary(row);
+                        }
+                    },
+                    {
+                        data: null,
+                        className: 'text-center',
+                        orderable: false,
+                        render: function(data) {
+                            return '<button class="btn btn-sm btn-info btn-audit-details" data-log-id="' + data.log_id + '">' +
+                                   '<i class="fa-regular fa-eye"></i></button>';
+                        }
+                    }
+                ],
+                order: [[0, 'desc']],
+                pageLength: 25
+            });
+
+            // Entity filter (client-side custom search; guarded to this table)
+            $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
+                if (settings.nTable.id !== 'audit-logs-table') return true;
+                const val = $('#filter-audit-entity').val();
+                if (val && rowData.entity_type !== val) return false;
+                return true;
+            });
+            $('#filter-audit-entity').on('change', function() { self.auditTable.draw(); });
+            $('#reset-audit-filters').on('click', function() {
+                $('#filter-audit-entity').val('');
+                self.auditTable.search('').draw();
+            });
+
+            // Show export button only when data exists
+            self.auditTable.on('draw', function() {
+                $('#export-audit-logs').toggle(self.auditTable.data().length > 0);
+            });
+            $('#export-audit-logs').on('click', function() { self.exportToExcel(); });
+
+            // Details button
+            $(document).on('click', '.btn-audit-details', function() {
+                const row = self.auditTable.row($(this).closest('tr')).data();
+                self.showDetails(row);
+            });
+        },
+
+        _safeParse: function(str) {
+            if (!str) return null;
+            try { return typeof str === 'string' ? JSON.parse(str) : str; }
+            catch (e) { return null; }
+        },
+
+        _summary: function(row) {
+            if (!row) return '';
+            const to = this._safeParse(row.data_to);
+            if (row.entity_type === 'bulk_enrollment' && to) {
+                return '<span class="badge bg-success">' + (to.success_count || 0) + ' enrolled</span> ' +
+                       '<span class="badge bg-danger">' + (to.error_count || 0) + ' failed</span>' +
+                       (to.file_name ? '<div class="text-muted small">' + to.file_name + '</div>' : '');
+            }
+            return '<span class="text-muted small">—</span>';
+        },
+
+        showDetails: function(row) {
+            if (!row) return;
+            const to = this._safeParse(row.data_to);
+            const from = this._safeParse(row.data_from);
+
+            const meta = '<dl class="row mb-0">' +
+                '<dt class="col-sm-3">Date / Time</dt><dd class="col-sm-9">' + (row.created_at ? new Date(row.created_at).toLocaleString() : '') + '</dd>' +
+                '<dt class="col-sm-3">Admin</dt><dd class="col-sm-9">' + (row.updated_by || '') + '</dd>' +
+                '<dt class="col-sm-3">Entity</dt><dd class="col-sm-9">' + (row.entity_type || '') + '</dd>' +
+                '<dt class="col-sm-3">Action</dt><dd class="col-sm-9">' + (row.action || '') + '</dd>' +
+                '<dt class="col-sm-3">Reference</dt><dd class="col-sm-9">' + (row.reference_id || '') + '</dd>' +
+                '</dl>';
+
+            let body = '';
+            if (row.entity_type === 'bulk_enrollment' && to) {
+                body += '<div class="mb-2">' +
+                    '<span class="badge bg-success me-1">' + (to.success_count || 0) + ' enrolled</span>' +
+                    '<span class="badge bg-danger me-1">' + (to.error_count || 0) + ' failed</span>' +
+                    '<span class="badge bg-secondary">' + (to.total || 0) + ' total</span>' +
+                    (to.provider_code ? '<div class="text-muted small mt-1">Provider: ' + to.provider_code + '</div>' : '') +
+                    (to.project_code ? '<div class="text-muted small">Project: ' + to.project_code + '</div>' : '') +
+                    '</div>';
+                if (to.enrolled_employee_ids && to.enrolled_employee_ids.length) {
+                    body += '<div class="mb-2"><strong>Enrolled IDs:</strong> ' + to.enrolled_employee_ids.join(', ') + '</div>';
+                }
+                if (to.errors && to.errors.length) {
+                    body += '<strong>Failed rows:</strong>' +
+                        '<table class="table table-sm table-bordered"><thead><tr><th>Row</th><th>Name</th><th>Reason</th></tr></thead><tbody>' +
+                        to.errors.map(function(e) {
+                            return '<tr><td>' + e.row + '</td><td>' + (e.name || '') + '</td><td>' + e.message + '</td></tr>';
+                        }).join('') +
+                        '</tbody></table>';
+                }
+            } else {
+                body += '<strong>data_to:</strong><pre class="bg-light p-2" style="max-height:300px;overflow:auto;">' +
+                        this._pretty(to) + '</pre>';
+                if (from) {
+                    body += '<strong>data_from:</strong><pre class="bg-light p-2" style="max-height:300px;overflow:auto;">' +
+                            this._pretty(from) + '</pre>';
+                }
+            }
+
+            $('#audit-details-meta').html(meta);
+            $('#audit-details-body').html(body);
+            var modal = new bootstrap.Modal(document.getElementById('audit-log-details-modal'));
+            modal.show();
+        },
+
+        _pretty: function(obj) {
+            try { return JSON.stringify(obj, null, 2); }
+            catch (e) { return String(obj); }
+        },
+
+        exportToExcel: function() {
+            const self = this;
+            const tableData = this.auditTable.rows({ search: 'applied' }).data().toArray();
+            if (tableData.length === 0) {
+                AdminPage.common.showWarning('No data available to export', 'No Data');
+                return;
+            }
+
+            const exportData = tableData.map(function(row) {
+                const to = self._safeParse(row.data_to);
+                let summary = '';
+                if (row.entity_type === 'bulk_enrollment' && to) {
+                    summary = (to.success_count || 0) + ' enrolled / ' + (to.error_count || 0) + ' failed';
+                }
+                return {
+                    'Date / Time': row.created_at ? new Date(row.created_at).toLocaleString() : '',
+                    'Admin': row.updated_by || '',
+                    'Entity': row.entity_type || '',
+                    'Action': row.action || '',
+                    'Reference': row.reference_id || '',
+                    'Summary': summary
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Audit Logs');
+            const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+            XLSX.writeFile(wb, 'AuditLogs_' + ts + '.xlsx');
+            AdminPage.common.showSuccess('Exported ' + tableData.length + ' audit log entries', 'Export Successful');
         }
     },
 

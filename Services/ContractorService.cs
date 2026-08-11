@@ -9,17 +9,20 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         private readonly IContractorEmployeeRepository _contractorRepository;
         private readonly IProjectRepository _projectRepository;
         private readonly IProviderRepository _providerRepository;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<ContractorService> _logger;
 
         public ContractorService(
             IContractorEmployeeRepository contractorRepository,
             IProjectRepository projectRepository,
             IProviderRepository providerRepository,
+            IAuditLogService auditLogService,
             ILogger<ContractorService> logger)
         {
             _contractorRepository = contractorRepository;
             _projectRepository = projectRepository;
             _providerRepository = providerRepository;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -412,6 +415,169 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     Success = false,
                     Message = "Error retrieving active contractors count",
                     Data = 0
+                };
+            }
+        }
+
+        /// <summary>
+        /// Bulk-import contractors for a single provider/project from a parsed file.
+        /// Provider/project are validated once (and must belong together); each row is
+        /// then inserted via Create() so it reuses the same field + DOLE 18+ validation
+        /// and the {project_code}-NNNN auto employee_id generation. Valid rows insert;
+        /// invalid rows are collected with row number + reason. One audit_log batch row
+        /// is written regardless of partial failures.
+        /// </summary>
+        public async Task<Response<bulk_enrollment_result>> BulkCreate(bulk_enrollment_request request, string admin_employee_id)
+        {
+            var result = new bulk_enrollment_result
+            {
+                provider_code = request?.provider_code,
+                project_code = request?.project_code,
+                file_name = request?.file_name
+            };
+
+            try
+            {
+                if (request == null || request.contractors == null || request.contractors.Count == 0)
+                {
+                    return new Response<bulk_enrollment_result>
+                    {
+                        Success = false,
+                        Message = "No contractor rows were provided for import.",
+                        Data = result
+                    };
+                }
+
+                result.total = request.contractors.Count;
+
+                // Fail fast: the modal's provider/project must be valid and belong together.
+                if (string.IsNullOrWhiteSpace(request.provider_code) || string.IsNullOrWhiteSpace(request.project_code))
+                {
+                    return new Response<bulk_enrollment_result>
+                    {
+                        Success = false,
+                        Message = "Provider and Project are required.",
+                        Data = result
+                    };
+                }
+
+                var project = await _projectRepository.GetByProjectCode(request.project_code);
+                if (project == null)
+                {
+                    return new Response<bulk_enrollment_result>
+                    {
+                        Success = false,
+                        Message = "Selected project was not found.",
+                        Data = result
+                    };
+                }
+
+                if (!string.Equals(project.provider_code, request.provider_code, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new Response<bulk_enrollment_result>
+                    {
+                        Success = false,
+                        Message = "The selected project does not belong to the selected provider.",
+                        Data = result
+                    };
+                }
+
+                var provider = await _providerRepository.GetByProviderCode(request.provider_code);
+                if (provider == null)
+                {
+                    return new Response<bulk_enrollment_result>
+                    {
+                        Success = false,
+                        Message = "Selected provider was not found.",
+                        Data = result
+                    };
+                }
+
+                // Insert each row. Create() enforces required fields, DOLE 18+ birthdate,
+                // and provider/project existence; gender is checked here because Create()
+                // does not validate it.
+                foreach (var row in request.contractors)
+                {
+                    var normalizedGender = (row.gender ?? string.Empty).Trim();
+                    if (!string.Equals(normalizedGender, "Male", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(normalizedGender, "Female", StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.error_count++;
+                        result.errors.Add(new bulk_enrollment_error
+                        {
+                            row = row.row_number,
+                            name = row.name,
+                            message = "Gender must be Male or Female."
+                        });
+                        continue;
+                    }
+
+                    var employee = new contractor_employee
+                    {
+                        name = row.name,
+                        gender = normalizedGender,
+                        birthdate = row.birthdate,
+                        contact_number = row.contact_number,
+                        address = row.address,
+                        area_of_destination = row.area_of_destination,
+                        position = row.position,
+                        provider_code = request.provider_code,
+                        project_code = request.project_code,
+                        active = 1
+                    };
+
+                    var created = await Create(employee);
+                    if (created.Success && created.Data != null)
+                    {
+                        result.success_count++;
+                        result.enrolled_employee_ids.Add(created.Data.employee_id);
+                    }
+                    else
+                    {
+                        result.error_count++;
+                        result.errors.Add(new bulk_enrollment_error
+                        {
+                            row = row.row_number,
+                            name = row.name,
+                            message = created.Message ?? "Could not enroll this contractor."
+                        });
+                    }
+                }
+
+                // Record the batch in the reusable audit log (best-effort: never fail the
+                // import if logging itself fails).
+                var logResponse = await _auditLogService.Log(
+                    "bulk_enrollment",
+                    "bulk_create",
+                    request.project_code,
+                    null,
+                    result,
+                    admin_employee_id);
+
+                if (logResponse.Success && logResponse.Data != null)
+                {
+                    result.log_id = logResponse.Data.log_id;
+                }
+
+                _logger.LogInformation(
+                    "Bulk enrollment complete: {Success} succeeded, {Errors} failed (project {ProjectCode}, admin {Admin})",
+                    result.success_count, result.error_count, request.project_code, admin_employee_id);
+
+                return new Response<bulk_enrollment_result>
+                {
+                    Success = true,
+                    Message = $"Enrolled {result.success_count} of {result.total} contractor(s); {result.error_count} failed.",
+                    Data = result
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during bulk enrollment (project {ProjectCode})", request?.project_code);
+                return new Response<bulk_enrollment_result>
+                {
+                    Success = false,
+                    Message = "An error occurred during bulk enrollment.",
+                    Data = result
                 };
             }
         }

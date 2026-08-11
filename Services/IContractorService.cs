@@ -12,5 +12,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<contractor_employee>> Update(contractor_employee employee);
         Task<Response<bool>> SetInactive(string employee_id);
         Task<Response<int>> GetActiveCount();
+
+        // Bulk-import contractors for a single provider/project from a parsed file.
+        // Reuses Create() per row (field + DOLE 18+ + existence validation, auto employee_id).
+        // Returns per-batch totals + per-row errors; writes one audit_log batch row.
+        Task<Response<bulk_enrollment_result>> BulkCreate(bulk_enrollment_request request, string admin_employee_id);
     }
 }

@@ -1,4 +1,5 @@
 using ContractorAttendanceWithHealthDeclaration.Attributes;
+using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using ContractorAttendanceWithHealthDeclaration.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +16,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         private readonly ITimeLogsManagementService _timeLogsManagementService;
         private readonly IProviderService _providerService;
         private readonly IHistoryLogsService _historyLogsService;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(
@@ -24,6 +26,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             ITimeLogsManagementService timeLogsManagementService,
             IProviderService providerService,
             IHistoryLogsService historyLogsService,
+            IAuditLogService auditLogService,
             ILogger<AdminController> logger)
         {
             _projectService = projectService;
@@ -32,6 +35,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             _timeLogsManagementService = timeLogsManagementService;
             _providerService = providerService;
             _historyLogsService = historyLogsService;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -317,6 +321,55 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             contractor.active = 0;
             var result = await _contractorService.Update(contractor);
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
+        // POST: /Admin/BulkCreateContractors
+        // Accepts provider_code + project_code (from the modal selects) and a list of
+        // contractor rows parsed client-side from the uploaded CSV/Excel file.
+        [HttpPost]
+        public async Task<IActionResult> BulkCreateContractors([FromBody] bulk_enrollment_request request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return Json(new { success = false, message = "No import data was provided." });
+                }
+
+                // Admin identity for the audit trail (matches TimeLogsManagement pattern).
+                var adminEmployeeId = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+
+                var result = await _contractorService.BulkCreate(request, adminEmployeeId);
+                return Json(new
+                {
+                    success = result.Success,
+                    message = result.Message,
+                    data = result.Data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during bulk contractor enrollment");
+                return Json(new { success = false, message = "An error occurred during bulk enrollment." });
+            }
+        }
+
+        #endregion
+
+        #region Audit Logs
+
+        // GET: /Admin/AuditLogs
+        public IActionResult AuditLogs()
+        {
+            ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllAuditLogs()
+        {
+            var result = await _auditLogService.GetAll();
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
