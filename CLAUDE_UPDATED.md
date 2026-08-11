@@ -365,7 +365,6 @@ HttpContext.Session.SetString("Role", "Admin");
 - `contractor_employee` - Contractors with snake_case columns (soft delete with active field)
 - `time_logs` - Attendance records (health_status, updated_by, updated_at for audit trail)
 - `system_config` - Runtime configuration (key-value pairs)
-- `health_declaration` - (Table exists but not actively used in simplified workflow)
 
 ### Database Rule
 **NEVER execute SQL directly** - always create stored procedures for user to run manually. Place SQL scripts in `.claude/sql-scripts/` for user execution.
