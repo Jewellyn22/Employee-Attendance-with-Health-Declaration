@@ -140,6 +140,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_time_in = timelog.time_in,
                     p_time_out = timelog.time_out,
                     p_health_status = timelog.health_status,
+                    p_waiver_consent = timelog.waiver_consent,
                     p_updated_by = timelog.updated_by,
                     p_updated_at = timelog.updated_at
                 },

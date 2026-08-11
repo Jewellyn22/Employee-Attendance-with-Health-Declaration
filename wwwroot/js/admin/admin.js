@@ -1505,6 +1505,7 @@ const AdminPage = {
                             $('#edit_time_in').val(self.formatDateTimeForInput(timelog.time_in));
                             $('#edit_time_out').val(timelog.time_out ? self.formatDateTimeForInput(timelog.time_out) : '');
                             $('#edit_health_status').val(timelog.health_status);
+                            $('#edit_waiver_consent').val(timelog.waiver_consent);
 
                             // Use Bootstrap 5 native API
                             var modal = new bootstrap.Modal(document.getElementById('timelog-modal'));
@@ -1563,7 +1564,8 @@ const AdminPage = {
                     employee_id: employeeId,
                     time_in: $('#edit_time_in').val(),
                     time_out: $('#edit_time_out').val() || null,
-                    health_status: $('#edit_health_status').val()
+                    health_status: $('#edit_health_status').val(),
+                    waiver_consent: $('#edit_waiver_consent').val()
                 };
 
                 $.ajax({
@@ -1670,7 +1672,7 @@ const AdminPage = {
             // Transform data for export with friendly column names (matches visible table)
             const exportData = tableData.map(row => ({
                 'Attendance ID': row.attendance_id,
-                'Employee ID': row.employee_id,
+                'Employee Name': row.name,
                 'Time In': row.time_in ? AdminPage.common.formatDateTime(row.time_in) : '-',
                 'Time Out': row.time_out ? AdminPage.common.formatDateTime(row.time_out) : 'Active',
                 'Health Status': row.health_status,
