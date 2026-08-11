@@ -98,6 +98,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
+        // Unified update for both kiosk and admin paths. The merged SP preserves the
+        // existing updated_by/updated_at when the caller passes null (kiosk self-service
+        // health-status change) and writes them when set (kiosk TIME OUT, admin edit).
         public async Task<time_log> Update(time_log time_log)
         {
             const string storedProc = "sp_time_logs_Update";
@@ -110,7 +113,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_time_in = time_log.time_in,
                     p_time_out = time_log.time_out,
                     p_health_status = time_log.health_status,
-                    p_waiver_consent = time_log.waiver_consent
+                    p_waiver_consent = time_log.waiver_consent,
+                    p_updated_by = time_log.updated_by,
+                    p_updated_at = time_log.updated_at
                 },
                 commandType: CommandType.StoredProcedure
             );
@@ -127,27 +132,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             return result > 0;
         }
 
-        // New methods for admin management
-        public async Task<time_log> UpdateForAdminEdit(time_log timelog)
-        {
-            const string storedProc = "sp_time_logs_UpdateForAdminEdit";
-            return await _db.QuerySingleOrDefaultAsync<time_log>(
-                storedProc,
-                new
-                {
-                    p_attendance_id = timelog.attendance_id,
-                    p_employee_id = timelog.employee_id,
-                    p_time_in = timelog.time_in,
-                    p_time_out = timelog.time_out,
-                    p_health_status = timelog.health_status,
-                    p_waiver_consent = timelog.waiver_consent,
-                    p_updated_by = timelog.updated_by,
-                    p_updated_at = timelog.updated_at
-                },
-                commandType: CommandType.StoredProcedure
-            );
-        }
-
+        // Admin management
         public async Task<bool> Delete(int attendance_id)
         {
             const string storedProc = "sp_time_logs_Delete";

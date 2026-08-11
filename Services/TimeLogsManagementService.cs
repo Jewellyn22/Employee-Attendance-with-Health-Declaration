@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Helpers;
 using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using ContractorAttendanceWithHealthDeclaration.Repositories;
@@ -64,23 +65,25 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 timelog.updated_at = DateTime.Now;
 
                 // Validate health status enum values
-                if (timelog.health_status != "FIT" && timelog.health_status != "UNFIT")
+                var healthError = ValidationHelper.ValidateHealthStatus(timelog.health_status);
+                if (healthError != null)
                 {
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Invalid health status. Must be 'FIT' or 'UNFIT'",
+                        Message = healthError,
                         Data = null
                     };
                 }
 
                 // Validate waiver consent enum values (same rule as kiosk time-in)
-                if (timelog.waiver_consent != "UNDERSTOOD" && timelog.waiver_consent != "NOT_UNDERSTOOD")
+                var waiverError = ValidationHelper.ValidateWaiverConsent(timelog.waiver_consent);
+                if (waiverError != null)
                 {
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Invalid waiver consent. Must be 'UNDERSTOOD' or 'NOT_UNDERSTOOD'",
+                        Message = waiverError,
                         Data = null
                     };
                 }
@@ -88,15 +91,14 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 // Keep records consistent: "not allowed to enter" combos (UNFIT, or FIT + NOT_UNDERSTOOD)
                 // require a Time Out. If Time Out is blank, auto-fill it with Time In (zero-duration session).
                 // Existing Time Out values are never overwritten; reverting to FIT + UNDERSTOOD does not clear it.
-                bool notAllowedToEnter = timelog.health_status == "UNFIT" ||
-                                         (timelog.health_status == "FIT" && timelog.waiver_consent == "NOT_UNDERSTOOD");
-                if (notAllowedToEnter && timelog.time_out == null && timelog.time_in != null)
+                if (BusinessRulesHelper.IsNotAllowedToEnter(timelog.health_status, timelog.waiver_consent)
+                    && timelog.time_out == null && timelog.time_in != null)
                 {
                     timelog.time_out = timelog.time_in;
                     _logger.LogInformation("Auto-set time_out = time_in for attendance {AttendanceId} (not-allowed combo, time_out was blank)", timelog.attendance_id);
                 }
 
-                var updatedLog = await _timeLogsRepository.UpdateForAdminEdit(timelog);
+                var updatedLog = await _timeLogsRepository.Update(timelog);
 
                 _logger.LogInformation("Timelog {AttendanceId} updated successfully by admin {AdminId}",
                     timelog.attendance_id, admin_employee_id);

@@ -22,22 +22,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             );
         }
 
+        // Returns the contractor with joined provider/project names and no active filter
+        // in the SP. The scan flow (ProcessScan) and admin Update both rely on this single
+        // lookup; the active/inactive distinction is enforced in C#.
         public async Task<contractor_employee?> GetByEmployeeId(string employee_id)
         {
             const string storedProc = "sp_contractor_employee_GetByEmployeeId";
-            return await _db.QuerySingleOrDefaultAsync<contractor_employee>(
-                storedProc,
-                new { p_employee_id = employee_id },
-                commandType: CommandType.StoredProcedure
-            );
-        }
-
-        // Finds a contractor regardless of active status (no active filter in the SP).
-        // Used ONLY by ContractorService.Update() existence check so inactive contractors
-        // can be edited/reactivated. Scan flow keeps using GetByEmployeeId (active-only).
-        public async Task<contractor_employee?> GetByEmployeeIdForUpdate(string employee_id)
-        {
-            const string storedProc = "sp_contractor_employee_GetByEmployeeIdForUpdate";
             return await _db.QuerySingleOrDefaultAsync<contractor_employee>(
                 storedProc,
                 new { p_employee_id = employee_id },
@@ -101,17 +91,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
             return result > 0;
         }
 
+        // Active contractors for the admin "View Contractors by Project" modal.
+        // Stored procedure enforces the active = 1 filter (no inline SQL).
         public async Task<IEnumerable<contractor_employee>> GetByProjectCode(string project_code)
         {
-            const string query = @"
-                SELECT employee_id, name, position, area_of_destination
-                FROM contractor_employee
-                WHERE project_code = @project_code AND active = 1";
-
+            const string storedProc = "sp_contractor_employee_GetByProjectCode";
             return await _db.QueryAsync<contractor_employee>(
-                query,
-                new { project_code = project_code },
-                commandType: CommandType.Text
+                storedProc,
+                new { p_project_code = project_code },
+                commandType: CommandType.StoredProcedure
             );
         }
 

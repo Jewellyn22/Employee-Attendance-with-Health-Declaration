@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Helpers;
 using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using ContractorAttendanceWithHealthDeclaration.Repositories;
@@ -74,13 +75,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var todayTimeIn = await _timeLogsRepository.GetTodayTimeIn(employee_id);
                 if (todayTimeIn != null)
                 {
-                    // Block if health_status is "UNFIT" OR (health_status is "FIT" AND waiver_consent is "NOT_UNDERSTOOD")
-                    bool shouldBlock = todayTimeIn.health_status == "UNFIT" ||
-                                       (todayTimeIn.health_status == "FIT" && todayTimeIn.waiver_consent == "NOT_UNDERSTOOD");
+                    // Block entry if the contractor's latest TIME IN today is a "not allowed to enter"
+                    // combination (UNFIT, or FIT + NOT_UNDERSTOOD).
+                    bool shouldBlock = BusinessRulesHelper.IsNotAllowedToEnter(todayTimeIn.health_status, todayTimeIn.waiver_consent);
 
                     if (shouldBlock)
                     {
-                        string healthStatusDesc = todayTimeIn.health_status == "FIT" ? "You did not understand waiver" : "You are UNFIT";
+                        string healthStatusDesc = todayTimeIn.health_status == HealthConstants.StatusFit ? "You did not understand waiver" : "You are UNFIT";
                         return new Response<time_log>
                         {
                             Success = false,
@@ -119,8 +120,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     employee_id = employee_id,
                     time_in = DateTime.Now,
                     time_out = null,
-                    health_status = "FIT", // Default FIT status
-                    waiver_consent = "UNDERSTOOD" // Default waiver consent
+                    health_status = HealthConstants.StatusFit, // Default FIT status
+                    waiver_consent = HealthConstants.WaiverUnderstood // Default waiver consent
                 };
 
                 var createdLog = await _timeLogsRepository.Create(newTimeLog);
@@ -212,23 +213,25 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     attendance_id, health_status, waiver_consent);
 
                 // Validate health status enum values
-                if (health_status != "FIT" && health_status != "UNFIT")
+                var healthError = ValidationHelper.ValidateHealthStatus(health_status);
+                if (healthError != null)
                 {
                     return new Response<bool>
                     {
                         Success = false,
-                        Message = "Invalid health status. Must be 'FIT' or 'UNFIT'",
+                        Message = healthError,
                         Data = false
                     };
                 }
 
                 // Validate waiver consent enum values
-                if (waiver_consent != "UNDERSTOOD" && waiver_consent != "NOT_UNDERSTOOD")
+                var waiverError = ValidationHelper.ValidateWaiverConsent(waiver_consent);
+                if (waiverError != null)
                 {
                     return new Response<bool>
                     {
                         Success = false,
-                        Message = "Invalid waiver consent. Must be 'UNDERSTOOD' or 'NOT_UNDERSTOOD'",
+                        Message = waiverError,
                         Data = false
                     };
                 }
@@ -262,15 +265,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 attendance.waiver_consent = waiver_consent;
 
                 // Set time_out based on health status and waiver consent
-                if (health_status == "UNFIT")
+                if (health_status == HealthConstants.StatusUnfit)
                 {
                     // UNFIT always triggers auto time-out
                     attendance.time_out = DateTime.Now;
                     _logger.LogInformation("Health status set to UNFIT for {AttendanceId}, TIME OUT set", attendance_id);
                 }
-                else if (health_status == "FIT")
+                else if (health_status == HealthConstants.StatusFit)
                 {
-                    if (waiver_consent == "NOT_UNDERSTOOD")
+                    if (waiver_consent == HealthConstants.WaiverNotUnderstood)
                     {
                         // NOT_UNDERSTOOD triggers TIME_OUT even if FIT
                         attendance.time_out = DateTime.Now;
@@ -376,11 +379,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
+        // Thin wrapper over BusinessRulesHelper.IsWithinThreshold kept so existing
+        // call sites read naturally; the rule itself now lives in one place.
         private bool IsWithinThreshold(DateTime? timestamp, double thresholdSeconds)
-        {
-            if (!timestamp.HasValue) return false;
-            var timeDiff = DateTime.Now - timestamp.Value;
-            return timeDiff.TotalSeconds < thresholdSeconds;
-        }
+            => BusinessRulesHelper.IsWithinThreshold(timestamp, thresholdSeconds);
     }
 }
