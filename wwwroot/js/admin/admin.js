@@ -1792,6 +1792,49 @@ const AdminPage = {
             catch (e) { return null; }
         },
 
+        // Fields that change on every save (bookkeeping) — never shown in the diff table
+        _diffIgnoreFields: ['created_at', 'create_at', 'updated_at', 'update_at', 'updated_by', 'log_id'],
+
+        _esc: function(v) {
+            return String(v == null ? '' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        },
+
+        // Display value for a diff table cell: em-dash for empty, locale string for
+        // ISO datetimes, compact JSON for objects/arrays, escaped text otherwise
+        _formatVal: function(v) {
+            if (v === null || v === undefined || v === '') return '<span class="text-muted">—</span>';
+            if (typeof v === 'object') return this._esc(JSON.stringify(v));
+            if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) {
+                const d = new Date(v);
+                if (!isNaN(d)) return this._esc(d.toLocaleString());
+            }
+            return this._esc(v);
+        },
+
+        // Rows for the diff table. UPDATE: only keys where old !== new (JSON.stringify
+        // compare, so type changes like 1 vs "1" count as changes). CREATE/DELETE:
+        // all non-ignored keys of whichever side exists.
+        _changes: function(from, to) {
+            const rows = [];
+            const base = from || to;
+            if (!base || typeof base !== 'object') return rows;
+            const keys = Object.keys(base);
+            if (from && to) {
+                Object.keys(to).forEach(function(k) { if (!keys.includes(k)) keys.push(k); });
+            }
+            const self = this;
+            keys.forEach(function(k) {
+                if (self._diffIgnoreFields.includes(k)) return;
+                const oldVal = from ? from[k] : undefined;
+                const newVal = to ? to[k] : undefined;
+                if (from && to && JSON.stringify(oldVal) === JSON.stringify(newVal)) return;
+                rows.push({ field: k, old: oldVal, new: newVal });
+            });
+            return rows;
+        },
+
         // One-line human-readable descriptor per entity, read from data_to (or data_from
         // on a delete, where data_to is null). Falls back to '' for unknown entity types.
         _descriptor: function(row) {
@@ -1822,6 +1865,7 @@ const AdminPage = {
 
         showDetails: function(row) {
             if (!row) return;
+            const self = this;
             const to = this._safeParse(row.data_to);
             const from = this._safeParse(row.data_from);
 
@@ -1854,11 +1898,24 @@ const AdminPage = {
                         '</tbody></table>';
                 }
             } else {
-                body += '<strong>data_to:</strong><pre class="bg-light p-2" style="max-height:300px;overflow:auto;">' +
-                        this._pretty(to) + '</pre>';
-                if (from) {
-                    body += '<strong>data_from:</strong><pre class="bg-light p-2" style="max-height:300px;overflow:auto;">' +
-                            this._pretty(from) + '</pre>';
+                const changes = this._changes(from, to);
+                let heading;
+                if (from && to) heading = 'Changes (' + changes.length + ' field' + (changes.length === 1 ? '' : 's') + ' modified)';
+                else if (to)    heading = 'Created Record (' + changes.length + ' fields)';
+                else            heading = 'Deleted Record (' + changes.length + ' fields)';
+
+                body += '<strong>' + heading + ':</strong>';
+                if (changes.length) {
+                    body += '<table class="table table-sm table-bordered"><thead><tr>' +
+                            '<th style="width:26%">Field</th><th style="width:37%">Old (data_from)</th><th style="width:37%">New (data_to)</th>' +
+                            '</tr></thead><tbody>' +
+                            changes.map(function(r) {
+                                return '<tr class="table-warning"><td>' + self._esc(r.field.replace(/_/g, ' ')) + '</td>' +
+                                       '<td>' + self._formatVal(r.old) + '</td><td>' + self._formatVal(r.new) + '</td></tr>';
+                            }).join('') +
+                            '</tbody></table>';
+                } else {
+                    body += '<div class="text-muted">No field changes recorded.</div>';
                 }
             }
 
@@ -1866,11 +1923,6 @@ const AdminPage = {
             $('#audit-details-body').html(body);
             var modal = new bootstrap.Modal(document.getElementById('audit-log-details-modal'));
             modal.show();
-        },
-
-        _pretty: function(obj) {
-            try { return JSON.stringify(obj, null, 2); }
-            catch (e) { return String(obj); }
         },
 
         exportToExcel: function() {
