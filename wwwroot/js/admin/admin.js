@@ -369,6 +369,11 @@ const AdminPage = {
                 self.exportToExcel();
             });
 
+            // Export project contractors (modal) button
+            $('#export-project-contractors').on('click', function() {
+                self.exportContractorsToExcel();
+            });
+
             // Show export button when data exists
             self.projectTable.on('draw', function() {
                 const hasData = self.projectTable.data().length > 0;
@@ -583,6 +588,7 @@ const AdminPage = {
 
         loadContractors: function(projectCode) {
             const self = this;
+            this.currentProjectCode = projectCode;
 
             $.ajax({
                 url: '/Admin/GetProjectContractors',
@@ -607,7 +613,7 @@ const AdminPage = {
         },
 
         populateContractorsTable: function(contractors) {
-            const table = $('#contractors-table').DataTable({
+            this.contractorsTable = $('#contractors-table').DataTable({
                 data: contractors,
                 destroy: true,
                 columns: [
@@ -618,6 +624,39 @@ const AdminPage = {
                 ],
                 pageLength: 10
             });
+        },
+
+        exportContractorsToExcel: function() {
+            // Get current filtered data from modal DataTable (respecting search)
+            const tableData = this.contractorsTable.rows({ search: 'applied' }).data().toArray();
+
+            if (tableData.length === 0) {
+                AdminPage.common.showWarning('No data available to export', 'No Data');
+                return;
+            }
+
+            // Transform data for export with friendly column names
+            const exportData = tableData.map(row => ({
+                'Employee ID': row.employee_id,
+                'Name': row.name,
+                'Position': row.position,
+                'Area': row.area_of_destination
+            }));
+
+            // Create Excel file using SheetJS
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
+
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+            const filename = `ProjectContractors_${this.currentProjectCode || 'Export'}_${timestamp}.xlsx`;
+
+            // Download file
+            XLSX.writeFile(wb, filename);
+
+            // Show success message
+            AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
         },
 
         exportToExcel: function() {

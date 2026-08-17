@@ -464,10 +464,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DeleteTimeLog(int attendance_id)
+        public async Task<IActionResult> DeleteTimeLog([FromBody] delete_timelog_request request)
         {
             var admin_employee_id = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
-            var result = await _timeLogsManagementService.DeleteTimeLog(attendance_id, admin_employee_id);
+            var result = await _timeLogsManagementService.DeleteTimeLog(request.attendance_id, admin_employee_id);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 

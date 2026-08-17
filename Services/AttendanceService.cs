@@ -9,17 +9,23 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     {
         private readonly IContractorEmployeeRepository _contractorRepository;
         private readonly ITimeLogsRepository _timeLogsRepository;
+        private readonly IProjectRepository _projectRepository;
+        private readonly IProviderRepository _providerRepository;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ILogger<AttendanceService> _logger;
 
         public AttendanceService(
             IContractorEmployeeRepository contractorRepository,
             ITimeLogsRepository timeLogsRepository,
+            IProjectRepository projectRepository,
+            IProviderRepository providerRepository,
             ISystemConfigService systemConfigService,
             ILogger<AttendanceService> logger)
         {
             _contractorRepository = contractorRepository;
             _timeLogsRepository = timeLogsRepository;
+            _projectRepository = projectRepository;
+            _providerRepository = providerRepository;
             _systemConfigService = systemConfigService;
             _logger = logger;
         }
@@ -111,6 +117,37 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                         Success = true,
                         Message = "SUCCESS TIME OUT",
                         Data = updatedLog
+                    };
+                }
+
+                // Step 4b: Validate project and provider are active before allowing TIME IN
+                // (placed after the open-session check so deactivating a project/provider
+                // mid-day never blocks a contractor from timing out)
+                var project = await _projectRepository.GetByProjectCode(employee.project_code);
+                if (project == null || project.active == 0)
+                {
+                    _logger.LogInformation("TIME IN blocked for {EmployeeId}: project {ProjectCode} is inactive",
+                        employee_id, employee.project_code);
+
+                    return new Response<time_log>
+                    {
+                        Success = false,
+                        Message = "Not Allowed to Enter. Project is In-Active.",
+                        Data = null
+                    };
+                }
+
+                var provider = await _providerRepository.GetByProviderCode(employee.provider_code);
+                if (provider == null || provider.active == 0)
+                {
+                    _logger.LogInformation("TIME IN blocked for {EmployeeId}: provider {ProviderCode} is inactive",
+                        employee_id, employee.provider_code);
+
+                    return new Response<time_log>
+                    {
+                        Success = false,
+                        Message = "Not Allowed to Enter. Provider is In-Active.",
+                        Data = null
                     };
                 }
 
