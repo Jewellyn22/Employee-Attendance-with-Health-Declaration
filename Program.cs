@@ -5,6 +5,7 @@ using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using ContractorAttendanceWithHealthDeclaration.Repositories;
 using ContractorAttendanceWithHealthDeclaration.Services;
 using Dapper;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
 using System.Data;
@@ -76,6 +77,11 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Vanity URL for the QA requirements document (public, not linked in the UI)
+app.UseRewriter(new RewriteOptions()
+    .AddRewrite(@"(?i)^system-requirement$", "docs/system-requirements-qa.html", skipRemainingRules: true));
+
 app.UseStaticFiles();
 
 app.UseRouting();
