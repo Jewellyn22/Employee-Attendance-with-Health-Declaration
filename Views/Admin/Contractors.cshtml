@@ -77,10 +77,92 @@
             <div class="modal-body">
                 <form id="contractor-form">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-9">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name:</label>
+                                <input type="text" id="name" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-3">
                             <div class="mb-3" id="employee_id_field">
                                 <label for="employee_id" class="form-label">Employee ID:</label>
                                 <input type="text" id="employee_id" class="form-control" readonly placeholder="Auto-generated on save">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-3">
+                            <div class="mb-3">
+                                <label for="gender" class="form-label">Gender:</label>
+                                <select id="gender" class="form-control">
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                             <div class="mb-3">
+                                <label for="birthdate" class="form-label">Birthdate:</label>
+                                <input type="date" id="birthdate" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label for="contact_number" class="form-label">Contact Number:</label>
+                                <input type="text" id="contact_number" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address:</label>
+                                <textarea id="address" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                     <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="provider_code" class="form-label">Provider:</label>
+                                <select id="provider_code" class="form-control">
+                                    <option value="">Select Provider</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="area_of_destination" class="form-label">Area of Destination:</label>
+                                <input type="text" id="area_of_destination" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="contractor_active" class="form-label">Status:</label>
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" id="contractor_active" class="form-check-input">
+                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="project_code" class="form-label">Project:</label>
+                                <select id="project_code" class="form-control">
+                                    <option value="">Select Project</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="position" class="form-label">Position:</label>
+                                <input type="text" id="position" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+
+                   @*  <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name:</label>
+                                <input type="text" id="name" class="form-control" required>
                             </div>
                             <div class="mb-3">
                                 <label for="contact_number" class="form-label">Contact Number:</label>
@@ -109,9 +191,10 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Name:</label>
-                                <input type="text" id="name" class="form-control" required>
+                            
+                            <div class="mb-3" id="employee_id_field">
+                                <label for="employee_id" class="form-label">Employee ID:</label>
+                                <input type="text" id="employee_id" class="form-control" readonly placeholder="Auto-generated on save">
                             </div>
                             <div class="mb-3">
                                 <label for="gender" class="form-label">Gender:</label>
@@ -136,7 +219,7 @@
                                 <input type="text" id="position" class="form-control">
                             </div>
                         </div>
-                    </div>
+                    </div> *@
                 </form>
             </div>
             <div class="modal-footer">

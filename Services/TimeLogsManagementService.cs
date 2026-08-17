@@ -8,13 +8,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     public class TimeLogsManagementService : ITimeLogsManagementService
     {
         private readonly ITimeLogsRepository _timeLogsRepository;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<TimeLogsManagementService> _logger;
 
         public TimeLogsManagementService(
             ITimeLogsRepository timeLogsRepository,
+            IAuditLogService auditLogService,
             ILogger<TimeLogsManagementService> logger)
         {
             _timeLogsRepository = timeLogsRepository;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -60,6 +63,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             {
                 _logger.LogInformation("Admin {AdminId} updating timelog: {AttendanceId}", admin_employee_id, timelog.attendance_id);
 
+                // Capture previous state for the audit trail before applying changes.
+                var existing = await _timeLogsRepository.GetByAttendanceId(timelog.attendance_id);
+
                 // Set audit trail fields
                 timelog.updated_by = admin_employee_id;
                 timelog.updated_at = DateTime.Now;
@@ -100,6 +106,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 var updatedLog = await _timeLogsRepository.Update(timelog);
 
+                await _auditLogService.Log("timelog", "update", timelog.attendance_id.ToString(), existing, updatedLog, admin_employee_id);
+
                 _logger.LogInformation("Timelog {AttendanceId} updated successfully by admin {AdminId}",
                     timelog.attendance_id, admin_employee_id);
 
@@ -122,11 +130,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<bool>> DeleteTimeLog(int attendance_id)
+        public async Task<Response<bool>> DeleteTimeLog(int attendance_id, string admin_employee_id)
         {
             try
             {
-                _logger.LogInformation("Deleting timelog: {AttendanceId}", attendance_id);
+                _logger.LogInformation("Admin {AdminId} deleting timelog: {AttendanceId}", admin_employee_id, attendance_id);
 
                 // Verify timelog exists before deletion
                 var existingLog = await _timeLogsRepository.GetByAttendanceId(attendance_id);
@@ -144,7 +152,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Timelog {AttendanceId} deleted successfully", attendance_id);
+                    await _auditLogService.Log("timelog", "delete", attendance_id.ToString(), existingLog, null, admin_employee_id);
+
+                    _logger.LogInformation("Timelog {AttendanceId} deleted successfully by admin {AdminId}", attendance_id, admin_employee_id);
                     return new Response<bool>
                     {
                         Success = true,

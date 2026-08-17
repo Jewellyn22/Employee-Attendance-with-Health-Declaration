@@ -117,6 +117,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             try
             {
+                var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+
                 // Validate provider name
                 if (string.IsNullOrWhiteSpace(newProvider.provider_name))
                 {
@@ -142,7 +144,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 newProvider.updated_at = DateTime.Now;
 
                 // Create provider
-                var result = await _providerService.Create(newProvider);
+                var result = await _providerService.Create(newProvider, admin);
                 if (result.Success)
                 {
                     return Json(new { success = true, data = result.Data, message = "Provider created successfully" });
@@ -164,6 +166,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             try
             {
+                var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+
                 // Check if provider exists
                 var existingProvider = await _providerService.GetByProviderCode(project.provider_code);
 
@@ -180,7 +184,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                         updated_at = DateTime.Now
                     };
 
-                    var createProviderResult = await _providerService.Create(newProvider);
+                    var createProviderResult = await _providerService.Create(newProvider, admin);
                     if (!createProviderResult.Success)
                     {
                         return Json(new { success = false, message = $"Failed to create new provider: {createProviderResult.Message}" });
@@ -190,7 +194,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 }
 
                 // Now create the project
-                var result = await _projectService.Create(project);
+                var result = await _projectService.Create(project, admin);
                 return Json(new { success = result.Success, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
@@ -203,7 +207,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateProject([FromBody] project project)
         {
-            var result = await _projectService.Update(project);
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _projectService.Update(project, admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -211,7 +216,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         public async Task<IActionResult> SetProjectInactive([FromBody] project project)
         {
             project.active = 0;
-            var result = await _projectService.Update(project);
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _projectService.Update(project, admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -277,7 +283,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     });
                 }
 
-                var result = await _contractorService.Create(contractor);
+                var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+                var result = await _contractorService.Create(contractor, admin);
                 return Json(new { success = result.Success, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
@@ -320,7 +327,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     });
                 }
 
-                var result = await _contractorService.Update(contractor);
+                var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+                var result = await _contractorService.Update(contractor, admin);
                 return Json(new { success = result.Success, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
@@ -334,7 +342,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         public async Task<IActionResult> SetContractorInactive([FromBody] contractor_employee contractor)
         {
             contractor.active = 0;
-            var result = await _contractorService.Update(contractor);
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _contractorService.Update(contractor, admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -408,7 +417,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateSystemConfig([FromBody] system_config config)
         {
-            var result = await _systemConfigService.Update(config);
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _systemConfigService.Update(config, admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
@@ -456,7 +466,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteTimeLog(int attendance_id)
         {
-            var result = await _timeLogsManagementService.DeleteTimeLog(attendance_id);
+            var admin_employee_id = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _timeLogsManagementService.DeleteTimeLog(attendance_id, admin_employee_id);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 

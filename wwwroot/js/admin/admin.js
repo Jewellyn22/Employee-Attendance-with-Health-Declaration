@@ -714,17 +714,9 @@ const AdminPage = {
                 ],
                 pageLength: 25,
                 initComplete: function() {
-                    // Build the Project filter dropdown once, from the loaded contractor data.
-                    const projects = {};
-                    self.contractorTable.data().each(function(row) {
-                        if (row.project_code && !projects[row.project_code]) {
-                            projects[row.project_code] = row.project_name || row.project_code;
-                        }
-                    });
-                    const $sel = $('#filter-project');
-                    Object.keys(projects).sort().forEach(function(code) {
-                        $sel.append($('<option></option>').val(code).text(projects[code] + ' (' + code + ')'));
-                    });
+                    // Build the Project filter dropdown from the loaded data. Extracted
+                    // into a reusable method so it can also run after ajax.reload().
+                    self._populateProjectFilter();
                 }
             });
 
@@ -1591,6 +1583,37 @@ const AdminPage = {
             }
         },
 
+        // Rebuild the #filter-project dropdown from the currently-loaded table data.
+        // Idempotent: clears previously appended options first and preserves the
+        // current selection when that project still exists. Used by initComplete
+        // and after a bulk-import ajax.reload() (initComplete only runs once, so
+        // the dropdown would otherwise stay stale for a newly imported project).
+        _populateProjectFilter: function() {
+            const self = this;
+            const $sel = $('#filter-project');
+            const prevVal = $sel.val();   // preserve current selection if still valid
+
+            // Keep only the static "All" placeholder; drop previously appended options.
+            $sel.find('option').not('[value=""]').remove();
+
+            const projects = {};
+            self.contractorTable.data().each(function(row) {
+                if (row.project_code && !projects[row.project_code]) {
+                    projects[row.project_code] = row.project_name || row.project_code;
+                }
+            });
+            Object.keys(projects).sort().forEach(function(code) {
+                $sel.append($('<option></option>').val(code).text(projects[code] + ' (' + code + ')'));
+            });
+
+            // Restore previous selection if that project still exists, else "All".
+            if (prevVal && $sel.find('option[value="' + prevVal + '"]').length) {
+                $sel.val(prevVal);
+            } else {
+                $sel.val('');
+            }
+        },
+
         processBulkImport: function() {
             const self = this;
             const providerCode = $('#bulk_provider_code').val();
@@ -1643,7 +1666,11 @@ const AdminPage = {
                     $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Process Import');
                     if (response.success && response.data) {
                         self._showBulkResult(response.data);
-                        self.contractorTable.ajax.reload();
+                        // Reload, then rebuild the Project filter dropdown so a newly
+                        // imported project (one that had zero contractors before) appears.
+                        self.contractorTable.ajax.reload(function() {
+                            self._populateProjectFilter();
+                        });
                     } else {
                         AdminPage.common.showError(response.message || 'Bulk import failed.');
                     }
@@ -1709,12 +1736,7 @@ const AdminPage = {
                         }
                     },
                     { data: 'updated_by', defaultContent: '' },
-                    {
-                        data: 'entity_type',
-                        render: function(data) {
-                            return '<span class="badge bg-info text-dark">' + (data || '') + '</span>';
-                        }
-                    },
+                    { data: 'entity_type', defaultContent: '' },
                     { data: 'action', defaultContent: '' },
                     { data: 'reference_id', defaultContent: '' },
                     {
@@ -1770,6 +1792,22 @@ const AdminPage = {
             catch (e) { return null; }
         },
 
+        // One-line human-readable descriptor per entity, read from data_to (or data_from
+        // on a delete, where data_to is null). Falls back to '' for unknown entity types.
+        _descriptor: function(row) {
+            if (!row) return '';
+            const src = this._safeParse(row.data_to) || this._safeParse(row.data_from);
+            if (!src) return '';
+            switch (row.entity_type) {
+                case 'provider':      return [src.provider_code, src.provider_name].filter(Boolean).join(' — ');
+                case 'project':       return [src.project_code, src.project_name].filter(Boolean).join(' — ');
+                case 'contractor':    return [src.employee_id, src.name].filter(Boolean).join(' — ');
+                case 'system_config': return src.key || '';
+                case 'timelog':       return [src.attendance_id != null ? '#' + src.attendance_id : null, src.employee_id].filter(Boolean).join(' — ');
+                default:              return '';
+            }
+        },
+
         _summary: function(row) {
             if (!row) return '';
             const to = this._safeParse(row.data_to);
@@ -1778,7 +1816,8 @@ const AdminPage = {
                        '<span class="badge bg-danger">' + (to.error_count || 0) + ' failed</span>' +
                        (to.file_name ? '<div class="text-muted small">' + to.file_name + '</div>' : '');
             }
-            return '<span class="text-muted small">—</span>';
+            const desc = this._descriptor(row);
+            return desc ? '<span class="small">' + desc + '</span>' : '<span class="text-muted small">—</span>';
         },
 
         showDetails: function(row) {
@@ -1847,6 +1886,8 @@ const AdminPage = {
                 let summary = '';
                 if (row.entity_type === 'bulk_enrollment' && to) {
                     summary = (to.success_count || 0) + ' enrolled / ' + (to.error_count || 0) + ' failed';
+                } else {
+                    summary = self._descriptor(row);
                 }
                 return {
                     'Date / Time': row.created_at ? new Date(row.created_at).toLocaleString() : '',

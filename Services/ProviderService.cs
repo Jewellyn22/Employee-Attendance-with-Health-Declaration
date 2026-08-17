@@ -7,13 +7,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     public class ProviderService : IProviderService
     {
         private readonly IProviderRepository _providerRepository;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<ProviderService> _logger;
 
         public ProviderService(
             IProviderRepository providerRepository,
+            IAuditLogService auditLogService,
             ILogger<ProviderService> logger)
         {
             _providerRepository = providerRepository;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -75,7 +78,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<provider>> Create(provider provider)
+        public async Task<Response<provider>> Create(provider provider, string admin_employee_id)
         {
             try
             {
@@ -93,6 +96,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 var result = await _providerRepository.Create(provider);
                 _logger.LogInformation("Provider created: {ProviderCode}", provider.provider_code);
+
+                if (result != null)
+                {
+                    await _auditLogService.Log("provider", "create", result.provider_code, null, result, admin_employee_id);
+                }
 
                 return new Response<provider>
                 {

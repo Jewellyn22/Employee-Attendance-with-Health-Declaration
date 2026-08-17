@@ -18,7 +18,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         /// <summary>
         /// Delete a timelog record with confirmation (hard delete for admin corrections)
         /// </summary>
-        Task<Response<bool>> DeleteTimeLog(int attendance_id);
+        Task<Response<bool>> DeleteTimeLog(int attendance_id, string admin_employee_id);
 
         /// <summary>
         /// Get all timelogs with optional filtering for admin management interface

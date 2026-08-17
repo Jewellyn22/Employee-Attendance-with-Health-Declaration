@@ -8,15 +8,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     {
         private readonly IProjectRepository _projectRepository;
         private readonly IProviderRepository _providerRepository;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<ProjectService> _logger;
 
         public ProjectService(
             IProjectRepository projectRepository,
             IProviderRepository providerRepository,
+            IAuditLogService auditLogService,
             ILogger<ProjectService> logger)
         {
             _projectRepository = projectRepository;
             _providerRepository = providerRepository;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -114,7 +117,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<project>> Create(project project)
+        public async Task<Response<project>> Create(project project, string admin_employee_id)
         {
             try
             {
@@ -135,6 +138,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var result = await _projectRepository.Create(project);
                 _logger.LogInformation("Project created: {ProjectCode}", project.project_code);
 
+                if (result != null)
+                {
+                    await _auditLogService.Log("project", "create", result.project_code, null, result, admin_employee_id);
+                }
+
                 return new Response<project>
                 {
                     Success = result != null,
@@ -154,7 +162,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<project>> Update(project project)
+        public async Task<Response<project>> Update(project project, string admin_employee_id)
         {
             try
             {
@@ -184,6 +192,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 var result = await _projectRepository.Update(project);
                 _logger.LogInformation("Project updated: {ProjectCode}", project.project_code);
+
+                if (result != null)
+                {
+                    await _auditLogService.Log("project", "update", project.project_code, existing, result, admin_employee_id);
+                }
 
                 return new Response<project>
                 {

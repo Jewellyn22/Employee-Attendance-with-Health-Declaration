@@ -7,13 +7,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     public class SystemConfigService : ISystemConfigService
     {
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<SystemConfigService> _logger;
 
         public SystemConfigService(
             ISystemConfigRepository systemConfigRepository,
+            IAuditLogService auditLogService,
             ILogger<SystemConfigService> logger)
         {
             _systemConfigRepository = systemConfigRepository;
+            _auditLogService = auditLogService;
             _logger = logger;
         }
 
@@ -217,11 +220,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<bool>> Update(system_config config)
+        public async Task<Response<bool>> Update(system_config config, string admin_employee_id)
         {
             try
             {
+                var existing = await _systemConfigRepository.GetByKey(config.key);
+
                 var result = await _systemConfigRepository.Update(config);
+
+                await _auditLogService.Log("system_config", "update", config.key, existing, config, admin_employee_id);
+
                 return new Response<bool>
                 {
                     Success = true,

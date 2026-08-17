@@ -85,7 +85,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<contractor_employee>> Create(contractor_employee employee)
+        public async Task<Response<contractor_employee>> Create(contractor_employee employee, string admin_employee_id, bool log_audit = true)
         {
             try
             {
@@ -159,6 +159,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 _logger.LogInformation("Contractor created: {EmployeeId}", result.employee_id);
 
+                if (log_audit)
+                {
+                    await _auditLogService.Log("contractor", "create", result.employee_id, null, result, admin_employee_id);
+                }
+
                 return new Response<contractor_employee>
                 {
                     Success = true,
@@ -178,7 +183,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<contractor_employee>> Update(contractor_employee employee)
+        public async Task<Response<contractor_employee>> Update(contractor_employee employee, string admin_employee_id)
         {
             try
             {
@@ -252,6 +257,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 var result = await _contractorRepository.Update(employee);
                 _logger.LogInformation("Contractor updated: {EmployeeId}", employee.employee_id);
+
+                await _auditLogService.Log("contractor", "update", employee.employee_id, existing, result, admin_employee_id);
 
                 return new Response<contractor_employee>
                 {
@@ -452,7 +459,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                         active = 1
                     };
 
-                    var created = await Create(employee);
+                    // Per-row audit is suppressed here; BulkCreate writes one summary
+                    // bulk_enrollment audit entry for the whole batch (see below).
+                    var created = await Create(employee, admin_employee_id, log_audit: false);
                     if (created.Success && created.Data != null)
                     {
                         result.success_count++;
