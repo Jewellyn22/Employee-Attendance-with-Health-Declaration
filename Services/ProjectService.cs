@@ -148,6 +148,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
+                // A new project cannot be created with an already-expired contract end
+                // date - the nightly expiry event (sp_project_DeactivateExpired) would
+                // deactivate it immediately. Blocked regardless of the active toggle.
+                if (project.contract_enddate < DateTime.Today)
+                {
+                    return new Response<project>
+                    {
+                        Success = false,
+                        Message = "Contract End Date cannot be earlier than the current date.",
+                        Data = null
+                    };
+                }
+
                 // Note: project_code uniqueness validation removed since stored procedure auto-generates project_code
                 // Format: ProviderCode-YY-### (e.g., PROV-001-26-005) which is guaranteed unique
                 var result = await _projectRepository.Create(project);
