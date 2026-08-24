@@ -483,9 +483,31 @@ const AdminPage = {
                     return;
                 }
 
+                const providerPic = $('#provider_pic').val().trim();
+                if (!providerPic) {
+                    AdminPage.common.showError('Provider Project PIC is required');
+                    return;
+                }
+
+                const contactNo = $('#provider_pic_number').val().trim();
+                if (!contactNo) {
+                    AdminPage.common.showError('Contact No is required');
+                    return;
+                }
+
                 // Validate contract dates
                 const startDate = $('#contract_startdate').val();
                 const endDate = $('#contract_enddate').val();
+
+                if (!startDate) {
+                    AdminPage.common.showError('Contract Start Date is required');
+                    return;
+                }
+
+                if (!endDate) {
+                    AdminPage.common.showError('Contract End Date is required');
+                    return;
+                }
 
                 if (startDate && endDate) {
                     const start = new Date(startDate);
@@ -501,8 +523,8 @@ const AdminPage = {
                     project_name: projectName,
                     provider_code: providerCode,
                     provider_name: providerName,
-                    provider_pic: $('#provider_pic').val(),
-                    provider_pic_number: $('#provider_pic_number').val(),
+                    provider_pic: providerPic,
+                    provider_pic_number: contactNo,
                     contract_startdate: $('#contract_startdate').val(),
                     contract_enddate: $('#contract_enddate').val(),
                     active: $('#project_active').is(':checked') ? 1 : 0

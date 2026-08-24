@@ -168,6 +168,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             {
                 var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
 
+                // Validate provider name before any provider auto-create
+                if (string.IsNullOrWhiteSpace(project.provider_name))
+                {
+                    return Json(new { success = false, message = "Provider name is required" });
+                }
+
+                // Validate provider code before any provider auto-create
+                if (string.IsNullOrWhiteSpace(project.provider_code))
+                {
+                    return Json(new { success = false, message = "Provider code is required" });
+                }
+
                 // Check if provider exists
                 var existingProvider = await _providerService.GetByProviderCode(project.provider_code);
 

@@ -121,6 +121,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         {
             try
             {
+                // Validate required fields
+                var validationError = GetValidationError(project);
+                if (validationError != null)
+                {
+                    return new Response<project>
+                    {
+                        Success = false,
+                        Message = validationError,
+                        Data = null
+                    };
+                }
+
                 // Validate provider exists
                 var provider = await _providerRepository.GetByProviderCode(project.provider_code);
                 if (provider == null)
@@ -166,6 +178,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         {
             try
             {
+                // Validate required fields
+                var validationError = GetValidationError(project);
+                if (validationError != null)
+                {
+                    return new Response<project>
+                    {
+                        Success = false,
+                        Message = validationError,
+                        Data = null
+                    };
+                }
+
                 // Validate provider exists
                 var provider = await _providerRepository.GetByProviderCode(project.provider_code);
                 if (provider == null)
@@ -265,6 +289,49 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     Data = 0
                 };
             }
+        }
+
+        /// <summary>
+        /// Validates required project fields. Returns an error message, or null when all fields are valid.
+        /// </summary>
+        private static string? GetValidationError(project project)
+        {
+            if (string.IsNullOrWhiteSpace(project.provider_name))
+            {
+                return "Provider name is required";
+            }
+
+            if (string.IsNullOrWhiteSpace(project.provider_pic))
+            {
+                return "Provider Project PIC is required";
+            }
+
+            if (string.IsNullOrWhiteSpace(project.provider_pic_number))
+            {
+                return "Contact No is required";
+            }
+
+            if (string.IsNullOrWhiteSpace(project.project_name))
+            {
+                return "Project name is required";
+            }
+
+            if (project.contract_startdate == null)
+            {
+                return "Contract start date is required";
+            }
+
+            if (project.contract_enddate == null)
+            {
+                return "Contract end date is required";
+            }
+
+            if (project.contract_startdate > project.contract_enddate)
+            {
+                return "Contract Start Date cannot be later than Contract End Date";
+            }
+
+            return null;
         }
     }
 }
