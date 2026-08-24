@@ -184,29 +184,5 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
-
-        public async Task<Response<int>> GetActiveCount()
-        {
-            try
-            {
-                var count = await _providerRepository.GetActiveCount();
-                return new Response<int>
-                {
-                    Success = true,
-                    Message = "Active providers count retrieved successfully",
-                    Data = count
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting active providers count");
-                return new Response<int>
-                {
-                    Success = false,
-                    Message = "Error retrieving active providers count",
-                    Data = 0
-                };
-            }
-        }
     }
 }

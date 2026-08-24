@@ -44,13 +44,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             // Fetch all dashboard statistics
             var activeProjects = await _projectService.GetActiveCount();
-            var activeProviders = await _providerService.GetActiveCount();
             var activeContractors = await _contractorService.GetActiveCount();
             var openSessions = await _historyLogsService.GetOpenSessionsCount();
 
             // Pass to view
             ViewBag.ActiveProjects = activeProjects.Success ? activeProjects.Data : 0;
-            ViewBag.ActiveProviders = activeProviders.Success ? activeProviders.Data : 0;
             ViewBag.ActiveContractors = activeContractors.Success ? activeContractors.Data : 0;
             ViewBag.OpenSessions = openSessions.Success ? openSessions.Data : 0;
             ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");

@@ -14,7 +14,7 @@
     <!-- Statistics Cards Row -->
     <div class="row mb-4">
         <!-- Active Projects Card -->
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-primary text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Projects", "Admin")'">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -30,25 +30,8 @@
             </div>
         </div>
 
-        <!-- Active Providers Card -->
-        <div class="col-md-3">
-            <div class="card bg-success text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Projects", "Admin")'">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="card-title mb-0">Active Providers</h5>
-                            <h2 class="display-4 font-weight-bold">@ViewBag.ActiveProviders</h2>
-                        </div>
-                        <div class="display-4 opacity-50">
-                            <i class="fas fa-building"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Active Contractors Card -->
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-info text-white stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("Contractors", "Admin")'">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -65,7 +48,7 @@
         </div>
 
         <!-- Open Sessions Card -->
-        <div class="col-md-3">
+        <div class="col-md-4">
             <div class="card bg-warning text-dark stat-card" style="cursor: pointer;" onclick="window.location='@Url.Action("TimeLogs", "Admin")'">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
