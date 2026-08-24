@@ -1027,7 +1027,7 @@ const AdminPage = {
                 const name = (contractor && contractor.name) ? contractor.name : employeeId;
 
                 AdminPage.common.showConfirmation(
-                    'Delete contractor ' + name + ' (' + employeeId + ')? They will be hidden from the system and will no longer be able to scan at the kiosk. Attendance history is kept.',
+                    'Are you sure you want to delete contractor ' + name + ' (' + employeeId + ')? ',
                     function() {
                         $.ajax({
                             url: '/Admin/DeleteContractors',
@@ -1064,7 +1064,7 @@ const AdminPage = {
                 }
 
                 AdminPage.common.showConfirmation(
-                    'Delete ' + ids.length + ' selected contractor(s)? They will be hidden from the system and will no longer be able to scan at the kiosk. Attendance history is kept.',
+                    'Are you sure you want to delete ' + ids.length + ' selected contractor(s)?',
                     function() {
                         $.ajax({
                             url: '/Admin/DeleteContractors',
