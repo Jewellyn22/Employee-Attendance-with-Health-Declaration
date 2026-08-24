@@ -45,6 +45,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         [StringLength(255, ErrorMessage = "Position cannot exceed 255 characters")]
         public string position { get; set; }
         public int active { get; set; }
+
+        // Soft-delete flag: 1 = deleted together with its project (hidden everywhere, row retained).
+        public int is_deleted { get; set; }
         public DateTime create_at { get; set; }
         public DateTime update_at { get; set; }
     }

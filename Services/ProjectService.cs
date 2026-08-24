@@ -267,6 +267,67 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
+        // Soft delete via sp_project_Delete: all enrolled employees are marked
+        // is_deleted = 1 first, then the project — one transaction, no rows removed.
+        public async Task<Response<bool>> Delete(string project_code, string admin_employee_id)
+        {
+            try
+            {
+                // Validate project exists (deleted projects are excluded by the SP, so a
+                // second delete of the same code degrades to "not found")
+                var existing = await _projectRepository.GetByProjectCode(project_code);
+                if (existing == null)
+                {
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "Project not found",
+                        Data = false
+                    };
+                }
+
+                var result = await _projectRepository.Delete(project_code);
+                if (result == null || !result.success)
+                {
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "Project delete failed",
+                        Data = false
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Project soft-deleted: {ProjectCode} ({DeletedEmployees} employee(s) marked deleted)",
+                    project_code, result.deleted_employees);
+
+                await _auditLogService.Log(
+                    "project",
+                    "delete",
+                    project_code,
+                    existing,
+                    new { deleted_employees = result.deleted_employees },
+                    admin_employee_id);
+
+                return new Response<bool>
+                {
+                    Success = true,
+                    Message = $"Project deleted successfully ({result.deleted_employees} enrolled employee(s) also removed)",
+                    Data = true
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting project: {ProjectCode}", project_code);
+                return new Response<bool>
+                {
+                    Success = false,
+                    Message = "Error deleting project",
+                    Data = false
+                };
+            }
+        }
+
         public async Task<Response<int>> GetActiveCount()
         {
             try

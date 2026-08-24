@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 
 namespace ContractorAttendanceWithHealthDeclaration.Repositories
@@ -10,6 +11,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         Task<project?> Create(project project);
         Task<project?> Update(project project);
         Task<bool> SetInactive(string project_code);
+        Task<project_delete_result?> Delete(string project_code);
         Task<int> GetActiveCount();
     }
 }

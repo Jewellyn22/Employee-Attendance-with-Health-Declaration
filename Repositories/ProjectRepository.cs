@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using Dapper;
 using System.Data;
@@ -90,6 +91,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.StoredProcedure
             );
             return result > 0;
+        }
+
+        // Soft delete via sp_project_Delete: marks enrolled employees is_deleted = 1
+        // first, then the project, in one transaction. Returns the SP result set
+        // (success + deleted_employees) so the service can report the counts.
+        public async Task<project_delete_result?> Delete(string project_code)
+        {
+            const string storedProc = "sp_project_Delete";
+            return await _db.QuerySingleOrDefaultAsync<project_delete_result>(
+                storedProc,
+                new { p_project_code = project_code },
+                commandType: CommandType.StoredProcedure
+            );
         }
 
         public async Task<int> GetActiveCount()

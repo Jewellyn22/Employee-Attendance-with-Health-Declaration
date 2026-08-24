@@ -233,6 +233,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
+        // Soft delete: sp_project_Delete marks the project's enrolled employees
+        // is_deleted = 1 first, then the project (one transaction, no rows removed).
+        [HttpPost]
+        public async Task<IActionResult> DeleteProject([FromBody] delete_project_request request)
+        {
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _projectService.Delete(request.project_code, admin);
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetProjectContractors(string project_code)
         {

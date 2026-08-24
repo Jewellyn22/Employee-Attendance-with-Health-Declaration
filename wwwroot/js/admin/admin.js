@@ -342,6 +342,9 @@ const AdminPage = {
                                 <button class="btn btn-sm btn-warning btn-edit" data-project-code="${data.project_code}">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
+                                <button class="btn btn-sm btn-danger btn-delete-project" data-project-code="${data.project_code}" data-contractor-count="${data.contractor_count || 0}" title="Delete Project">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
                             `;
                         }
                     }
@@ -453,6 +456,39 @@ const AdminPage = {
                 e.preventDefault();
                 const projectCode = $(this).data('project-code');
                 self.loadContractors(projectCode);
+            });
+
+            // Delete project button (soft delete: enrolled employees are marked
+            // deleted first, then the project — data is retained in the database)
+            $(document).on('click', '.btn-delete-project', function() {
+                const projectCode = $(this).data('project-code');
+                const contractorCount = $(this).data('contractor-count') || 0;
+
+                let message = `Are you sure you want to delete project ${projectCode}?`;
+                if (contractorCount > 0) {
+                    message = `Delete project ${projectCode}? All ${contractorCount} enrolled employee(s) (inactive enrollments included) will also be deleted and will no longer be able to scan at the kiosk.`;
+                }
+
+                AdminPage.common.showConfirmation(message, function() {
+                    $.ajax({
+                        url: '/Admin/DeleteProject',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ project_code: projectCode }),
+                        success: function(response) {
+                            if (response.success) {
+                                AdminPage.common.showSuccess(response.message);
+                                self.projectTable.ajax.reload();
+                            } else {
+                                AdminPage.common.showError(response.message);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            AdminPage.common.showError('Failed to delete project. Please try again.');
+                            console.error('Delete project error:', { xhr, status, error });
+                        }
+                    });
+                });
             });
 
             // Handle active toggle state change
