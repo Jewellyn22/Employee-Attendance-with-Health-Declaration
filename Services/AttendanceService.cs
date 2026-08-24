@@ -53,7 +53,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Contractor is inactive",
+                        Message = $"{employee.name} - Contractor is inactive",
                         Data = null
                     };
                 }
@@ -72,7 +72,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Duplicate scan - wait " + debounceThresholdSeconds.Data + " seconds.",
+                        Message = $"{employee.name} - Duplicate scan - wait {debounceThresholdSeconds.Data} seconds.",
                         Data = null
                     };
                 }
@@ -91,7 +91,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                         return new Response<time_log>
                         {
                             Success = false,
-                            Message = $"Not Allowed to Enter. {healthStatusDesc}.",
+                            Message = $"{employee.name} - Not Allowed to Enter. {healthStatusDesc}.",
                             Data = null
                         };
                     }
@@ -115,7 +115,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = true,
-                        Message = "SUCCESS TIME OUT",
+                        Message = $"{employee.name} - SUCCESS TIME OUT",
                         Data = updatedLog
                     };
                 }
@@ -132,7 +132,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Not Allowed to Enter. Project is In-Active.",
+                        Message = $"{employee.name} - Not Allowed to Enter. Project is In-Active.",
                         Data = null
                     };
                 }
@@ -146,7 +146,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Not Allowed to Enter. Provider is In-Active.",
+                        Message = $"{employee.name} - Not Allowed to Enter. Provider is In-Active.",
                         Data = null
                     };
                 }
@@ -168,7 +168,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 return new Response<time_log>
                 {
                     Success = true,
-                    Message = "SUCCESS TIME IN",
+                    Message = $"{employee.name} - SUCCESS TIME IN",
                     Data = createdLog
                 };
             }
