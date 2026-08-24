@@ -20,6 +20,21 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             _logger = logger;
         }
 
+        // Default waiver wording (used when the system_config row is missing or blank).
+        // Newlines are rendered as line breaks on the kiosk (CSS white-space: pre-line).
+        private const string DefaultWaiverCertificationText =
+            "I hereby certify that all information provided in this Health Declaration Form is true, complete, and accurate to the best of my knowledge. "
+            + "I understand that declaring my health condition is essential to ensure my own safety and the safety of others within the company premises.";
+
+        private const string DefaultWaiverAcknowledgmentText =
+            "I acknowledge and agree that failure to disclose any relevant medical condition, symptoms, illness, or exposure may pose a risk to myself and others. "
+            + "In such cases, I accept full responsibility for any consequences arising from non-disclosure.\n"
+            + "By signing this form, I voluntarily confirm that I am physically fit to enter and perform work within the company premises, "
+            + "unless otherwise declared and evaluated by the Clinic or Safety Officer.";
+
+        private const string DefaultWaiverLiabilityReleaseText =
+            "Furthermore, I release and hold harmless the company from any liability arising from inaccurate, incomplete, or false declarations provided in this form.";
+
         public async Task<Response<double>> GetDebounceThresholdSeconds()
         {
             try
@@ -182,6 +197,108 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     Success = false,
                     Message = "Error retrieving configuration",
                     Data = true // default to readonly (safer)
+                };
+            }
+        }
+
+        public async Task<Response<string>> GetWaiverCertificationText()
+        {
+            try
+            {
+                var config = await _systemConfigRepository.GetByKey("WaiverCertificationText");
+                if (config == null || string.IsNullOrWhiteSpace(config.value))
+                {
+                    return new Response<string>
+                    {
+                        Success = false,
+                        Message = "WaiverCertificationText configuration not found or empty",
+                        Data = DefaultWaiverCertificationText // default wording
+                    };
+                }
+
+                return new Response<string>
+                {
+                    Success = true,
+                    Message = "Configuration retrieved successfully",
+                    Data = config.value
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting waiver certification text");
+                return new Response<string>
+                {
+                    Success = false,
+                    Message = "Error retrieving configuration",
+                    Data = DefaultWaiverCertificationText // default wording
+                };
+            }
+        }
+
+        public async Task<Response<string>> GetWaiverAcknowledgmentText()
+        {
+            try
+            {
+                var config = await _systemConfigRepository.GetByKey("WaiverAcknowledgmentText");
+                if (config == null || string.IsNullOrWhiteSpace(config.value))
+                {
+                    return new Response<string>
+                    {
+                        Success = false,
+                        Message = "WaiverAcknowledgmentText configuration not found or empty",
+                        Data = DefaultWaiverAcknowledgmentText // default wording
+                    };
+                }
+
+                return new Response<string>
+                {
+                    Success = true,
+                    Message = "Configuration retrieved successfully",
+                    Data = config.value
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting waiver acknowledgment text");
+                return new Response<string>
+                {
+                    Success = false,
+                    Message = "Error retrieving configuration",
+                    Data = DefaultWaiverAcknowledgmentText // default wording
+                };
+            }
+        }
+
+        public async Task<Response<string>> GetWaiverLiabilityReleaseText()
+        {
+            try
+            {
+                var config = await _systemConfigRepository.GetByKey("WaiverLiabilityReleaseText");
+                if (config == null || string.IsNullOrWhiteSpace(config.value))
+                {
+                    return new Response<string>
+                    {
+                        Success = false,
+                        Message = "WaiverLiabilityReleaseText configuration not found or empty",
+                        Data = DefaultWaiverLiabilityReleaseText // default wording
+                    };
+                }
+
+                return new Response<string>
+                {
+                    Success = true,
+                    Message = "Configuration retrieved successfully",
+                    Data = config.value
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting waiver liability release text");
+                return new Response<string>
+                {
+                    Success = false,
+                    Message = "Error retrieving configuration",
+                    Data = DefaultWaiverLiabilityReleaseText // default wording
                 };
             }
         }

@@ -10,6 +10,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<double>> GetHealthDeclarationWindowSeconds();
         Task<Response<string>> GetAdminADGroup();
         Task<Response<bool>> GetScanInputReadOnly();
+        Task<Response<string>> GetWaiverCertificationText();
+        Task<Response<string>> GetWaiverAcknowledgmentText();
+        Task<Response<string>> GetWaiverLiabilityReleaseText();
         Task<Response<system_config>> GetByKey(string key);
         Task<Response<bool>> Update(system_config config, string admin_employee_id);
         Task<Response<IEnumerable<system_config>>> GetAll();

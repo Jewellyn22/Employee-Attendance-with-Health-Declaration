@@ -123,37 +123,19 @@
                                     <td>
                                         <i class="fa-regular fa-circle-check" style="font-size: 35px;"></i>
                                     </td>
-                                    <td>
-                                        <p>
-                                            I hereby certify that all information provided in this Health Declaration Form is true, complete, and accurate to the
-                                            best of my knowledge. I understand that declaring my health condition is essential to ensure my own safety and the
-                                            safety of others within the company premises.
-                                        </p>
-                                    </td>
+                                    <td class="waiver-text"><p>@ViewBag.WaiverCertificationText</p></td>
                                 </tr>
                                 <tr>
                                     <td>
                                         <i class="fa-regular fa-file-lines" style="font-size: 35px;"></i>
                                     </td>
-                                    <td>
-
-                                        I acknowledge and agree that failure to disclose any relevant medical condition, symptoms, illness, or exposure may
-                                        pose a risk to myself and others. In such cases, I accept full responsibility for any consequences arising from non-
-                                        disclosure.
-                                        <br />
-                                        By signing this form, I voluntarily confirm that I am physically fit to enter and perform work within the company
-                                        premises, unless otherwise declared and evaluated by the Clinic or Safety Officer.
-
-                                    </td>
+                                    <td class="waiver-text">@ViewBag.WaiverAcknowledgmentText</td>
                                 </tr>
                                 <tr>
                                     <td>
                                         <i class="fa-regular fa-pen-to-square" style="font-size: 35px;"></i>
                                     </td>
-                                    <td>
-                                        Furthermore, I release and hold harmless the company from any liability arising from inaccurate, incomplete, or
-                                        false declarations provided in this form.
-                                    </td>
+                                    <td class="waiver-text">@ViewBag.WaiverLiabilityReleaseText</td>
                                 </tr>
                             </table>
                         </div>
@@ -310,6 +292,11 @@
         }
         table td {
             padding: 5px;
+        }
+
+        /* Waiver texts come from system_config; newlines in the value render as line breaks */
+        .waiver-text {
+            white-space: pre-line;
         }
     </style>
 }

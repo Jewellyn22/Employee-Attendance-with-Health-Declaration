@@ -42,6 +42,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             var scanInputConfig = await _systemConfigService.GetScanInputReadOnly();
             ViewBag.ScanInputReadOnly = scanInputConfig.Data;
 
+            // Get waiver and declaration texts (falls back to default wording if not configured)
+            var waiverCertificationConfig = await _systemConfigService.GetWaiverCertificationText();
+            ViewBag.WaiverCertificationText = waiverCertificationConfig.Data;
+
+            var waiverAcknowledgmentConfig = await _systemConfigService.GetWaiverAcknowledgmentText();
+            ViewBag.WaiverAcknowledgmentText = waiverAcknowledgmentConfig.Data;
+
+            var waiverLiabilityReleaseConfig = await _systemConfigService.GetWaiverLiabilityReleaseText();
+            ViewBag.WaiverLiabilityReleaseText = waiverLiabilityReleaseConfig.Data;
+
             return View();
         }
 
@@ -55,6 +65,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             // Get scan input readonly configuration
             var scanInputConfig = await _systemConfigService.GetScanInputReadOnly();
             ViewBag.ScanInputReadOnly = scanInputConfig.Data;
+
+            // Get waiver and declaration texts (falls back to default wording if not configured)
+            var waiverCertificationConfig = await _systemConfigService.GetWaiverCertificationText();
+            ViewBag.WaiverCertificationText = waiverCertificationConfig.Data;
+
+            var waiverAcknowledgmentConfig = await _systemConfigService.GetWaiverAcknowledgmentText();
+            ViewBag.WaiverAcknowledgmentText = waiverAcknowledgmentConfig.Data;
+
+            var waiverLiabilityReleaseConfig = await _systemConfigService.GetWaiverLiabilityReleaseText();
+            ViewBag.WaiverLiabilityReleaseText = waiverLiabilityReleaseConfig.Data;
 
             return View("Index", "Attendance");
         }
