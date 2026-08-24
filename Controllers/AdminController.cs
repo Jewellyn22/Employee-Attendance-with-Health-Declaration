@@ -400,6 +400,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             }
         }
 
+        // POST: /Admin/DeleteContractors
+        // Soft delete: marks the listed contractors is_deleted = 1 (rows and time_logs
+        // retained). A single-row delete posts a one-element employee_ids list.
+        [HttpPost]
+        public async Task<IActionResult> DeleteContractors([FromBody] delete_contractors_request request)
+        {
+            var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
+            var result = await _contractorService.Delete(request?.employee_ids?.ToList() ?? new List<string>(), admin);
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
         #endregion
 
         #region Audit Logs

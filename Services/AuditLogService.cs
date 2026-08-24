@@ -78,5 +78,28 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<IEnumerable<audit_log>>> GetByEntity(string entity_type, string action)
+        {
+            try
+            {
+                var entries = await _repository.GetByEntity(entity_type, action);
+                return new Response<IEnumerable<audit_log>>
+                {
+                    Success = true,
+                    Message = "Audit logs retrieved successfully",
+                    Data = entries
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving audit logs ({EntityType}/{Action})", entity_type, action);
+                return new Response<IEnumerable<audit_log>>
+                {
+                    Success = false,
+                    Message = "Error retrieving audit logs"
+                };
+            }
+        }
     }
 }

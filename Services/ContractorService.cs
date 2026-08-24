@@ -2,6 +2,7 @@ using ContractorAttendanceWithHealthDeclaration.Helpers;
 using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using ContractorAttendanceWithHealthDeclaration.Repositories;
+using System.Text.Json;
 
 namespace ContractorAttendanceWithHealthDeclaration.Services
 {
@@ -305,6 +306,74 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
+        public async Task<Response<int>> Delete(List<string> employee_ids, string admin_employee_id)
+        {
+            try
+            {
+                // Manual validation (request DTOs carry no data annotations by convention).
+                if (employee_ids == null || employee_ids.Count == 0)
+                {
+                    return new Response<int> { Success = false, Message = "No contractor IDs were provided.", Data = 0 };
+                }
+
+                // Normalize: trim, drop blanks, reject comma-bearing ids (the SP
+                // receives the ids as a CSV matched with FIND_IN_SET), de-duplicate.
+                var ids = employee_ids
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(id => id.Trim())
+                    .Where(id => !id.Contains(','))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+
+                if (ids.Count == 0)
+                {
+                    return new Response<int> { Success = false, Message = "No valid contractor IDs were provided.", Data = 0 };
+                }
+
+                // Fetch existing (not-yet-deleted) contractors: audit trail data_from +
+                // skip ids that are unknown or already deleted (the lookup SP filters is_deleted = 0).
+                var existing = new List<contractor_employee>();
+                foreach (var id in ids)
+                {
+                    var contractor = await _contractorRepository.GetByEmployeeId(id);
+                    if (contractor != null)
+                    {
+                        existing.Add(contractor);
+                    }
+                }
+
+                if (existing.Count == 0)
+                {
+                    return new Response<int> { Success = false, Message = "No contractors were found to delete (they may have already been deleted).", Data = 0 };
+                }
+
+                var result = await _contractorRepository.Delete(existing.Select(c => c.employee_id));
+                var deletedCount = result?.deleted_count ?? 0;
+
+                _logger.LogInformation("Admin {AdminId} soft-deleted {DeletedCount} contractor(s)", admin_employee_id, deletedCount);
+
+                // One audit entry for the call (mirrors timelog/project delete: previous
+                // state in data_from, null data_to). audit_log.reference_id is VARCHAR(100),
+                // so bulk deletes use a count summary instead of the full id CSV.
+                var referenceId = existing.Count == 1 ? existing[0].employee_id : $"{existing.Count} contractors";
+                await _auditLogService.Log("contractor", "delete", referenceId, existing, null, admin_employee_id);
+
+                var skipped = ids.Count - deletedCount;
+                return new Response<int>
+                {
+                    Success = deletedCount > 0,
+                    Message = $"Deleted {deletedCount} contractor(s) successfully"
+                        + (skipped > 0 ? $" ({skipped} skipped - not found or already deleted)" : string.Empty),
+                    Data = deletedCount
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting contractors ({Count} ids)", employee_ids?.Count ?? 0);
+                return new Response<int> { Success = false, Message = "Error deleting contractors", Data = 0 };
+            }
+        }
+
         public async Task<Response<IEnumerable<contractor_employee>>> GetByProjectCode(string project_code)
         {
             try
@@ -347,6 +416,140 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     Success = false,
                     Message = "Error retrieving active contractors count",
+                    Data = 0
+                };
+            }
+        }
+
+        /// <summary>
+        /// Project-status cascade: set every active contractor under the project to
+        /// In-Active. Each deactivation is audit-logged as
+        /// contractor/deactivate_by_project so a later project re-activation can
+        /// restore exactly these contractors. Mirrors the nightly expiry sweep
+        /// (sp_project_DeactivateExpired) for manual admin deactivation.
+        /// </summary>
+        public async Task<Response<int>> CascadeDeactivateByProject(string project_code, string admin_employee_id)
+        {
+            try
+            {
+                // GetByProjectCode returns active contractors only - exactly the target set.
+                var contractors = await _contractorRepository.GetByProjectCode(project_code);
+                var deactivated = 0;
+
+                foreach (var contractor in contractors)
+                {
+                    var previous = CloneContractor(contractor);
+                    contractor.active = 0;
+                    var updated = await _contractorRepository.Update(contractor);
+
+                    if (updated != null)
+                    {
+                        deactivated++;
+                        await _auditLogService.Log(
+                            "contractor", "deactivate_by_project", contractor.employee_id,
+                            previous, updated, admin_employee_id);
+                    }
+                }
+
+                _logger.LogInformation("Project cascade set {Count} contractor(s) inactive: {ProjectCode}",
+                    deactivated, project_code);
+
+                return new Response<int>
+                {
+                    Success = true,
+                    Message = $"{deactivated} contractor(s) deactivated",
+                    Data = deactivated
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cascading contractor deactivation for project: {ProjectCode}", project_code);
+                return new Response<int>
+                {
+                    Success = false,
+                    Message = "Error deactivating contractors",
+                    Data = 0
+                };
+            }
+        }
+
+        /// <summary>
+        /// Restores contractors that were deactivated BY A PROJECT CASCADE for this
+        /// project; the audit log is the source of truth. A contractor is restored
+        /// only when it is currently In-Active, still belongs to this project, and
+        /// its latest active 1-&gt;0 audit transition is a deactivate_by_project entry
+        /// for this project. Contractors deactivated individually by an admin (their
+        /// latest transition is a manual contractor/update) stay In-Active.
+        /// </summary>
+        public async Task<Response<int>> CascadeReactivateByProject(string project_code, string admin_employee_id)
+        {
+            try
+            {
+                // Candidates come from the audit trail, not GetByProjectCode (that
+                // stored procedure returns active contractors only).
+                var cascadeEntries = await _auditLogService.GetByEntity("contractor", "deactivate_by_project");
+                var updateEntries = await _auditLogService.GetByEntity("contractor", "update");
+
+                // employee_id -> latest audit entry that flipped active from 1 to 0
+                var latestDeactivation = new Dictionary<string, audit_log>();
+                TrackLatestDeactivation(cascadeEntries, latestDeactivation);
+                TrackLatestDeactivation(updateEntries, latestDeactivation);
+
+                var reactivated = 0;
+
+                foreach (var (employee_id, entry) in latestDeactivation)
+                {
+                    if (!string.Equals(entry.action, "deactivate_by_project", StringComparison.Ordinal))
+                    {
+                        // Latest deactivation was a manual admin edit - leave In-Active.
+                        continue;
+                    }
+
+                    if (!TryGetJsonString(entry.data_to, "project_code", out var cascadeProjectCode) ||
+                        !string.Equals(cascadeProjectCode, project_code, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The cascade belonged to a different project.
+                        continue;
+                    }
+
+                    var contractor = await _contractorRepository.GetByEmployeeId(employee_id);
+                    if (contractor == null || contractor.active != 0 ||
+                        !string.Equals(contractor.project_code, project_code, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Deleted, already active, or moved to another project.
+                        continue;
+                    }
+
+                    var previous = CloneContractor(contractor);
+                    contractor.active = 1;
+                    var updated = await _contractorRepository.Update(contractor);
+
+                    if (updated != null)
+                    {
+                        reactivated++;
+                        await _auditLogService.Log(
+                            "contractor", "reactivate_by_project", contractor.employee_id,
+                            previous, updated, admin_employee_id);
+                    }
+                }
+
+                _logger.LogInformation("Project re-activation restored {Count} contractor(s): {ProjectCode}",
+                    reactivated, project_code);
+
+                return new Response<int>
+                {
+                    Success = true,
+                    Message = $"{reactivated} contractor(s) re-activated",
+                    Data = reactivated
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring cascade-deactivated contractors for project: {ProjectCode}", project_code);
+                return new Response<int>
+                {
+                    Success = false,
+                    Message = "Error re-activating contractors",
                     Data = 0
                 };
             }
@@ -514,6 +717,118 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     Message = "An error occurred during bulk enrollment.",
                     Data = result
                 };
+            }
+        }
+
+        /// <summary>
+        /// Shallow copy so audit data_from captures the pre-change state before the
+        /// cascade methods mutate the entity in place.
+        /// </summary>
+        private static contractor_employee CloneContractor(contractor_employee source) => new()
+        {
+            employee_id = source.employee_id,
+            name = source.name,
+            gender = source.gender,
+            birthdate = source.birthdate,
+            contact_number = source.contact_number,
+            address = source.address,
+            area_of_destination = source.area_of_destination,
+            project_code = source.project_code,
+            provider_code = source.provider_code,
+            provider_name = source.provider_name,
+            project_name = source.project_name,
+            position = source.position,
+            active = source.active,
+            create_at = source.create_at,
+            update_at = source.update_at
+        };
+
+        /// <summary>
+        /// Folds audit entries into latestDeactivation, keeping the highest log_id
+        /// per employee for entries that flipped active from 1 to 0.
+        /// </summary>
+        private static void TrackLatestDeactivation(
+            Response<IEnumerable<audit_log>>? response,
+            Dictionary<string, audit_log> latestDeactivation)
+        {
+            if (response?.Success != true || response.Data == null)
+            {
+                return;
+            }
+
+            foreach (var entry in response.Data)
+            {
+                if (string.IsNullOrWhiteSpace(entry.reference_id) || !IsActiveDeactivation(entry))
+                {
+                    continue;
+                }
+
+                if (latestDeactivation.TryGetValue(entry.reference_id, out var current) && current.log_id >= entry.log_id)
+                {
+                    continue;
+                }
+
+                latestDeactivation[entry.reference_id] = entry;
+            }
+        }
+
+        /// <summary>
+        /// True when the entry flipped active from 1 (data_from) to 0 (data_to).
+        /// Handles both C#-serialized (indented) and MySQL JSON_OBJECT (compact)
+        /// payloads; edits that leave active unchanged are not transitions.
+        /// </summary>
+        private static bool IsActiveDeactivation(audit_log entry)
+        {
+            return TryGetJsonInt(entry.data_from, "active", out var fromActive) && fromActive == 1
+                && TryGetJsonInt(entry.data_to, "active", out var toActive) && toActive == 0;
+        }
+
+        private static bool TryGetJsonInt(string? json, string property, out int value)
+        {
+            value = 0;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                if (document.RootElement.TryGetProperty(property, out var element)
+                    && element.ValueKind == JsonValueKind.Number)
+                {
+                    return element.TryGetInt32(out value);
+                }
+                return false;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryGetJsonString(string? json, string property, out string value)
+        {
+            value = string.Empty;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                if (document.RootElement.TryGetProperty(property, out var element)
+                    && element.ValueKind == JsonValueKind.String)
+                {
+                    value = element.GetString() ?? string.Empty;
+                    return value != string.Empty;
+                }
+                return false;
+            }
+            catch (JsonException)
+            {
+                return false;
             }
         }
     }

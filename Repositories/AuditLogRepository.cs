@@ -40,5 +40,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.StoredProcedure
             );
         }
+
+        public async Task<IEnumerable<audit_log>> GetByEntity(string entity_type, string action)
+        {
+            const string storedProc = "sp_audit_log_GetByEntity";
+            return await _db.QueryAsync<audit_log>(
+                storedProc,
+                new { p_entity_type = entity_type, p_action = action },
+                commandType: CommandType.StoredProcedure
+            );
+        }
     }
 }

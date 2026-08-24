@@ -764,6 +764,7 @@ const AdminPage = {
         currentEditingProject: null,
         currentEditingProjectName: null,
         skipProjectCascade: false,   // suppress cascade during programmatic provider set (edit init)
+        selectedContractorIds: new Set(),   // checked employee_ids; survives pagination/filters, cleared after delete
 
         init: function() {
             const self = this;
@@ -777,6 +778,18 @@ const AdminPage = {
                     }
                 },
                 columns: [
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function(data, type, row) {
+                            // Re-emitted from the Set on every draw, so checked state survives
+                            // pagination, sorting, filters, and ajax.reload().
+                            const checked = self.selectedContractorIds.has(row.employee_id) ? ' checked' : '';
+                            return '<input type="checkbox" class="contractor-select" data-employee-id="' + row.employee_id + '"' + checked + '>';
+                        }
+                    },
                     { data: 'employee_id' },
                     { data: 'name' },
                     {
@@ -804,6 +817,9 @@ const AdminPage = {
                             return `
                                 <button class="btn btn-sm btn-warning btn-edit" data-employee-id="${data.employee_id}">
                                     <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger btn-delete-contractor" data-employee-id="${data.employee_id}" title="Delete">
+                                    <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             `;
                         }
@@ -858,6 +874,12 @@ const AdminPage = {
             self.contractorTable.on('draw', function() {
                 const hasData = self.contractorTable.data().length > 0;
                 $('#export-contractors').toggle(hasData);
+            });
+
+            // Keep row checkboxes, header select-all, and the Delete Selected button in
+            // sync after every draw (pagination, sort, filter, ajax.reload).
+            self.contractorTable.on('draw', function() {
+                self._syncContractorCheckboxState();
             });
 
             // Initialize Select2 and setup modal event handler
@@ -976,6 +998,98 @@ const AdminPage = {
                 // Use Bootstrap 5 native API
                 var modal = new bootstrap.Modal(document.getElementById('contractor-modal'));
                 modal.show();
+            });
+
+            // Row checkbox: track selection (survives pagination/filters).
+            $('#contractors-table tbody').on('change', '.contractor-select', function() {
+                const id = String($(this).data('employee-id'));
+                if (this.checked) { self.selectedContractorIds.add(id); }
+                else { self.selectedContractorIds.delete(id); }
+                self._syncContractorCheckboxState();
+            });
+
+            // Header select-all: applies to the CURRENT PAGE only. The count on the
+            // Delete Selected button always reflects the full selection (all pages).
+            $('#select-all-contractors').on('change', function() {
+                const checked = this.checked;
+                self.contractorTable.rows({ page: 'current' }).every(function() {
+                    const id = String(this.data().employee_id);
+                    $(this.node()).find('.contractor-select').prop('checked', checked);
+                    if (checked) { self.selectedContractorIds.add(id); } else { self.selectedContractorIds.delete(id); }
+                });
+                self._updateDeleteSelectedButton();
+            });
+
+            // Per-row delete (soft delete: attendance history kept, kiosk scans rejected afterwards)
+            $(document).on('click', '.btn-delete-contractor', function() {
+                const employeeId = String($(this).data('employee-id'));
+                const contractor = self.contractorTable.row($(this).closest('tr')).data();
+                const name = (contractor && contractor.name) ? contractor.name : employeeId;
+
+                AdminPage.common.showConfirmation(
+                    'Delete contractor ' + name + ' (' + employeeId + ')? They will be hidden from the system and will no longer be able to scan at the kiosk. Attendance history is kept.',
+                    function() {
+                        $.ajax({
+                            url: '/Admin/DeleteContractors',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ employee_ids: [employeeId] }),
+                            success: function(response) {
+                                if (response.success) {
+                                    AdminPage.common.showSuccess(response.message);
+                                    self.selectedContractorIds.delete(employeeId);
+                                    self._updateDeleteSelectedButton();
+                                    self.contractorTable.ajax.reload(function() {
+                                        self._populateProjectFilter();   // a project may now have zero rows
+                                    });
+                                } else {
+                                    AdminPage.common.showError(response.message);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                AdminPage.common.showError('Failed to delete contractor. Please try again.');
+                                console.error('Delete contractor error:', { xhr, status, error });
+                            }
+                        });
+                    }
+                );
+            });
+
+            // Bulk delete of every checked contractor (across pages/filters)
+            $('#delete-selected-contractors').on('click', function() {
+                const ids = Array.from(self.selectedContractorIds);
+                if (ids.length === 0) {
+                    AdminPage.common.showWarning('Select at least one contractor first.');
+                    return;
+                }
+
+                AdminPage.common.showConfirmation(
+                    'Delete ' + ids.length + ' selected contractor(s)? They will be hidden from the system and will no longer be able to scan at the kiosk. Attendance history is kept.',
+                    function() {
+                        $.ajax({
+                            url: '/Admin/DeleteContractors',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ employee_ids: ids }),
+                            success: function(response) {
+                                if (response.success) {
+                                    AdminPage.common.showSuccess(response.message);
+                                    self.selectedContractorIds.clear();
+                                    self._updateDeleteSelectedButton();
+                                    self.contractorTable.ajax.reload(function() {
+                                        self._populateProjectFilter();
+                                    });
+                                } else {
+                                    AdminPage.common.showError(response.message);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                AdminPage.common.showError('Failed to delete contractors. Please try again.');
+                                console.error('Bulk delete contractors error:', { xhr, status, error });
+                            }
+                        });
+                    }
+                );
             });
 
             // Toggle state change handler
@@ -1709,6 +1823,31 @@ const AdminPage = {
             } else {
                 $sel.val('');
             }
+        },
+
+        // Re-apply checkbox state to the visible (current page) rows from the
+        // selection Set, then refresh the header select-all and the Delete
+        // Selected button. Runs on every draw so selection survives paging.
+        _syncContractorCheckboxState: function() {
+            const self = this;
+            if (!this.contractorTable) return;
+            let visible = 0, selected = 0;
+            this.contractorTable.rows({ page: 'current' }).every(function() {
+                visible++;
+                const isChecked = self.selectedContractorIds.has(String(this.data().employee_id));
+                $(this.node()).find('.contractor-select').prop('checked', isChecked);
+                if (isChecked) selected++;
+            });
+            // Header reflects the CURRENT PAGE only; the button count reflects the full selection.
+            $('#select-all-contractors').prop('checked', visible > 0 && visible === selected);
+            this._updateDeleteSelectedButton();
+        },
+
+        // Enable/disable the bulk Delete Selected button and show the selection count.
+        _updateDeleteSelectedButton: function() {
+            const n = this.selectedContractorIds.size;
+            $('#delete-selected-contractors').prop('disabled', n === 0);
+            $('#selected-contractor-count').text(n > 0 ? ' (' + n + ')' : '');
         },
 
         processBulkImport: function() {

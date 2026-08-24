@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 
 namespace ContractorAttendanceWithHealthDeclaration.Repositories
@@ -15,6 +16,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         Task<contractor_employee?> Create(contractor_employee employee);
         Task<contractor_employee?> Update(contractor_employee employee);
         Task<bool> SetInactive(string employee_id);
+        // Soft delete via sp_contractor_employee_Delete: marks the given ids is_deleted = 1.
+        // p_employee_ids is a CSV matched with FIND_IN_SET; single delete = one-element list.
+        Task<contractor_delete_result?> Delete(IEnumerable<string> employee_ids);
         Task<int> GetActiveCount();
     }
 }

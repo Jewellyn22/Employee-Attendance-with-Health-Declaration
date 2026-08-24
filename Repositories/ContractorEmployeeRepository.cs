@@ -1,3 +1,4 @@
+using ContractorAttendanceWithHealthDeclaration.Models;
 using ContractorAttendanceWithHealthDeclaration.Models.Domain;
 using Dapper;
 using System.Data;
@@ -89,6 +90,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.StoredProcedure
             );
             return result > 0;
+        }
+
+        // Soft delete via sp_contractor_employee_Delete: marks the given employee_ids
+        // is_deleted = 1 (single atomic UPDATE, no rows removed, time_logs untouched).
+        // Returns the SP result set (success + deleted_count).
+        public async Task<contractor_delete_result?> Delete(IEnumerable<string> employee_ids)
+        {
+            const string storedProc = "sp_contractor_employee_Delete";
+            return await _db.QuerySingleOrDefaultAsync<contractor_delete_result>(
+                storedProc,
+                new { p_employee_ids = string.Join(",", employee_ids) },
+                commandType: CommandType.StoredProcedure
+            );
         }
 
         // Active contractors for the admin "View Contractors by Project" modal.

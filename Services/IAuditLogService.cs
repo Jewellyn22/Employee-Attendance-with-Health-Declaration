@@ -17,5 +17,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             string updated_by);
 
         Task<Response<IEnumerable<audit_log>>> GetAll();
+
+        // Entries for one entity_type + action, ordered by log_id (stable ordering
+        // for "latest transition" logic in the project re-activation restore).
+        Task<Response<IEnumerable<audit_log>>> GetByEntity(string entity_type, string action);
     }
 }

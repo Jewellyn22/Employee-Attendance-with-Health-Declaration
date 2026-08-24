@@ -9,17 +9,20 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         private readonly IProjectRepository _projectRepository;
         private readonly IProviderRepository _providerRepository;
         private readonly IAuditLogService _auditLogService;
+        private readonly IContractorService _contractorService;
         private readonly ILogger<ProjectService> _logger;
 
         public ProjectService(
             IProjectRepository projectRepository,
             IProviderRepository providerRepository,
             IAuditLogService auditLogService,
+            IContractorService contractorService,
             ILogger<ProjectService> logger)
         {
             _projectRepository = projectRepository;
             _providerRepository = providerRepository;
             _auditLogService = auditLogService;
+            _contractorService = contractorService;
             _logger = logger;
         }
 
@@ -214,18 +217,55 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
+                // A project cannot be set to Active while its contract is already
+                // expired - the nightly expiry event (sp_project_DeactivateExpired)
+                // would immediately deactivate it again. Extend the end date first.
+                if (project.active == 1 && project.contract_enddate < DateTime.Today)
+                {
+                    return new Response<project>
+                    {
+                        Success = false,
+                        Message = "Cannot set the project to Active: the contract end date is already expired. Extend the contract end date first.",
+                        Data = null
+                    };
+                }
+
                 var result = await _projectRepository.Update(project);
                 _logger.LogInformation("Project updated: {ProjectCode}", project.project_code);
+
+                var message = result != null ? "Project updated successfully" : "Project update failed";
 
                 if (result != null)
                 {
                     await _auditLogService.Log("project", "update", project.project_code, existing, result, admin_employee_id);
+
+                    // Cascade contractor status with the project so the kiosk gate and
+                    // the admin lists stay consistent. Deactivation takes down the
+                    // project's active contractors; re-activation restores ONLY the
+                    // contractors that were deactivated by a cascade (audit-verified) -
+                    // contractors an admin deactivated individually stay In-Active.
+                    if (existing.active == 1 && result.active == 0)
+                    {
+                        var cascade = await _contractorService.CascadeDeactivateByProject(project.project_code, admin_employee_id);
+                        if (cascade.Success && cascade.Data > 0)
+                        {
+                            message += $" - {cascade.Data} contractor(s) deactivated";
+                        }
+                    }
+                    else if (existing.active == 0 && result.active == 1)
+                    {
+                        var restore = await _contractorService.CascadeReactivateByProject(project.project_code, admin_employee_id);
+                        if (restore.Success && restore.Data > 0)
+                        {
+                            message += $" - {restore.Data} contractor(s) re-activated";
+                        }
+                    }
                 }
 
                 return new Response<project>
                 {
                     Success = result != null,
-                    Message = result != null ? "Project updated successfully" : "Project update failed",
+                    Message = message,
                     Data = result
                 };
             }
