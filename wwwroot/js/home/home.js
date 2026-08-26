@@ -330,6 +330,7 @@ const HomePage = {
             $('#hd_attendance_id').val(attendanceId);
             $('#health-declaration-section').show();
             $('#no-declaration-message').hide();
+            $('#home-logo').hide();
 
             // Reset form to default FIT status
             $('#fit').prop('checked', true);  // Reset health status to FIT
@@ -344,6 +345,7 @@ const HomePage = {
         hideHealthDeclarationForm: function() {
             $('#health-declaration-section').hide();
             $('#no-declaration-message').show();
+            $('#home-logo').show();
             $('#hd_attendance_id').val('');
             this.clearHealthDeclarationTimer();
         },

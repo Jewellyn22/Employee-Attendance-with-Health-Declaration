@@ -177,6 +177,10 @@
                 </div>
             </div>
 
+            <div id="home-logo">
+                <img src="~/ACI Logo 5.png" alt="ACI Company Logo" />
+            </div>
+
             @* <div id="no-declaration-message" class="text-center text-muted mt-5">
 				<p>Scan your ID to begin health declaration process</p>
 			</div> *@
@@ -186,8 +190,8 @@
 
 
 @section Scripts {
-    <script src="~/js/home/home.js?v=2.9.10.1"></script>
-    <script src="~/js/scanner-detection.js?v=2.9.10.1"></script>
+    <script src="~/js/home/home.js?v=2.9.11.0"></script>
+    <script src="~/js/scanner-detection.js?v=2.9.11.0"></script>
     <script>
         // Initialize health declaration window from server config
         window.healthDeclarationWindowSeconds = @(ViewBag.HealthDeclarationWindowSeconds ?? 120.0);
@@ -235,6 +239,19 @@
             background: white;
             border-radius: 5px;
             border: 1px solid #dee2e6;
+        }
+
+        /* Company logo fills the right panel while the health declaration is hidden */
+        #home-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 460px;
+        }
+
+        #home-logo img {
+            max-width: 60%;
+            height: auto;
         }
 
         .form-check-input[type="radio"] {
