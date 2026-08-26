@@ -200,6 +200,10 @@ const HomePage = {
                 return;
             }
 
+            // Clear the input at submission so characters from a scan that starts
+            // while this request is in flight are not wiped by the response handler
+            $('#employee_id').val('');
+
             // Clear any existing health declaration timer
             self.clearHealthDeclarationTimer();
 
@@ -233,8 +237,8 @@ const HomePage = {
                         self.displayScanError(response.message);
                     }
 
-                    // Clear input for next scan
-                    $('#employee_id').val('');
+                    // Re-focus for next scan (input is cleared at submission time so
+                    // in-flight scan characters are preserved)
                     $('#employee_id').focus();
                 },
                 error: function() {

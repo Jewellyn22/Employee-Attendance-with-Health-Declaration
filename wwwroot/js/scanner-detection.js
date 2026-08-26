@@ -3,7 +3,7 @@ const ScannerDetection = {
     config: {
         maxKeystrokeDelay: 100, // ms - if delay > this, it's manual typing (reduced from 150 for stricter detection)
         minScannerSpeed: 50,    // ms - scanner must be faster than this
-        //warningMessage: 'Please scan your ID.'
+        warningMessage: 'Please scan your ID.'
     },
 
     init: function(fieldId, enabled) {
@@ -21,8 +21,12 @@ const ScannerDetection = {
             // Ignore Enter key - it's for form submission, not scanning detection
             if (e.key === 'Enter' || e.which === 13) {
                 console.log('Scanner detection: Enter key detected - ignoring and allowing form submission');
-                // Reset manual typing flag to allow Enter to proceed
+                // Reset detection state so the next scan starts a fresh burst window;
+                // its first key must not be timed against the previous scan's last key
                 isManualTyping = false;
+                firstKeyTime = null;
+                lastKeyTime = null;
+                keyCount = 0;
                 return;
             }
 
