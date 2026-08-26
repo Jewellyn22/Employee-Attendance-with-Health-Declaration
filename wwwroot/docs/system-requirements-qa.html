@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contractor Attendance System Requirements</title>
+<title>Contractor Attendance &amp; Health Declaration Monitoring · White Paper</title>
 <style>
   /* ---------- Tokens: light (default) ---------- */
   :root {
@@ -254,39 +254,26 @@
   <p class="toc-title">Contents</p>
   <ol>
     <li><a href="#overview"><span>System overview</span></a></li>
-    <li><a href="#mod-k"><span>Kiosk scan processing</span><span class="n">10</span></a></li>
-    <li><a href="#mod-h"><span>Health declaration &amp; waiver</span><span class="n">8</span></a></li>
-    <li><a href="#mod-d"><span>Attendance dashboard</span><span class="n">6</span></a></li>
-    <li><a href="#mod-r"><span>History logs &amp; export</span><span class="n">5</span></a></li>
-    <li><a href="#mod-a"><span>Authentication &amp; session</span><span class="n">6</span></a></li>
-    <li><a href="#mod-p"><span>Providers &amp; projects</span><span class="n">8</span></a></li>
-    <li><a href="#mod-c"><span>Contractor management</span><span class="n">8</span></a></li>
-    <li><a href="#mod-t"><span>TimeLogs management</span><span class="n">6</span></a></li>
-    <li><a href="#mod-s"><span>System configuration</span><span class="n">4</span></a></li>
-    <li><a href="#mod-l"><span>Audit logging</span><span class="n">5</span></a></li>
-    <li><a href="#rules"><span>Scan rule sequence</span></a></li>
-    <li><a href="#config"><span>Configuration parameters</span></a></li>
-    <li><a href="#nfr"><span>Non-functional requirements</span></a></li>
-    <li><a href="#env"><span>Environments &amp; entry points</span></a></li>
-    <li><a href="#edge"><span>Edge cases for test design</span></a></li>
-    <li><a href="#scope"><span>Out of scope &amp; known items</span></a></li>
+    <li><a href="#requirements"><span>System requirements</span></a></li>
+    <li><a href="#functionality"><span>System functionality</span></a></li>
+    <li><a href="#manual"><span>System manual</span></a></li>
+    <li><a href="#tests"><span>Test cases</span></a></li>
   </ol>
-  <p class="toc-note">Requirement IDs (e.g. <strong>FR-K-04</strong>) are stable identifiers — cite them in test cases and defect reports.</p>
+  <p class="toc-note">Applies to system version <strong>2.9.9.1</strong>.</p>
 </nav>
 
 <main>
 <div class="doc">
 
 <header class="masthead">
-  <p class="eyebrow">Software Requirements Specification · For QA Review</p>
+  <p class="eyebrow">White Paper</p>
   <h1>Contractor Attendance &amp; Health Declaration Monitoring</h1>
   <p class="standfirst">A web-based system that records contractor attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
   <table class="doc-control">
-    <tr><th>System version</th><td>2.9.2.0</td></tr>
-    <tr><th>Document date</th><td>17 August 2026</td></tr>
-    <tr><th>Audience</th><td>QA team — functional &amp; regression test design</td></tr>
+    <tr><th>System version</th><td>2.9.9.1</td></tr>
+    <tr><th>Document date</th><td>26 August 2026</td></tr>
+    <tr><th>Audience</th><td>Management, QA, and development</td></tr>
     <tr><th>Platform</th><td>ASP.NET Core 8 MVC · MySQL (stored procedures via Dapper) · SignalR · LDAP</td></tr>
-    <tr><th>Test basis</th><td>Manual UI testing on the deployed build; no automated suite exists</td></tr>
   </table>
 </header>
 
@@ -308,7 +295,7 @@
     </tbody>
   </table></div>
 
-  <h3 class="sub">Status vocabulary used throughout</h3>
+  <h3 class="sub">Status vocabulary</h3>
   <ul class="plain">
     <li>Health status: <span class="pill fit">FIT</span> or <span class="pill unfit">UNFIT</span> — stored as a MySQL ENUM on the attendance record.</li>
     <li>Waiver consent: <code>UNDERSTOOD</code> or <code>NOT_UNDERSTOOD</code>.</li>
@@ -316,780 +303,264 @@
   </ul>
 </section>
 
-<!-- ============================ 2. KIOSK ============================ -->
-<section class="mod" id="mod-k">
+<!-- ============================ 2. REQUIREMENTS ============================ -->
+<section class="mod" id="requirements">
   <div class="mod-head">
-    <span class="mod-no">MODULE K</span>
-    <h2>Kiosk scan processing</h2>
-  </div>
-  <p class="mod-desc">Route <code>/</code> (also <code>/Home/Index</code>). Left panel: scan input and contractor identity. Right panel: health declaration after TIME IN. All scan business rules execute server-side in order — see <a href="#rules">Scan rule sequence</a> for the exact evaluation order.</p>
-
-  <div class="req" id="fr-k-01">
-    <div class="req-head"><span class="req-id">FR-K-01</span><h4>Scan input and submission</h4></div>
-    <p>The kiosk accepts an employee ID typed or emitted by a keyboard-wedge barcode scanner into a single field. Pressing <kbd>Enter</kbd> submits the scan; the field has autofocus and is cleared and refocused after every attempt.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Empty input submits nothing (no request, no error dialog).</li>
-      <li>Successful and failed scans both clear the input and restore focus for the next contractor.</li>
-      <li>When <code>ScanInputReadOnly</code> is enabled in system configuration, the field is read-only — keyboard typing is rejected, scanner input still works (see FR-S-02).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-02">
-    <div class="req-head"><span class="req-id">FR-K-02</span><h4>Unknown ID is rejected</h4></div>
-    <p>A scanned ID with no matching contractor record is rejected. No attendance record is created.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Inline error shows exactly <span class="msg">Contractor not found</span> and auto-clears.</li>
-      <li>Contractor info panel is hidden; no time_logs row is written.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-03">
-    <div class="req-head"><span class="req-id">FR-K-03</span><h4>Inactive contractor is rejected</h4></div>
-    <p>A contractor whose <code>active</code> flag is 0 cannot TIME IN or TIME OUT.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Inline error shows <span class="msg">Contractor is inactive</span>.</li>
-      <li>No attendance record is created or modified.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-04">
-    <div class="req-head"><span class="req-id">FR-K-04</span><h4>Duplicate-scan debounce</h4></div>
-    <p>A scan arriving within <code>DebounceThresholdSeconds</code> of the contractor's most recent scan event is rejected. The "most recent scan event" is the session's <code>time_out</code> when it exists, otherwise its <code>time_in</code>. The check applies to both TIME IN and TIME OUT attempts.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Rejection message is exactly <span class="msg">Duplicate scan - wait N seconds.</span> where N is the configured threshold.</li>
-      <li>The comparison is strict: at <em>exactly</em> N seconds elapsed the scan is processed (boundary test).</li>
-      <li>Deactivating/reactivating the threshold in System Config changes behaviour on the next scan without redeployment.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-05">
-    <div class="req-head"><span class="req-id">FR-K-05</span><h4>TIME OUT closes the open session</h4></div>
-    <p>If the contractor has an open session (TIME IN recorded, no TIME OUT), the scan records <code>time_out = now</code> on that record. The contractor's own ID is stamped as <code>updated_by</code> (self-service).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Success message is exactly <span class="msg">SUCCESS TIME OUT</span>, shown with distinct (non-green) styling.</li>
-      <li>The health declaration panel does <strong>not</strong> appear for a TIME OUT scan.</li>
-      <li>TIME OUT is never blocked by an inactive project/provider or by an earlier blocked health combination — those rules only gate TIME IN.</li>
-      <li>A subsequent scan after the debounce window starts a fresh TIME IN (new record).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-06">
-    <div class="req-head"><span class="req-id">FR-K-06</span><h4>Same-day re-entry block</h4></div>
-    <p>If the contractor's latest TIME IN today already carries a "not allowed to enter" combination, further scans that day are blocked (both re-TIME IN attempts and TIME OUTs of the auto-closed record are rejected by this rule before session logic runs).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>UNFIT block message: <span class="msg">Not Allowed to Enter. You are UNFIT.</span></li>
-      <li>Waiver block message: <span class="msg">Not Allowed to Enter. You did not understand waiver.</span></li>
-      <li>After an admin corrects the record (FR-T-02) to an allowed combination, the contractor can scan in again the same day.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-07">
-    <div class="req-head"><span class="req-id">FR-K-07</span><h4>TIME IN blocked when project is inactive</h4></div>
-    <p>TIME IN requires the contractor's assigned project to exist and be active. This check runs <em>after</em> the open-session check so that deactivating a project mid-day never traps an on-site contractor.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Message: <span class="msg">Not Allowed to Enter. Project is In-Active.</span></li>
-      <li>A contractor with no project assigned is also blocked by this rule (project not found).</li>
-      <li>A contractor already timed-in can still TIME OUT after the project is deactivated.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-08">
-    <div class="req-head"><span class="req-id">FR-K-08</span><h4>TIME IN blocked when provider is inactive</h4></div>
-    <p>Same gate as FR-K-07, applied to the contractor's provider.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Message: <span class="msg">Not Allowed to Enter. Provider is In-Active.</span></li>
-      <li>Mid-day provider deactivation still allows open sessions to TIME OUT.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-09">
-    <div class="req-head"><span class="req-id">FR-K-09</span><h4>TIME IN creation and defaults</h4></div>
-    <p>When all gates pass, the system creates a <code>time_logs</code> row with <code>time_in = now</code>, <code>time_out = NULL</code>, <code>health_status = FIT</code>, <code>waiver_consent = UNDERSTOOD</code> — both declaration values are safe defaults the contractor may change within the window.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Success message is exactly <span class="msg">SUCCESS TIME IN</span> (green styling).</li>
-      <li>Left panel displays the contractor's name, provider (code + name), project (code + name), position and assigned area.</li>
-      <li>Defaults are visible pre-selected in the health declaration panel (FR-K-10).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-k-10">
-    <div class="req-head"><span class="req-id">FR-K-10</span><h4>Health declaration panel lifecycle</h4></div>
-    <p>After a TIME IN, the right panel shows the declaration form with a visible countdown. The form hides when the countdown reaches zero or immediately when any next scan is submitted — whichever comes first.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Countdown starts at the configured <code>HealthDeclarationWindowSeconds</code> and is displayed to the user.</li>
-      <li>On expiry or next scan the panel is replaced by the empty-state message and all timers are cleared.</li>
-      <li>A TIME OUT scan never shows the declaration panel.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 3. HEALTH DECLARATION ============================ -->
-<section class="mod" id="mod-h">
-  <div class="mod-head">
-    <span class="mod-no">MODULE H</span>
-    <h2>Health declaration &amp; waiver consent</h2>
-  </div>
-  <p class="mod-desc">The declaration has two independent controls: health status (<span class="pill fit">FIT</span> / <span class="pill unfit">UNFIT</span>) and waiver consent (<code>UNDERSTOOD</code> / <code>NOT_UNDERSTOOD</code>), each pre-selected to the safe default. A configurable list of sickness items is also presented on the panel. Any change is submitted immediately on selection.</p>
-
-  <div class="req" id="fr-h-01">
-    <div class="req-head"><span class="req-id">FR-H-01</span><h4>Declaration form controls</h4></div>
-    <p>Radio groups for health status and waiver consent, both defaulting to the allowed combination; sickness items are rendered from the <code>Health_Declaration_Sickness</code> configuration (see FR-S-05).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>On panel open, <span class="pill fit">FIT</span> and <code>UNDERSTOOD</code> are selected.</li>
-      <li>Selecting any radio immediately persists the change — there is no separate submit step.</li>
-      <li>Sickness items shown match the configured list; when configuration is missing, the built-in default list (Fever, Cough, Cold, Body Pain, Headache, Sore Throat, Fatigue, Nausea, Diarrhea) is used.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-02">
-    <div class="req-head"><span class="req-id">FR-H-02</span><h4>Change window enforced server-side</h4></div>
-    <p>Declaration updates are accepted only while <code>now − time_in &lt; HealthDeclarationWindowSeconds</code>. The UI countdown mirrors the same value, but the server re-validates on every update.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Update submitted after expiry fails with exactly <span class="msg">Health declaration and waiver consent window has expired. Changes allowed only within N seconds of TIME IN.</span></li>
-      <li>No database change occurs on a rejected update.</li>
-      <li>Boundary: an update at exactly N seconds after TIME IN is rejected (strict less-than).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-03">
-    <div class="req-head"><span class="req-id">FR-H-03</span><h4>UNFIT sets automatic TIME OUT</h4></div>
-    <p>Selecting <span class="pill unfit">UNFIT</span> persists the status and stamps <code>time_out = now</code>, closing the session immediately.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Kiosk shows a large critical alert titled <em>Not Allowed</em> with text <span class="msg">You are not allowed to enter company premises due to health status.</span></li>
-      <li>Record persists health_status=UNFIT with time_out populated.</li>
-      <li>Same-day re-scans are blocked per FR-K-06.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-04">
-    <div class="req-head"><span class="req-id">FR-H-04</span><h4>FIT + NOT_UNDERSTOOD also blocks entry</h4></div>
-    <p>A contractor who declares <span class="pill fit">FIT</span> but <code>NOT_UNDERSTOOD</code> waiver consent is treated as not allowed to enter: the update persists and <code>time_out = now</code> is set.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Selecting NOT_UNDERSTOOD shows the critical alert <span class="msg">You are marked as FIT but do not understand the waiver.</span></li>
-      <li>Record persists waiver_consent=NOT_UNDERSTOOD with time_out populated.</li>
-      <li>Same-day re-scan blocked with the waiver message from FR-K-06.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-05">
-    <div class="req-head"><span class="req-id">FR-H-05</span><h4>Reversal within the window</h4></div>
-    <p>Returning to the allowed combination (<span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>) inside the window clears the auto-set <code>time_out</code> back to NULL, reopening the session.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>After UNFIT → FIT + UNDERSTOOD (within window): time_out is NULL, session open, success alert reads <em>ALLOWED TO ENTER</em> / <span class="msg">FIT and understand the waiver.</span></li>
-      <li>Reversal attempts after window expiry fail with the FR-H-02 message; the TIME OUT stays.</li>
-      <li>Only auto-generated TIME OUTs are reversible in this flow — a TIME OUT recorded by a physical scan is not undone by the declaration.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-06">
-    <div class="req-head"><span class="req-id">FR-H-06</span><h4>Enum validation</h4></div>
-    <p>Update requests must carry valid enum values: health status ∈ {FIT, UNFIT}, waiver consent ∈ {UNDERSTOOD, NOT_UNDERSTOOD}.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Invalid values (API-level tests) return a validation failure and write nothing.</li>
-      <li>Waiver consent omitted from the request defaults to UNDERSTOOD client-side.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-07">
-    <div class="req-head"><span class="req-id">FR-H-07</span><h4>Locked after the window</h4></div>
-    <p>Once the declaration window expires, health status and waiver consent are locked at the kiosk. Only an admin correction (FR-T-02) can change them.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Kiosk panel is hidden after expiry; no control can re-open it for that record.</li>
-      <li>Admin TimeLogs edit can still change both fields at any time.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-h-08">
-    <div class="req-head"><span class="req-id">FR-H-08</span><h4>Alerts on the kiosk</h4></div>
-    <p>Declaration outcomes surface as full-width popups that auto-dismiss, after which focus returns to the scan field.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Allowed: <em>ALLOWED TO ENTER</em> — <span class="msg">FIT and understand the waiver.</span></li>
-      <li>Unfit: <em>NOT ALLOWED TO ENTER</em> — <span class="msg">You are UNFIT.</span></li>
-      <li>Waiver not understood: <em>NOT ALLOWED TO ENTER</em> — <span class="msg">You do not understand the waiver.</span></li>
-      <li>Focus returns to the scan input after every alert closes.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 4. DASHBOARD ============================ -->
-<section class="mod" id="mod-d">
-  <div class="mod-head">
-    <span class="mod-no">MODULE D</span>
-    <h2>Attendance dashboard</h2>
-  </div>
-  <p class="mod-desc">Route <code>/Attendance</code> — a public, real-time view of today's attendance for monitoring staff. Updates arrive by push; no manual refresh is required.</p>
-
-  <div class="req" id="fr-d-01">
-    <div class="req-head"><span class="req-id">FR-D-01</span><h4>Real-time updates via SignalR</h4></div>
-    <p>The page opens a WebSocket connection to the <code>/attendanceHub</code> hub and refreshes the table whenever attendance changes are broadcast.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>A scan at the kiosk is reflected on an open dashboard within seconds, without refresh.</li>
-      <li>If the hub connection fails, the page shows a <em>Connection Error</em> alert stating real-time updates are unavailable, and the initially loaded table remains visible.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-d-02">
-    <div class="req-head"><span class="req-id">FR-D-02</span><h4>Table columns and privacy masking</h4></div>
-    <p>Columns: Employee ID, Name, Provider, Time In, Time Out, Health Status, Actions. Employee IDs are masked — rendered as one dot per character.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Employee ID column shows dots equal in count to the ID length; the raw ID never appears.</li>
-      <li>Times render in local time format; empty Time Out renders an <em>Active</em> badge.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-d-03">
-    <div class="req-head"><span class="req-id">FR-D-03</span><h4>Health status badges</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li><span class="pill fit">FIT</span> renders as a green badge; <span class="pill unfit">UNFIT</span> as a red badge.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-d-04">
-    <div class="req-head"><span class="req-id">FR-D-04</span><h4>Table behaviour</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Default sort: Time In descending; page length 25.</li>
-      <li>With no records today, the table shows the empty-state message <span class="msg">No attendance records for today</span>.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-d-05">
-    <div class="req-head"><span class="req-id">FR-D-05</span><h4>Public access</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>No login is required to view the dashboard.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-d-06">
-    <div class="req-head"><span class="req-id">FR-D-06</span><h4>Row actions</h4></div>
-    <p>Active rows expose a <em>Time Out</em> action so monitoring staff can close a session without the badge; UNFIT rows expose a waiver-related action inherited from an older workflow.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li><em>Time Out</em> appears only on rows with no time_out and a FIT status; using it records the time out.</li>
-      <li>See "Known legacy items" (Section 17) for the Approve Waiver button — there is no waiver-approval workflow in the current system; treat it as out of scope and do not design positive tests for it.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 5. HISTORY LOGS ============================ -->
-<section class="mod" id="mod-r">
-  <div class="mod-head">
-    <span class="mod-no">MODULE R</span>
-    <h2>History logs &amp; export</h2>
-  </div>
-  <p class="mod-desc">Route <code>/Home/HistoryLogs</code> — public, read-only attendance history with filtering and client-side Excel export.</p>
-
-  <div class="req" id="fr-r-01">
-    <div class="req-head"><span class="req-id">FR-R-01</span><h4>Public read-only listing</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Page loads without authentication.</li>
-      <li>No edit or delete affordance exists anywhere on the page; it is display-only.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-r-02">
-    <div class="req-head"><span class="req-id">FR-R-02</span><h4>Filters</h4></div>
-    <p>Attendance can be filtered by employee ID, date range (from/to), and health status.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Filtering by date range returns only records whose relevant timestamps fall inside the range.</li>
-      <li>Health status filter returns only FIT or only UNFIT rows as selected.</li>
-      <li>Combined filters intersect (AND logic).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-r-03">
-    <div class="req-head"><span class="req-id">FR-R-03</span><h4>Table behaviour</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Default ordering: Time In, most recent first.</li>
-      <li>Column sorting, free-text search and pagination operate on the loaded result set.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-r-04">
-    <div class="req-head"><span class="req-id">FR-R-04</span><h4>Excel export respects filters</h4></div>
-    <p>Export generates the workbook client-side (SheetJS) from the currently filtered data.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The export button is visible only when the table has data; with an empty result set it is hidden.</li>
-      <li>Exported rows match the active filters exactly — no unfiltered rows leak into the file.</li>
-      <li>Export of 1000+ records completes without error.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-r-05">
-    <div class="req-head"><span class="req-id">FR-R-05</span><h4>Health status display</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>UNFIT rows are visually distinguished (red treatment) from FIT rows in the history table.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 6. AUTH ============================ -->
-<section class="mod" id="mod-a">
-  <div class="mod-head">
-    <span class="mod-no">MODULE A</span>
-    <h2>Authentication &amp; session</h2>
-  </div>
-  <p class="mod-desc">Admin access uses corporate LDAP credentials plus AD group membership, held in a server-side session. The kiosk, dashboard and history pages never require authentication.</p>
-
-  <div class="req" id="fr-a-01">
-    <div class="req-head"><span class="req-id">FR-A-01</span><h4>LDAP login</h4></div>
-    <p>Login at <code>/Auth/Login</code> authenticates username and password against the corporate directory through the LDAP API service.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Valid credentials succeed and redirect to <code>/Admin</code>.</li>
-      <li>Invalid credentials fail with an error message and no session is created.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-a-02">
-    <div class="req-head"><span class="req-id">FR-A-02</span><h4>Admin AD group requirement</h4></div>
-    <p>The authenticated user's group memberships must contain the group named in the <code>AdminADGroup</code> configuration key.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Authenticated user without the group is denied admin access (access-denied response).</li>
-      <li>Changing AdminADGroup in System Config changes which group grants access, without redeployment.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-a-03">
-    <div class="req-head"><span class="req-id">FR-A-03</span><h4>Session establishment and timeout</h4></div>
-    <p>On success the session stores the admin's employee number, display name and Role=Admin. Idle timeout is 30 minutes.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>After 30 minutes of inactivity, the next admin request redirects to the login page.</li>
-      <li>Active use keeps the session alive (sliding expiration behaviour per request).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-a-04">
-    <div class="req-head"><span class="req-id">FR-A-04</span><h4>Protected route enforcement</h4></div>
-    <p>All <code>/Admin/*</code> pages require an admin session.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Unauthenticated navigation to any admin page redirects to <code>/Auth/Login</code> (with return URL) rather than rendering admin content.</li>
-      <li>Direct API calls to admin JSON endpoints without a session do not return data.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-a-05">
-    <div class="req-head"><span class="req-id">FR-A-05</span><h4>Logout</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Logout clears the session and returns the user to the kiosk home page.</li>
-      <li>After logout, admin pages are no longer reachable without re-login.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-a-06">
-    <div class="req-head"><span class="req-id">FR-A-06</span><h4>Display of identity</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The admin interface shows the logged-in admin's display name, and audit entries record the admin's employee number.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 7. PROVIDERS & PROJECTS ============================ -->
-<section class="mod" id="mod-p">
-  <div class="mod-head">
-    <span class="mod-no">MODULE P</span>
-    <h2>Provider &amp; project management</h2>
-  </div>
-  <p class="mod-desc">Admin route <code>/Admin/Projects</code>. Providers are created and managed inside the Projects workflow — there is no standalone Providers page. Core entities use soft delete (Active/Inactive) only; they are never hard-deleted.</p>
-
-  <div class="req" id="fr-p-01">
-    <div class="req-head"><span class="req-id">FR-P-01</span><h4>Provider creation with auto-generated code</h4></div>
-    <p>Creating a provider captures name, address, PIC and contact number. The provider code is generated automatically from the provider name as an acronym (e.g. <em>Alpha Circuits Inc</em> → <code>ACI</code>), with deterministic fallbacks (consonant extraction, then timestamp-based) when a clean acronym can't be formed.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The code field is not manually entered; it is derived from the name.</li>
-      <li>Two providers whose names yield the same acronym do not collide — fallback keeps codes unique.</li>
-      <li>New provider is active by default and immediately usable for projects.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-02">
-    <div class="req-head"><span class="req-id">FR-P-02</span><h4>Project code generation</h4></div>
-    <p>Project codes are generated by the database in the format <code>{ProviderCode}-{YY}-{NNN}</code> — e.g. <code>ACI-26-005</code> — sequentially within each provider, resetting to 001 at each new year. Generation is transaction-safe (rollback on failure).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The Nth project created for a provider in a year receives that provider's next sequential number for that year.</li>
-      <li>The first project of a new calendar year for a provider receives 001.</li>
-      <li>Simultaneous project creation attempts never produce duplicate codes (transaction protection).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-03">
-    <div class="req-head"><span class="req-id">FR-P-03</span><h4>Project creation and validation</h4></div>
-    <p>A project belongs to exactly one provider and carries a project name and contract start/end dates.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Project cannot be created without a valid parent provider.</li>
-      <li>Contract dates are required; contract end must not precede contract start.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-04">
-    <div class="req-head"><span class="req-id">FR-P-04</span><h4>Project listing and status filter</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Projects table lists all projects with their provider; an Active/Inactive status filter narrows the list.</li>
-      <li>Projects by provider can be retrieved for cascading dropdowns elsewhere in the admin UI.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-05">
-    <div class="req-head"><span class="req-id">FR-P-05</span><h4>Project update</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Editable fields (name, dates, provider assignment) persist correctly.</li>
-      <li>Updates are audit-logged (FR-L-03).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-06">
-    <div class="req-head"><span class="req-id">FR-P-06</span><h4>Soft delete (set inactive)</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Setting a project or provider inactive is a status change only — the record and its history remain.</li>
-      <li>Deactivation immediately blocks new TIME INs for its contractors (FR-K-07/08) while allowing open sessions to TIME OUT.</li>
-      <li>No hard-delete action exists for providers or projects.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-07">
-    <div class="req-head"><span class="req-id">FR-P-07</span><h4>Contractors-per-project view and export</h4></div>
-    <p>From the projects screen, admins can open a contractor list for a selected project, and export that list to Excel.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The modal lists only contractors assigned to the selected project.</li>
-      <li>Excel export from the modal downloads the listed contractors.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-p-08">
-    <div class="req-head"><span class="req-id">FR-P-08</span><h4>Provider search</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Provider dropdowns/lists support server-side search by name/code, used by the contractor and project forms.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 8. CONTRACTORS ============================ -->
-<section class="mod" id="mod-c">
-  <div class="mod-head">
-    <span class="mod-no">MODULE C</span>
-    <h2>Contractor management</h2>
-  </div>
-  <p class="mod-desc">Admin route <code>/Admin/Contractors</code>. Contractors are enrolled by admins; there is no self-registration and no approval workflow — an enrolled contractor can scan immediately.</p>
-
-  <div class="req" id="fr-c-01">
-    <div class="req-head"><span class="req-id">FR-C-01</span><h4>Contractor listing, filters and reset</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Table lists contractors with their provider and project.</li>
-      <li>Filters: project filter and Active/Inactive status filter; a <em>Reset filters</em> control restores the unfiltered list.</li>
-      <li><em>Export to Excel</em> downloads the contractors respecting active filters.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-02">
-    <div class="req-head"><span class="req-id">FR-C-02</span><h4>Contractor creation with field validation</h4></div>
-    <p>Required identity includes employee ID, name, gender, birthdate, provider and project; the project must belong to the chosen provider. Contact number is optional; address is captured.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Missing employee ID or contractor data is rejected with a clear message; nothing is saved.</li>
-      <li>Unknown provider → <span class="msg">Provider not found</span>; unknown project → <span class="msg">Project not found</span>.</li>
-      <li>Project belonging to a different provider → <span class="msg">The selected project does not belong to the selected provider.</span></li>
-      <li>A contractor may be enrolled with no project initially (project assigned later).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-03">
-    <div class="req-head"><span class="req-id">FR-C-03</span><h4>Duplicate enrollment guard</h4></div>
-    <p>The same person (name matched case-insensitively + identical birthdate) cannot be enrolled twice into the same project — including rows committed earlier in the same bulk batch.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Duplicate via the create form → <span class="msg">A contractor with this name and birthdate is already enrolled in this project.</span></li>
-      <li>Name matching ignores case and surrounding whitespace.</li>
-      <li>The same person may exist under a different project (contractors change projects by being issued a new employee ID).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-04">
-    <div class="req-head"><span class="req-id">FR-C-04</span><h4>Contractor update and reactivation</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Edit modal opens with current values, including the contractor's current project.</li>
-      <li>An inactive contractor can be edited back to active (reactivation) and can then scan again.</li>
-      <li>Updates are audit-logged (FR-L-03).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-05">
-    <div class="req-head"><span class="req-id">FR-C-05</span><h4>Contractor soft delete</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Setting a contractor inactive immediately blocks their scans (FR-K-03) but preserves their attendance history.</li>
-      <li>No hard-delete action exists for contractors.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-06">
-    <div class="req-head"><span class="req-id">FR-C-06</span><h4>Bulk enrollment via Excel</h4></div>
-    <p>Admins upload an Excel file of contractors against a chosen provider and project. The upload carries the provider code, project code, file name and parsed rows.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Empty payload → <span class="msg">No contractor rows were provided for import.</span></li>
-      <li>Missing provider/project → <span class="msg">Provider and Project are required.</span></li>
-      <li>Project must exist and belong to the provider; otherwise the import is rejected with the corresponding message.</li>
-      <li>Duplicates <em>within</em> the uploaded batch (name + birthdate, same project) are rejected by the same guard as FR-C-03 once earlier rows are committed.</li>
-      <li>Valid rows are committed; the result distinguishes succeeded and failed rows so partial success is visible.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-07">
-    <div class="req-head"><span class="req-id">FR-C-07</span><h4>Excel export</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Export downloads an .xlsx of the contractor list currently matching the filters.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-c-08">
-    <div class="req-head"><span class="req-id">FR-C-08</span><h4>Contractor detail fields</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Captured fields include employee ID, name, gender, birthdate, contact number (optional), address, position, area of destination, provider and project.</li>
-      <li>These details surface at the kiosk on scan (name, provider, project, position, area — FR-K-09).</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 9. TIMELOGS ADMIN ============================ -->
-<section class="mod" id="mod-t">
-  <div class="mod-head">
-    <span class="mod-no">MODULE T</span>
-    <h2>TimeLogs management (admin correction)</h2>
-  </div>
-  <p class="mod-desc">Admin route <code>/Admin/TimeLogs</code>. The correction tool for attendance records — edit fields, delete records, export, with full audit trail.</p>
-
-  <div class="req" id="fr-t-01">
-    <div class="req-head"><span class="req-id">FR-T-01</span><h4>Timelogs listing</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Table lists attendance records with employee name and waiver consent shown alongside the record fields.</li>
-      <li>Filters (employee, date range, health status) narrow the list; <em>Export to Excel</em> respects the active filters.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-t-02">
-    <div class="req-head"><span class="req-id">FR-T-02</span><h4>Edit timelog</h4></div>
-    <p>Admins can edit <code>time_in</code>, <code>time_out</code>, <code>health_status</code> and <code>waiver_consent</code> on any record, at any time — including declarations long past the kiosk window.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Edited values persist and are reflected immediately in history/dashboard views.</li>
-      <li>Saving a "not allowed to enter" combination with a blank time_out auto-fills <code>time_out = time_in</code> (zero-duration session) rather than leaving it open.</li>
-      <li>Correcting a blocked record to an allowed combination re-enables same-day entry at the kiosk (FR-K-06).</li>
-      <li>Every edit stamps <code>updated_by</code> (admin employee number) and <code>updated_at</code>.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-t-03">
-    <div class="req-head"><span class="req-id">FR-T-03</span><h4>Delete timelog</h4></div>
-    <p>Unlike core entities, timelogs can be hard-deleted for data cleanup.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Deletion requires an explicit confirmation dialog.</li>
-      <li>On confirm the record is permanently removed; success message <span class="msg">Timelog deleted successfully</span>.</li>
-      <li>Deletion is captured in the audit log (FR-L-03).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-t-04">
-    <div class="req-head"><span class="req-id">FR-T-04</span><h4>Audit trail fields on records</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Records corrected by admin expose who (<code>updated_by</code>) and when (<code>updated_at</code>).</li>
-      <li>Self-service TIME OUTs stamp the contractor's own ID as updated_by (FR-K-05).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-t-05">
-    <div class="req-head"><span class="req-id">FR-T-05</span><h4>Export to Excel</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Export produces an .xlsx of the filtered timelog set, including health status and waiver consent columns.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-t-06">
-    <div class="req-head"><span class="req-id">FR-T-06</span><h4>Admin-only access</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>All TimeLogs management actions require an admin session (FR-A-04).</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 10. SYSTEM CONFIG ============================ -->
-<section class="mod" id="mod-s">
-  <div class="mod-head">
-    <span class="mod-no">MODULE S</span>
-    <h2>System configuration</h2>
-  </div>
-  <p class="mod-desc">Admin route <code>/Admin/SystemConfig</code>. Business-rule parameters live in the <code>system_config</code> table and apply at runtime — changes take effect without redeployment or restart.</p>
-
-  <div class="req" id="fr-s-01">
-    <div class="req-head"><span class="req-id">FR-S-01</span><h4>View and edit configuration</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>All configuration keys are listed with current values and descriptions.</li>
-      <li>Editing a value persists it; the next request that reads the key uses the new value.</li>
-      <li>Configuration changes are audit-logged (FR-L-03).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-s-02">
-    <div class="req-head"><span class="req-id">FR-S-02</span><h4>ScanInputReadOnly toggle</h4></div>
-    <p>Rendered as a toggle switch. When enabled, the kiosk scan input is read-only so stray keyboard input can't corrupt scanned IDs (scanner-detection script works with this).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Toggling on then loading the kiosk makes the field read-only; scanner wedge input still registers.</li>
-      <li>Toggling off restores manual typing.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-s-03">
-    <div class="req-head"><span class="req-id">FR-S-03</span><h4>Time windows are in seconds</h4></div>
-    <p>Both windows are configured in <em>seconds</em> (historically minutes — converted in v2.5.0.0). Code fallback default is 120 seconds when the key is missing or invalid.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Setting <code>HealthDeclarationWindowSeconds=60</code> makes the kiosk countdown start at 60 and the server reject updates after 60s.</li>
-      <li>Missing or non-numeric key falls back to 120 seconds (kiosk still usable — verify no crash).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-s-04">
-    <div class="req-head"><span class="req-id">FR-S-04</span><h4>AdminADGroup runtime change</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Changing the group name changes which users can log in as admin on the next login attempt, without restart.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 11. AUDIT ============================ -->
-<section class="mod" id="mod-l">
-  <div class="mod-head">
-    <span class="mod-no">MODULE L</span>
-    <h2>Audit logging</h2>
-  </div>
-  <p class="mod-desc">Admin route <code>/Admin/AuditLogs</code>. Administered changes are captured before/after with the acting user.</p>
-
-  <div class="req" id="fr-l-01">
-    <div class="req-head"><span class="req-id">FR-L-01</span><h4>Audited scope</h4></div>
-    <p>Audit entries are written for provider, project, contractor (including bulk enrollment), system configuration, and timelog changes (edit and delete).</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Each of the above admin operations produces an audit entry in the same request.</li>
-      <li>Kiosk self-service scans are not admin audit events (their trail is updated_by/updated_at on the record).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-l-02">
-    <div class="req-head"><span class="req-id">FR-L-02</span><h4>Captured detail</h4></div>
-    <p>Each entry stores entity type, action, reference ID, before-values (<code>data_from</code>) and after-values (<code>data_to</code>) as readable indented snake_case JSON, the acting user, and a timestamp.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>before/after JSON keys use snake_case and remain human-readable when opened directly.</li>
-      <li>When no acting user is available the entry is attributed to <code>System</code>.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-l-03">
-    <div class="req-head"><span class="req-id">FR-L-03</span><h4>Changes-only diff rendering</h4></div>
-    <p>The audit log view renders each entry's detail as a diff table showing only the fields that changed.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Unchanged fields do not appear in the diff view.</li>
-      <li>Old and new values are shown side by side for each changed field.</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-l-04">
-    <div class="req-head"><span class="req-id">FR-L-04</span><h4>Audit never blocks the operation</h4></div>
-    <p>A failure while writing the audit entry must not fail the business operation that triggered it.</p>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>The admin operation reports success even if the audit write fails (failure is logged server-side, surfaced in the Response message).</li>
-    </ul></div>
-  </div>
-
-  <div class="req" id="fr-l-05">
-    <div class="req-head"><span class="req-id">FR-L-05</span><h4>Audit log listing</h4></div>
-    <div class="ac"><div class="ac-label">Acceptance criteria</div><ul>
-      <li>Admins can browse audit entries; newest activity is reachable; the view requires admin session.</li>
-    </ul></div>
-  </div>
-</section>
-
-<!-- ============================ 12. RULE SEQUENCE ============================ -->
-<section class="mod" id="rules">
-  <div class="mod-head">
-    <span class="mod-no">SECTION 12</span>
-    <h2>Scan processing rule sequence</h2>
-  </div>
-  <p class="mod-desc">The server evaluates every scan in this fixed order; the first failing rule wins. This table is the primary reference for kiosk test design.</p>
+    <span class="mod-no">SECTION 02</span>
+    <h2>System requirements</h2>
+  </div>
+  <p class="mod-desc">What the system must enforce, grouped by module.</p>
+
+  <h3 class="sub">Kiosk scanning</h3>
+  <ul class="plain">
+    <li>Scan input accepts typed or keyboard-wedge scanner input; it autofocuses, clears, and refocuses after every attempt, and can be locked read-only for scanner-only operation (<code>ScanInputReadOnly</code>).</li>
+    <li>Unknown employee ID is rejected with no record written; inactive contractors are rejected.</li>
+    <li>A scan within <code>DebounceThresholdSeconds</code> of the contractor's last scan event is rejected as a duplicate.</li>
+    <li>A blocked combination on today's latest TIME IN blocks all further scans that day, until an admin corrects the record.</li>
+    <li>TIME IN requires the contractor's project and provider to exist and be active; an open session always allows TIME OUT.</li>
+    <li>A passing TIME IN creates a record with <code>time_in = now</code>, <code>time_out = NULL</code>, defaulting to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>.</li>
+  </ul>
+
+  <h3 class="sub">Health declaration &amp; waiver</h3>
+  <ul class="plain">
+    <li>Two instant-save controls — health status and waiver consent — pre-selected to the safe defaults; sickness items come from configuration.</li>
+    <li>Changes are accepted only within <code>HealthDeclarationWindowSeconds</code> of TIME IN (server-enforced; falls back to 120 s).</li>
+    <li><span class="pill unfit">UNFIT</span> or <span class="pill fit">FIT</span> + <code>NOT_UNDERSTOOD</code> persists, sets <code>time_out = now</code>, and blocks same-day re-entry.</li>
+    <li>Returning to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> within the window clears the auto-set time_out and reopens the session.</li>
+    <li>After the window the declaration is locked; only an admin correction can change it.</li>
+  </ul>
+
+  <h3 class="sub">Attendance dashboard</h3>
+  <ul class="plain">
+    <li>Public real-time view of today's attendance; updates arrive by SignalR push, no refresh needed.</li>
+    <li>Employee IDs are masked (one dot per character); FIT/UNFIT render as badges; open sessions show an Active badge.</li>
+    <li>If the hub is unreachable the page stays usable with its initially loaded data and an explicit connection error.</li>
+  </ul>
+
+  <h3 class="sub">History logs</h3>
+  <ul class="plain">
+    <li>Public read-only listing with filters: employee ID, date range, health status (AND logic).</li>
+    <li>Client-side Excel export contains exactly the filtered rows; the export button is hidden when the result set is empty.</li>
+  </ul>
+
+  <h3 class="sub">Authentication &amp; session</h3>
+  <ul class="plain">
+    <li>Admin login authenticates against corporate LDAP and requires membership of the configured AD group.</li>
+    <li>Sessions use an HTTP-only cookie with a 30-minute idle timeout; all <code>/Admin/*</code> pages and JSON endpoints are protected.</li>
+    <li>Logout clears the session; audit entries record the admin's employee number.</li>
+  </ul>
+
+  <h3 class="sub">Providers &amp; projects</h3>
+  <ul class="plain">
+    <li>Provider code is auto-generated from the provider name (acronym, with unique fallbacks); it is never typed manually.</li>
+    <li>Project code is generated as <code>{ProviderCode}-{YY}-{NNN}</code>, sequential per provider per year, transaction-safe against duplicates.</li>
+    <li>A project requires its provider, name, PIC, contact number, and contract start/end dates; end must not precede start, and a past end date is rejected on creation.</li>
+    <li>Projects past their contract end auto-deactivate, cascading to their contractors; restore is possible from the audit log snapshot.</li>
+    <li>Providers and projects are soft-deleted (set inactive) only — never hard-deleted; inactivity blocks TIME IN but not TIME OUT.</li>
+  </ul>
+
+  <h3 class="sub">Contractors</h3>
+  <ul class="plain">
+    <li>Required identity: employee ID, name, gender, birthdate, provider; the project must belong to the chosen provider. Contact number is optional.</li>
+    <li>Duplicate enrollment is blocked on same name (case-insensitive) + birthdate in the same project — including rows committed earlier in the same bulk batch.</li>
+    <li>Bulk Excel import commits valid rows and reports per-row success/failure (partial success is visible).</li>
+    <li>Contractors are deactivated, never hard-deleted; the list supports project/status filters, reset, and Excel export.</li>
+  </ul>
+
+  <h3 class="sub">TimeLogs management</h3>
+  <ul class="plain">
+    <li>Admins can edit <code>time_in</code>, <code>time_out</code>, health status, and waiver consent on any record at any time — including past the kiosk window.</li>
+    <li>Saving a blocked combination with a blank time_out auto-fills <code>time_out = time_in</code> instead of leaving the session open.</li>
+    <li>Correcting a blocked record to an allowed combination re-enables same-day kiosk entry.</li>
+    <li>Records can be hard-deleted for cleanup after an explicit confirmation; every change is audit-logged and stamped with <code>updated_by</code>/<code>updated_at</code>.</li>
+  </ul>
+
+  <h3 class="sub">System configuration</h3>
+  <ul class="plain">
+    <li>Business-rule keys are editable at runtime and take effect on the next request — no redeployment or restart.</li>
+    <li>Configuration changes are audit-logged.</li>
+  </ul>
+
+  <h3 class="sub">Audit logging</h3>
+  <ul class="plain">
+    <li>Every admin mutation (provider, project, contractor, bulk import, system config, timelog edit/delete) writes an audit entry with before/after JSON and the acting user.</li>
+    <li>The audit view renders a changes-only diff (old vs. new per changed field).</li>
+    <li>A failed audit write never fails the business operation that triggered it.</li>
+  </ul>
+
+  <h3 class="sub">Non-functional requirements</h3>
   <div class="tbl-wrap"><table class="grid">
-    <thead><tr><th>Step</th><th>Rule</th><th>Pass outcome</th><th>Fail outcome / exact message</th></tr></thead>
+    <thead><tr><th>Area</th><th>Requirement</th></tr></thead>
+    <tbody>
+      <tr><td>Data access</td><td>MySQL stored procedures via Dapper only — no ad-hoc SQL; procedures return result sets only</td></tr>
+      <tr><td>Error handling</td><td>Structured success/message responses; raw exceptions never reach the kiosk</td></tr>
+      <tr><td>Real-time</td><td>Dashboard updates within seconds of a scan; page degrades gracefully when the hub is unreachable</td></tr>
+      <tr><td>Security</td><td>HTTP-only session cookie, 30-minute idle timeout, enforced server-side on every admin request</td></tr>
+      <tr><td>Exports</td><td>Client-side Excel generation handles 1000+ filtered records without error</td></tr>
+      <tr><td>Concurrency</td><td>Project code generation is transaction-protected; concurrent creations never issue duplicate codes</td></tr>
+      <tr><td>Configurability</td><td>Business-rule changes via System Config apply on the next request, without restart</td></tr>
+      <tr><td>Browsers</td><td>Evergreen desktop browsers (Edge/Chrome); kiosk supports keyboard-wedge barcode scanners</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================ 3. FUNCTIONALITY ============================ -->
+<section class="mod" id="functionality">
+  <div class="mod-head">
+    <span class="mod-no">SECTION 03</span>
+    <h2>System functionality</h2>
+  </div>
+  <p class="mod-desc">How the system behaves end to end.</p>
+
+  <h3 class="sub">Attendance cycle</h3>
+  <ul class="plain">
+    <li><strong>Scan</strong> — the contractor scans their ID at the kiosk; the server evaluates the scan rules below.</li>
+    <li><strong>TIME IN</strong> — a session opens with safe defaults and the health declaration panel appears with a countdown.</li>
+    <li><strong>Declare</strong> — the contractor answers the health self-assessment and waiver within the window; changes save instantly.</li>
+    <li><strong>TIME OUT</strong> — the next scan after the debounce window closes the session.</li>
+  </ul>
+
+  <h3 class="sub">Scan rule sequence</h3>
+  <p class="mod-desc">Every scan is evaluated in this fixed order; the first failing rule wins.</p>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>Step</th><th>Rule</th><th>Pass</th><th>Fail — exact message</th></tr></thead>
     <tbody>
       <tr><td class="step">1</td><td>Contractor exists</td><td>Continue</td><td><span class="msg">Contractor not found</span></td></tr>
       <tr><td class="step">2</td><td>Contractor is active</td><td>Continue</td><td><span class="msg">Contractor is inactive</span></td></tr>
-      <tr><td class="step">3</td><td>Debounce: now − last scan event (time_out else time_in) ≥ threshold</td><td>Continue</td><td><span class="msg">Duplicate scan - wait N seconds.</span></td></tr>
-      <tr><td class="step">4</td><td>Today's latest TIME IN is an allowed combination (not UNFIT, not FIT+NOT_UNDERSTOOD)</td><td>Continue</td><td><span class="msg">Not Allowed to Enter. You are UNFIT.</span> or <span class="msg">Not Allowed to Enter. You did not understand waiver.</span></td></tr>
-      <tr><td class="step">5</td><td>Open session check — session open?</td><td><strong>Yes → TIME OUT</strong>: set time_out = now, <span class="msg">SUCCESS TIME OUT</span>. Done.</td><td>No open session → continue to 6</td></tr>
+      <tr><td class="step">3</td><td>Debounce: elapsed ≥ threshold since last scan event</td><td>Continue</td><td><span class="msg">Duplicate scan - wait N seconds.</span></td></tr>
+      <tr><td class="step">4</td><td>Today's latest TIME IN is an allowed combination</td><td>Continue</td><td><span class="msg">Not Allowed to Enter. You are UNFIT.</span> / <span class="msg">Not Allowed to Enter. You did not understand waiver.</span></td></tr>
+      <tr><td class="step">5</td><td>Open session?</td><td>Yes → TIME OUT: <code>time_out = now</code>, done</td><td>No → continue</td></tr>
       <tr><td class="step">6</td><td>Project exists and is active</td><td>Continue</td><td><span class="msg">Not Allowed to Enter. Project is In-Active.</span></td></tr>
       <tr><td class="step">7</td><td>Provider exists and is active</td><td>Continue</td><td><span class="msg">Not Allowed to Enter. Provider is In-Active.</span></td></tr>
-      <tr><td class="step">8</td><td>Create TIME IN</td><td>time_in = now, FIT, UNDERSTOOD, time_out NULL → <span class="msg">SUCCESS TIME IN</span>; declaration panel opens</td><td>—</td></tr>
+      <tr><td class="step">8</td><td>Create TIME IN</td><td><code>time_in = now</code>, <span class="pill fit">FIT</span>, <code>UNDERSTOOD</code>; declaration panel opens</td><td>—</td></tr>
     </tbody>
   </table></div>
   <div class="callout">
-    <span class="callout-tag">Order matters</span>
-    <p>Steps 6–7 (project/provider gates) deliberately sit <em>after</em> the open-session check at step 5. That ordering is itself a requirement: a contractor already on-site can always TIME OUT even if their project or provider was deactivated mid-day. Regression-test it.</p>
+    <span class="callout-tag">Ordering matters</span>
+    <p>The project/provider gates (steps 6–7) deliberately run <em>after</em> the open-session check (step 5): a contractor already on-site can always TIME OUT even if their project or provider was deactivated mid-day.</p>
   </div>
-</section>
 
-<!-- ============================ 13. CONFIG ============================ -->
-<section class="mod" id="config">
-  <div class="mod-head">
-    <span class="mod-no">SECTION 13</span>
-    <h2>Configuration parameters</h2>
-  </div>
-  <p class="mod-desc">All keys live in <code>system_config</code> and are editable at runtime via <code>/Admin/SystemConfig</code>.</p>
+  <h3 class="sub">Health gate</h3>
+  <ul class="plain">
+    <li>On TIME IN the declaration panel opens with <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> pre-selected and a visible countdown.</li>
+    <li>Selecting <span class="pill unfit">UNFIT</span> or <code>NOT_UNDERSTOOD</code> persists immediately, sets <code>time_out = now</code>, shows a critical alert, and blocks same-day re-entry.</li>
+    <li>Reversing to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> within the window clears the auto-set time_out and reopens the session.</li>
+    <li>When the countdown reaches zero — or any next scan is submitted — the panel hides and the declaration locks.</li>
+  </ul>
+
+  <h3 class="sub">Real-time monitoring</h3>
+  <ul class="plain">
+    <li>Kiosk scans broadcast over SignalR; the public <code>/Attendance</code> dashboard table updates within seconds without refresh.</li>
+  </ul>
+
+  <h3 class="sub">Reporting &amp; exports</h3>
+  <ul class="plain">
+    <li>History logs, TimeLogs, and Contractors lists each export to Excel reflecting the active filters.</li>
+    <li>Per-project contractor lists are viewable and exportable from the Projects page.</li>
+  </ul>
+
+  <h3 class="sub">Code generation</h3>
+  <ul class="plain">
+    <li><strong>Provider code</strong> — derived from the provider name as an acronym (e.g. Alpha Circuits Inc → ACI), with deterministic fallbacks that keep codes unique.</li>
+    <li><strong>Project code</strong> — <code>{ProviderCode}-{YY}-{NNN}</code> (e.g. ACI-26-005), sequential per provider, resetting to 001 each year, transaction-protected.</li>
+  </ul>
+
+  <h3 class="sub">Configuration parameters</h3>
   <div class="tbl-wrap"><table class="grid">
-    <thead><tr><th>Key</th><th>Type / fallback</th><th>Effect</th></tr></thead>
+    <thead><tr><th>Key</th><th>Effect</th></tr></thead>
     <tbody>
-      <tr><td><code>DebounceThresholdSeconds</code></td><td>Seconds (configured value; commonly 30)</td><td>Minimum interval between one contractor's scans (FR-K-04). Message embeds the live value.</td></tr>
-      <tr><td><code>HealthDeclarationWindowSeconds</code></td><td>Seconds · fallback 120</td><td>Declaration form visibility, countdown and server-side change window (FR-K-10, FR-H-02).</td></tr>
-      <tr><td><code>AdminADGroup</code></td><td>AD group name (e.g. <code>app.your_app.admin</code>)</td><td>Group required for admin login (FR-A-02).</td></tr>
-      <tr><td><code>ScanInputReadOnly</code></td><td>Boolean</td><td>Read-only kiosk scan input for scanner-only operation (FR-S-02).</td></tr>
-      <tr><td><code>Health_Declaration_Sickness</code></td><td>Semicolon-separated list · built-in defaults</td><td>Sickness items rendered on the declaration panel (FR-H-01).</td></tr>
+      <tr><td><code>DebounceThresholdSeconds</code></td><td>Minimum seconds between one contractor's scans</td></tr>
+      <tr><td><code>HealthDeclarationWindowSeconds</code></td><td>Declaration window; falls back to 120 when missing or invalid</td></tr>
+      <tr><td><code>AdminADGroup</code></td><td>AD group required for admin login</td></tr>
+      <tr><td><code>ScanInputReadOnly</code></td><td>Read-only kiosk scan input for scanner-only operation</td></tr>
+      <tr><td><code>Health_Declaration_Sickness</code></td><td>Semicolon-separated sickness items shown on the declaration panel</td></tr>
+      <tr><td><code>WaiverCertificationText</code> · <code>WaiverAcknowledgmentText</code> · <code>WaiverLiabilityReleaseText</code></td><td>Waiver paragraphs rendered at the kiosk (line breaks preserved)</td></tr>
     </tbody>
   </table></div>
 </section>
 
-<!-- ============================ 14. NFR ============================ -->
-<section class="mod" id="nfr">
+<!-- ============================ 4. MANUAL ============================ -->
+<section class="mod" id="manual">
   <div class="mod-head">
-    <span class="mod-no">SECTION 14</span>
-    <h2>Non-functional requirements</h2>
+    <span class="mod-no">SECTION 04</span>
+    <h2>System manual</h2>
   </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-01</span><h4>Platform &amp; data access</h4></div>
-    <p>ASP.NET Core 8 MVC; all database access exclusively through MySQL stored procedures via Dapper (no ad-hoc SQL in code). Stored procedures return result sets only — no OUT parameters.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-02</span><h4>Graceful error handling</h4></div>
-    <p>Every service operation returns a structured success/message payload; database or unexpected errors surface as user-safe messages ("Database error…", "Error processing scan") with detail logged server-side — never raw exceptions to the kiosk.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-03</span><h4>Real-time delivery</h4></div>
-    <p>Dashboard updates arrive over WebSocket (SignalR) within seconds of a scan; the page must remain usable (initial data + explicit connection error) when the hub is unreachable.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-04</span><h4>Session security</h4></div>
-    <p>Admin sessions: HTTP-only cookie, 30-minute idle timeout, enforced server-side on every admin request.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-05</span><h4>Export performance</h4></div>
-    <p>Excel exports are generated client-side and must handle 1000+ filtered records without error or page freeze.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-06</span><h4>Code generation concurrency</h4></div>
-    <p>Year-based project code generation is transaction-protected; concurrent creations must never issue duplicate codes (rolling rollback on failure).</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-07</span><h4>Runtime configurability</h4></div>
-    <p>Business-rule changes via System Config take effect on the next request — no redeployment or app restart.</p>
-  </div>
-  <div class="req">
-    <div class="req-head"><span class="req-id">NFR-08</span><h4>Browser support</h4></div>
-    <p>Evergreen desktop browsers (Edge/Chrome). The kiosk is the primary target device, including keyboard-wedge barcode scanners.</p>
-  </div>
-</section>
+  <p class="mod-desc">How to use the system, by role and task.</p>
 
-<!-- ============================ 15. ENV ============================ -->
-<section class="mod" id="env">
-  <div class="mod-head">
-    <span class="mod-no">SECTION 15</span>
-    <h2>Environments &amp; entry points</h2>
-  </div>
+  <h3 class="sub">Contractor — kiosk</h3>
+  <ul class="plain">
+    <li>Scan your ID card at the kiosk (or type the employee ID and press Enter).</li>
+    <li>On <strong>SUCCESS TIME IN</strong>, the declaration panel opens — answer the health self-assessment and the waiver before the countdown ends. Untouched answers keep the safe defaults (<span class="pill fit">FIT</span> / I understand).</li>
+    <li>Scan again when leaving to record <strong>SUCCESS TIME OUT</strong>.</li>
+  </ul>
   <div class="tbl-wrap"><table class="grid">
-    <thead><tr><th>Entry point</th><th>Route</th><th>Auth</th></tr></thead>
+    <thead><tr><th>Kiosk message</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="msg">SUCCESS TIME IN</span> / <span class="msg">SUCCESS TIME OUT</span></td><td>Session opened / closed</td></tr>
+      <tr><td><span class="msg">Contractor not found</span></td><td>ID is not enrolled — contact the admin</td></tr>
+      <tr><td><span class="msg">Contractor is inactive</span></td><td>Enrollment is deactivated — contact the admin</td></tr>
+      <tr><td><span class="msg">Duplicate scan - wait N seconds.</span></td><td>Too soon after the last scan; wait and re-scan</td></tr>
+      <tr><td><span class="msg">Not Allowed to Enter. You are UNFIT.</span></td><td>Declared UNFIT — entry blocked for the day</td></tr>
+      <tr><td><span class="msg">Not Allowed to Enter. You did not understand waiver.</span></td><td>Waiver not understood — entry blocked for the day</td></tr>
+      <tr><td><span class="msg">Not Allowed to Enter. Project is In-Active.</span> / <span class="msg">Not Allowed to Enter. Provider is In-Active.</span></td><td>Assignment is inactive — contact the admin</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Viewer — dashboard &amp; history</h3>
+  <ul class="plain">
+    <li><code>/Attendance</code> — live table of today's attendance; updates automatically, no login needed.</li>
+    <li><code>/Home/HistoryLogs</code> — filter by employee ID, date range, or health status; export the filtered rows to Excel.</li>
+  </ul>
+
+  <h3 class="sub">Admin — sign in</h3>
+  <ul class="plain">
+    <li>Sign in at <code>/Auth/Login</code> with corporate credentials; your account must be a member of the configured admin AD group.</li>
+    <li>The session expires after 30 minutes of inactivity. Sidebar pages: Dashboard, Projects, Contractors, System Config, TimeLogs (the Audit Logs page is reached by URL at <code>/Admin/AuditLogs</code>).</li>
+  </ul>
+
+  <h3 class="sub">Admin — dashboard</h3>
+  <ul class="plain">
+    <li><code>/Admin</code> shows Active Projects, Active Contractors, and On Premises cards plus a Recent TimeLogs table covering the last 7 days.</li>
+  </ul>
+
+  <h3 class="sub">Admin — manage projects &amp; providers</h3>
+  <ul class="plain">
+    <li><strong>Add New Project</strong>: choose or create the provider, then fill the project name, provider PIC, contact number, and contract dates. Provider and project codes are generated automatically.</li>
+    <li><strong>Edit</strong> (pencil): update project details; the provider is locked once assigned.</li>
+    <li><strong>View Contractors</strong> (count link): lists the project's contractors with an Excel export.</li>
+    <li><strong>Delete</strong> (trash): soft-deletes the project and marks its enrolled contractors inactive — the confirmation dialog states this cascade.</li>
+    <li>The Remaining Days column flags projects as <em>Expired</em>; expired projects auto-deactivate.</li>
+  </ul>
+
+  <h3 class="sub">Admin — manage contractors</h3>
+  <ul class="plain">
+    <li><strong>Add New Contractor</strong>: fill the identity fields; the project must belong to the chosen provider. Duplicates (same name + birthdate on the same project) are rejected.</li>
+    <li><strong>Bulk Import</strong>: upload an Excel file, select the provider and project, review the preview, then import — the result lists succeeded and failed rows.</li>
+    <li><strong>Edit</strong>: update details or reactivate an inactive contractor.</li>
+    <li><strong>Delete / Delete Selected</strong>: deactivates contractors (attendance history is preserved).</li>
+    <li>Filter by project and Active/Inactive status, reset the filters, or export the filtered list to Excel.</li>
+  </ul>
+
+  <h3 class="sub">Admin — correct attendance (TimeLogs)</h3>
+  <ul class="plain">
+    <li><code>/Admin/TimeLogs</code>: filter by employee, date range, and health status; export to Excel.</li>
+    <li><strong>Edit</strong> (pencil): change Time In, Time Out, Health Status, and Waiver Consent on any record.</li>
+    <li><strong>Delete</strong> (trash): permanently removes the record after confirmation.</li>
+  </ul>
+
+  <h3 class="sub">Admin — configure the system</h3>
+  <ul class="plain">
+    <li><code>/Admin/SystemConfig</code>: edit the configuration keys listed in Section 03 — changes apply immediately. <code>ScanInputReadOnly</code> is a toggle; the waiver text keys preserve line breaks.</li>
+  </ul>
+
+  <h3 class="sub">Admin — review the audit trail</h3>
+  <ul class="plain">
+    <li><code>/Admin/AuditLogs</code>: browse admin changes; each entry shows a changes-only diff with the acting admin and timestamp.</li>
+  </ul>
+
+  <h3 class="sub">Entry points</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>Page</th><th>Route</th><th>Access</th></tr></thead>
     <tbody>
       <tr><td>Kiosk (scan + health declaration)</td><td><code>/</code> · <code>/Home/Index</code></td><td>Public</td></tr>
       <tr><td>Attendance dashboard (real-time)</td><td><code>/Attendance</code></td><td>Public</td></tr>
@@ -1103,52 +574,135 @@
       <tr><td>Audit logs</td><td><code>/Admin/AuditLogs</code></td><td>Admin session</td></tr>
     </tbody>
   </table></div>
-  <p class="mod-desc">Development hosts: <code>http://localhost:5194</code> and <code>https://localhost:7090</code>. JSON endpoints follow the same routes (e.g. <code>POST /Home/Scan</code>, <code>POST /Home/UpdateHealthStatus</code>, <code>GET /Home/GetHistoryLogs</code>) and return snake_case JSON.</p>
 </section>
 
-<!-- ============================ 16. EDGE CASES ============================ -->
-<section class="mod" id="edge">
+<!-- ============================ 5. TEST CASES ============================ -->
+<section class="mod" id="tests">
   <div class="mod-head">
-    <span class="mod-no">SECTION 16</span>
-    <h2>Edge cases recommended for test design</h2>
+    <span class="mod-no">SECTION 05</span>
+    <h2>Test cases</h2>
   </div>
-  <ul class="plain">
-    <li><strong>Debounce boundary</strong> — scan again at exactly N seconds after the last event (allowed) vs. N−1 s (rejected). Both clock edges: after a TIME IN and after a TIME OUT.</li>
-    <li><strong>Declaration window boundary</strong> — toggle to UNFIT at exactly the window limit; strict less-than means it should be rejected.</li>
-    <li><strong>Full reversal chain</strong> — TIME IN → UNFIT (auto TIME OUT) → FIT+UNDERSTOOD within window (TIME OUT cleared) → scan again after debounce (should TIME OUT, not create a new session).</li>
-    <li><strong>Waiver-only block</strong> — FIT + NOT_UNDERSTOOD blocks entry exactly like UNFIT, including same-day re-scan message wording.</li>
-    <li><strong>Mid-day deactivation</strong> — deactivate project/provider while a session is open: TIME OUT must still succeed; a new TIME IN must be blocked.</li>
-    <li><strong>Blocked-then-corrected</strong> — UNFIT morning record, admin corrects to FIT+UNDERSTOOD, contractor scans in again same day — must succeed.</li>
-    <li><strong>Next-scan takeover</strong> — contractor B scans while contractor A's declaration panel is open: A's panel and timer are cleared; B's flow is unaffected.</li>
-    <li><strong>Year rollover</strong> — first project for a provider in a new year receives <code>-01-001</code>-style numbering; codes from the previous year are untouched.</li>
-    <li><strong>Acronym collision</strong> — two providers whose names yield the same acronym; codes must remain unique.</li>
-    <li><strong>Bulk import mixed validity</strong> — an upload containing valid rows and duplicate rows (both vs. existing data and within the batch); verify partial-success reporting.</li>
-    <li><strong>Empty/missing config</strong> — delete or corrupt window/threshold keys; kiosk must fall back to 120 s rather than fail.</li>
-    <li><strong>Session expiry mid-task</strong> — let an admin session idle past 30 minutes, then submit an admin action; expect login redirect, not a silent failure.</li>
-    <li><strong>Unknown / inactive / projectless contractor scans</strong> — cover all three rejection messages distinctly.</li>
-    <li><strong>Export fidelity</strong> — apply each filter (and combinations) in History, TimeLogs and Contractors, then export; file contents must match the visible rows exactly, including the empty-result case (button hidden).</li>
-  </ul>
-</section>
+  <p class="mod-desc">Detailed test scenarios per module, covering functional paths, boundaries, and negative cases. Time-window cases assume the configured values in System Config (defaults: debounce 30 s, declaration window 120 s).</p>
 
-<!-- ============================ 17. SCOPE ============================ -->
-<section class="mod" id="scope">
-  <div class="mod-head">
-    <span class="mod-no">SECTION 17</span>
-    <h2>Out of scope &amp; known legacy items</h2>
-  </div>
-  <h3 class="sub">Explicitly out of scope</h3>
-  <ul class="plain">
-    <li><strong>Safety officers / waiver approval workflow</strong> — removed. Health gatekeeping is self-administered only; no third party approves entry.</li>
-    <li><strong>Detailed health questionnaire</strong> — no symptom checkboxes or medication fields are persisted; the declaration is FIT/UNFIT + waiver consent.</li>
-    <li><strong>Contractor self-service</strong> — contractors have no accounts, logins or personal dashboards; they interact only through the kiosk.</li>
-    <li><strong>Hard deletes of providers, projects and contractors</strong> — these entities are Active/Inactive only.</li>
-    <li><strong>Automated test suite</strong> — none exists; all QA is manual against the deployed build.</li>
-  </ul>
-  <h3 class="sub">Known legacy items</h3>
-  <div class="callout warn">
-    <span class="callout-tag">Approve Waiver button on the dashboard</span>
-    <p>The attendance dashboard's Actions column still renders an <em>Approve Waiver</em> button on UNFIT rows, inherited from the removed waiver workflow; no backend approval endpoint exists. Do not build positive tests for it. If it misbehaves in your build, file it as a defect against the legacy cleanup (removal) rather than the waiver feature.</p>
-  </div>
+  <h3 class="sub">Kiosk — scanning &amp; sessions</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-K-01</td><td>Scan an enrolled, active contractor whose project and provider are active, with no open session</td><td><span class="msg">SUCCESS TIME IN</span>; record created with <code>time_in = now</code>, <code>time_out = NULL</code>, <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; declaration panel opens with countdown</td></tr>
+      <tr><td class="step">TC-K-02</td><td>Scan the same contractor again after the debounce window elapses</td><td><span class="msg">SUCCESS TIME OUT</span>; open session closed with <code>time_out = now</code>; declaration panel does not appear</td></tr>
+      <tr><td class="step">TC-K-03</td><td>Scan an ID that matches no contractor record</td><td><span class="msg">Contractor not found</span>; no attendance record written</td></tr>
+      <tr><td class="step">TC-K-04</td><td>Scan a contractor whose active flag is 0</td><td><span class="msg">Contractor is inactive</span>; no record created or modified</td></tr>
+      <tr><td class="step">TC-K-05</td><td>Scan again 5 s after the last scan event (threshold 30 s) — repeat after both a TIME IN and a TIME OUT</td><td>Rejected with <span class="msg">Duplicate scan - wait 30 seconds.</span> in both cases</td></tr>
+      <tr><td class="step">TC-K-06</td><td>Boundary: scan again at exactly N s (allowed) and at N−1 s (rejected) after the last scan event</td><td>At exactly N s the scan is processed; at N−1 s it is rejected as duplicate</td></tr>
+      <tr><td class="step">TC-K-07</td><td>Contractor declared UNFIT earlier today scans again</td><td><span class="msg">Not Allowed to Enter. You are UNFIT.</span> — blocked before session logic runs</td></tr>
+      <tr><td class="step">TC-K-08</td><td>Contractor with no open session scans while their project is inactive (or missing)</td><td><span class="msg">Not Allowed to Enter. Project is In-Active.</span></td></tr>
+      <tr><td class="step">TC-K-09</td><td>Contractor with no open session scans while their provider is inactive</td><td><span class="msg">Not Allowed to Enter. Provider is In-Active.</span></td></tr>
+      <tr><td class="step">TC-K-10</td><td>Contractor is timed in; admin deactivates the project mid-day; contractor scans to leave</td><td>TIME OUT succeeds — the project/provider gates only block TIME IN</td></tr>
+      <tr><td class="step">TC-K-11</td><td>Press Enter with an empty scan input</td><td>Nothing is submitted — no request, no error dialog; focus stays in the field</td></tr>
+      <tr><td class="step">TC-K-12</td><td>With <code>ScanInputReadOnly</code> enabled: try typing, then scan with the wedge scanner</td><td>Keyboard typing is rejected; scanner input still registers and submits</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Health declaration &amp; waiver</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-H-01</td><td>Open the declaration panel after a TIME IN</td><td><span class="pill fit">FIT</span> and <code>UNDERSTOOD</code> pre-selected; sickness items match configuration; countdown visible</td></tr>
+      <tr><td class="step">TC-H-02</td><td>Select <span class="pill unfit">UNFIT</span> within the window</td><td>Status persists, <code>time_out = now</code> set, critical "Not Allowed" alert shown, same-day re-scans blocked</td></tr>
+      <tr><td class="step">TC-H-03</td><td>Select <span class="pill fit">FIT</span> + <code>NOT_UNDERSTOOD</code> within the window</td><td>Consent persists, <code>time_out = now</code> set, waiver alert shown, same-day re-entry blocked</td></tr>
+      <tr><td class="step">TC-H-04</td><td>Full reversal chain: TIME IN → UNFIT → back to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>, all within the window</td><td>Auto-set <code>time_out</code> cleared to NULL, session reopened, "ALLOWED TO ENTER" alert; a later scan records a TIME OUT (no duplicate session)</td></tr>
+      <tr><td class="step">TC-H-05</td><td>Submit a declaration change after the window expires</td><td>Rejected with the window-expired message; no database change</td></tr>
+      <tr><td class="step">TC-H-06</td><td>Boundary: submit an update at exactly N s after TIME IN</td><td>Rejected — the window is strict less-than N</td></tr>
+      <tr><td class="step">TC-H-07</td><td>Contractor B scans while contractor A's declaration panel is open</td><td>A's panel and timers clear immediately; B's scan flow is unaffected</td></tr>
+      <tr><td class="step">TC-H-08</td><td>Let the countdown reach zero without touching the declaration</td><td>Panel hides, empty-state message shown, declaration locks at <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> defaults</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Dashboard &amp; history</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-D-01</td><td>Scan at the kiosk while <code>/Attendance</code> is open in another browser tab</td><td>Row appears/updates within seconds without refresh</td></tr>
+      <tr><td class="step">TC-D-02</td><td>Inspect the Employee ID column on the dashboard</td><td>IDs masked — one dot per character; raw ID never rendered; open sessions show an Active badge</td></tr>
+      <tr><td class="step">TC-D-03</td><td>Open <code>/Attendance</code> on a day with no scans</td><td>Empty state: <span class="msg">No attendance records for today</span></td></tr>
+      <tr><td class="step">TC-D-04</td><td>Stop the SignalR hub (or block the WebSocket) and load <code>/Attendance</code></td><td>Connection Error alert shown; initially loaded table remains visible and usable</td></tr>
+      <tr><td class="step">TC-R-01</td><td>In History logs, filter by date range and health status together</td><td>Only rows satisfying all filters return (AND logic)</td></tr>
+      <tr><td class="step">TC-R-02</td><td>Apply filters, export to Excel; then clear filters to an empty result and check the button</td><td>Exported file matches the filtered rows exactly; with an empty result set the export button is hidden</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Authentication &amp; session</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-A-01</td><td>Log in with valid corporate credentials of a user in the admin AD group</td><td>Redirect to <code>/Admin</code>; session holds employee number, display name, Role=Admin</td></tr>
+      <tr><td class="step">TC-A-02</td><td>Log in with valid credentials of a user <em>not</em> in the admin AD group</td><td>Access denied; no admin session created</td></tr>
+      <tr><td class="step">TC-A-03</td><td>Log in with an incorrect password</td><td>Error message; no session</td></tr>
+      <tr><td class="step">TC-A-04</td><td>Navigate directly to <code>/Admin/Contractors</code> (and call an admin JSON endpoint) without a session</td><td>Redirect to <code>/Auth/Login</code>; endpoint returns no data</td></tr>
+      <tr><td class="step">TC-A-05</td><td>Leave an admin idle past 30 minutes, then submit an admin action</td><td>Redirect to login — not a silent failure</td></tr>
+      <tr><td class="step">TC-A-06</td><td>Log out, then return to an admin page</td><td>Session cleared; admin pages unreachable without re-login</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Providers &amp; projects</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-P-01</td><td>Create a provider with a multi-word name (e.g. Alpha Circuits Inc)</td><td>Provider saved, active; code auto-generated as acronym (ACI) — never typed manually</td></tr>
+      <tr><td class="step">TC-P-02</td><td>Create two providers whose names yield the same acronym</td><td>Both saved; fallback keeps the codes unique (no collision)</td></tr>
+      <tr><td class="step">TC-P-03</td><td>Create the Nth project for a provider this year</td><td>Code <code>{ProviderCode}-{YY}-{NNN}</code> with the next sequential number; concurrent creations never duplicate</td></tr>
+      <tr><td class="step">TC-P-04</td><td>Create the provider's first project of a new calendar year</td><td>Numbering resets to 001; previous-year codes untouched</td></tr>
+      <tr><td class="step">TC-P-05</td><td>Add a project with contract end date before its start date</td><td>Rejected with a validation message; nothing saved</td></tr>
+      <tr><td class="step">TC-P-06</td><td>Add a project with a contract end date already in the past</td><td>Rejected on creation</td></tr>
+      <tr><td class="step">TC-P-07</td><td>Project's contract end date passes (simulate/await expiry)</td><td>Project auto-deactivates, its contractors are cascaded to inactive; audit log retains a <code>data_from</code> snapshot for restore</td></tr>
+      <tr><td class="step">TC-P-08</td><td>Delete a project that has enrolled contractors</td><td>Confirmation dialog states the cascade; on confirm the project is soft-deleted and hidden, contractors marked inactive and blocked at the kiosk</td></tr>
+      <tr><td class="step">TC-P-09</td><td>Open "View Contractors" for a project and export</td><td>Modal lists only that project's contractors; Excel export downloads the same list</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Contractors</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-C-01</td><td>Submit the create form with required fields missing (e.g. no employee ID or birthdate)</td><td>Rejected with a clear message; nothing saved</td></tr>
+      <tr><td class="step">TC-C-02</td><td>Enroll a contractor choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">The selected project does not belong to the selected provider.</span></td></tr>
+      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice into the same project</td><td>Second attempt rejected as duplicate</td></tr>
+      <tr><td class="step">TC-C-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still rejected — matching is case- and whitespace-insensitive</td></tr>
+      <tr><td class="step">TC-C-05</td><td>Enroll the same person under a different project</td><td>Allowed — a new employee ID is issued for the new assignment</td></tr>
+      <tr><td class="step">TC-C-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, and rows missing fields</td><td>Valid rows committed; failed rows listed individually — partial success is visible</td></tr>
+      <tr><td class="step">TC-C-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>First occurrence commits; the later one is rejected by the same duplicate guard</td></tr>
+      <tr><td class="step">TC-C-08</td><td>Deactivate a contractor, then scan their ID at the kiosk</td><td><span class="msg">Contractor is inactive</span>; attendance history preserved</td></tr>
+      <tr><td class="step">TC-C-09</td><td>Edit an inactive contractor back to active, then scan</td><td>Scan processes normally again</td></tr>
+      <tr><td class="step">TC-C-10</td><td>Filter by project and status, reset, then export</td><td>Filters narrow the table; Reset restores the full list; export matches the active filters</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">TimeLogs management</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-T-01</td><td>Edit an old record's Time In, Time Out, Health Status, and Waiver Consent — long past the kiosk window</td><td>All fields persist; change reflected immediately in history/dashboard; <code>updated_by</code>/<code>updated_at</code> stamped</td></tr>
+      <tr><td class="step">TC-T-02</td><td>Save a blocked combination (<span class="pill unfit">UNFIT</span> or <span class="pill fit">FIT</span> + <code>NOT_UNDERSTOOD</code>) with Time Out left blank</td><td><code>time_out</code> auto-filled with the <code>time_in</code> value (zero-duration session)</td></tr>
+      <tr><td class="step">TC-T-03</td><td>Morning record was UNFIT-blocked; admin corrects it to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; contractor scans again the same day</td><td>Kiosk accepts the scan — the same-day block is lifted</td></tr>
+      <tr><td class="step">TC-T-04</td><td>Delete a timelog record</td><td>Confirmation required; on confirm the record is permanently removed; deletion appears in the audit log</td></tr>
+      <tr><td class="step">TC-T-05</td><td>Filter TimeLogs (employee, date range, health status) and export</td><td>Exported .xlsx matches the filtered rows, including health status and waiver consent columns</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">System configuration &amp; audit</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-S-01</td><td>Change <code>DebounceThresholdSeconds</code>, then scan twice</td><td>Next scans use the new threshold — message embeds the live value; no redeployment</td></tr>
+      <tr><td class="step">TC-S-02</td><td>Set <code>HealthDeclarationWindowSeconds</code> to 60, then TIME IN</td><td>Kiosk countdown starts at 60 and the server rejects updates past 60 s</td></tr>
+      <tr><td class="step">TC-S-03</td><td>Delete or corrupt the window key in <code>system_config</code></td><td>System falls back to 120 s; kiosk remains usable, no crash</td></tr>
+      <tr><td class="step">TC-S-04</td><td>Change <code>AdminADGroup</code>, then attempt login</td><td>Only members of the new group gain admin access on the next login attempt</td></tr>
+      <tr><td class="step">TC-S-05</td><td>Toggle <code>ScanInputReadOnly</code> on/off and load the kiosk</td><td>On → field read-only (scanner still works); off → manual typing restored</td></tr>
+      <tr><td class="step">TC-L-01</td><td>Perform one of each admin mutation: create/edit provider, project, contractor, bulk import, config change, timelog edit, timelog delete</td><td>Each produces an audit entry in the same request with before/after JSON and the acting admin's employee number</td></tr>
+      <tr><td class="step">TC-L-02</td><td>Open an audit entry whose change touched one field</td><td>Diff table shows only the changed field, old and new values side by side</td></tr>
+      <tr><td class="step">TC-L-03</td><td>Force an audit write failure during an admin operation</td><td>The business operation still succeeds; the audit failure is logged server-side</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 </div>
