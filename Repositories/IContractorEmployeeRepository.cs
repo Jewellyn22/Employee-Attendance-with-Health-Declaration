@@ -10,9 +10,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         // C#). Used by both the scan flow (ProcessScan checks active) and admin Update.
         Task<contractor_employee?> GetByEmployeeId(string employee_id);
         Task<IEnumerable<contractor_employee>> GetByProjectCode(string project_code);
-        // Duplicate-enrollment check: true if a contractor with the same name
-        // (case-insensitive) + birthdate already exists under the provider (active or not).
-        Task<bool> ExistsByDetails(string provider_code, string name, DateTime birthdate);
+        // Duplicate-enrollment lookup: returns the contractor with the same name
+        // (case-insensitive) + birthdate already enrolled under the provider (active or
+        // not, is_deleted = 0), or null. Used by ContractorService.Create to merge into
+        // the existing account instead of rejecting.
+        Task<contractor_employee?> FindDuplicate(string provider_code, string name, DateTime birthdate);
         Task<contractor_employee?> Create(contractor_employee employee);
         Task<contractor_employee?> Update(contractor_employee employee);
         Task<bool> SetInactive(string employee_id);

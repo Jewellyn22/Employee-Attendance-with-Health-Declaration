@@ -88,6 +88,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
         public async Task<Response<contractor_employee>> Create(contractor_employee employee, string admin_employee_id, bool log_audit = true)
         {
+            var (response, _) = await CreateOrMerge(employee, admin_employee_id, log_audit);
+            return response;
+        }
+
+        // Create, or merge into the existing account when the same person (name +
+        // birthdate, case-insensitive) is already enrolled under the provider.
+        // BulkCreate calls this directly so it can report merged rows separately.
+        private async Task<(Response<contractor_employee> Response, bool Merged)> CreateOrMerge(
+            contractor_employee employee, string admin_employee_id, bool log_audit)
+        {
             try
             {
                 // Validate required fields + birthdate (DOLE 18+). employee_id is NOT required
@@ -95,12 +105,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var validationError = ValidationHelper.ValidateContractorEmployee(employee);
                 if (validationError != null)
                 {
-                    return new Response<contractor_employee>
+                    return (new Response<contractor_employee>
                     {
                         Success = false,
                         Message = validationError,
                         Data = null
-                    };
+                    }, false);
                 }
 
                 // Validate every per-project assignment: each project must exist and
@@ -111,22 +121,22 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     var project = await _projectRepository.GetByProjectCode(code);
                     if (project == null)
                     {
-                        return new Response<contractor_employee>
+                        return (new Response<contractor_employee>
                         {
                             Success = false,
                             Message = $"Project not found: {code}",
                             Data = null
-                        };
+                        }, false);
                     }
 
                     if (!string.Equals(project.provider_code, employee.provider_code, StringComparison.OrdinalIgnoreCase))
                     {
-                        return new Response<contractor_employee>
+                        return (new Response<contractor_employee>
                         {
                             Success = false,
                             Message = $"Project {code} does not belong to the selected provider.",
                             Data = null
-                        };
+                        }, false);
                     }
                 }
 
@@ -134,31 +144,34 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var provider = await _providerRepository.GetByProviderCode(employee.provider_code);
                 if (provider == null)
                 {
-                    return new Response<contractor_employee>
+                    return (new Response<contractor_employee>
                     {
                         Success = false,
                         Message = "Provider not found",
                         Data = null
-                    };
+                    }, false);
                 }
 
-                // Duplicate guard: a contractor with the same name (case-insensitive) and
-                // birthdate already enrolled under this provider (active or inactive, any
-                // project) cannot be added again - one employee record per person per
-                // company. BulkCreate reuses Create() per row, so this also catches
-                // intra-batch duplicates once earlier rows are committed.
+                // Merge-on-duplicate: a contractor with the same name (case-insensitive)
+                // and birthdate already enrolled under this provider (active or inactive,
+                // any project) is NOT rejected - the submission is merged into that
+                // account (details overwritten, assignments replace-or-append; name,
+                // employee_id, provider and active status kept). Direct API payloads
+                // containing intra-batch duplicate rows therefore also succeed as
+                // create-then-merge; the bulk UI blocks those client-side.
                 if (employee.birthdate.HasValue)
                 {
-                    var isDuplicate = await _contractorRepository.ExistsByDetails(
+                    var duplicate = await _contractorRepository.FindDuplicate(
                         employee.provider_code, employee.name, employee.birthdate.Value);
-                    if (isDuplicate)
+                    if (duplicate != null && !string.IsNullOrWhiteSpace(duplicate.employee_id))
                     {
-                        return new Response<contractor_employee>
+                        var existing = await _contractorRepository.GetByEmployeeId(duplicate.employee_id);
+                        if (existing != null)
                         {
-                            Success = false,
-                            Message = "A contractor with this name and birthdate is already enrolled under this provider.",
-                            Data = null
-                        };
+                            return await MergeIntoExisting(employee, existing, admin_employee_id, log_audit);
+                        }
+                        // Race: the duplicate vanished between the two reads (concurrently
+                        // deleted) - fall through and create a fresh account.
                     }
                 }
 
@@ -173,12 +186,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var result = await _contractorRepository.Create(employee);
                 if (result == null)
                 {
-                    return new Response<contractor_employee>
+                    return (new Response<contractor_employee>
                     {
                         Success = false,
                         Message = "Error creating contractor",
                         Data = null
-                    };
+                    }, false);
                 }
 
                 _logger.LogInformation("Contractor created: {EmployeeId}", result.employee_id);
@@ -188,22 +201,138 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     await _auditLogService.Log("contractor", "create", result.employee_id, null, result, admin_employee_id);
                 }
 
-                return new Response<contractor_employee>
+                return (new Response<contractor_employee>
                 {
                     Success = true,
                     Message = "Contractor created successfully",
                     Data = result
-                };
+                }, false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating contractor: {EmployeeId}", employee.employee_id);
-                return new Response<contractor_employee>
+                return (new Response<contractor_employee>
                 {
                     Success = false,
                     Message = "Error creating contractor",
                     Data = null
-                };
+                }, false);
+            }
+        }
+
+        // Merge-on-duplicate path: the submitted contractor already has an account under
+        // the same provider (matched by name + birthdate). Update that account instead of
+        // creating a new one - gender/birthdate/contact_number/address overwritten from
+        // the submission; assignments merged (a submitted position REPLACES the stored one
+        // for an already-assigned project, new projects APPEND). employee_id, name
+        // (registered casing), provider_code and active are kept from the existing
+        // account; the Add form's Active checkbox is intentionally ignored on merge.
+        private async Task<(Response<contractor_employee> Response, bool Merged)> MergeIntoExisting(
+            contractor_employee submitted, contractor_employee existing, string admin_employee_id, bool log_audit)
+        {
+            try
+            {
+                // Materialize the existing account's assignments from project_positions
+                // (read entities carry assignments = null). Null = unparseable snapshot -
+                // abort rather than save (Update's delete-all + re-insert of the mappings
+                // would otherwise wipe them).
+                var existingAssignments = ParseProjectPositions(existing.project_positions);
+                if (existingAssignments == null)
+                {
+                    return (new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Error merging contractor",
+                        Data = null
+                    }, false);
+                }
+
+                // Normalize once so replace-matching is clean (the SP TRIMs again defensively)
+                foreach (var assignment in submitted.assignments!)
+                {
+                    assignment.project_code = assignment.project_code.Trim();
+                    assignment.position = assignment.position.Trim();
+                }
+
+                // Merge: existing order preserved, submitted positions replace by project
+                // code, new projects appended. Legacy blank positions on un-resubmitted
+                // projects survive as-is (the read SPs already render them as skipped).
+                var merged = new List<contractor_project_assignment>(existingAssignments);
+                foreach (var assignment in submitted.assignments)
+                {
+                    var match = merged.FirstOrDefault(a =>
+                        string.Equals(a.project_code?.Trim(), assignment.project_code, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        match.position = assignment.position;
+                    }
+                    else
+                    {
+                        merged.Add(new contractor_project_assignment
+                        {
+                            project_code = assignment.project_code,
+                            position = assignment.position
+                        });
+                    }
+                }
+
+                // Only the 50-row cap needs re-checking on the merged set (same message as
+                // ValidationHelper): blank legacy positions are legitimate, and duplicate
+                // or blank project codes cannot occur by construction.
+                if (merged.Count > 50)
+                {
+                    return (new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "A contractor can be assigned to at most 50 projects",
+                        Data = null
+                    }, false);
+                }
+
+                // Overwrite the mutable details; keep employee_id/name/provider_code/active.
+                var target = CloneContractor(existing);
+                target.gender = submitted.gender;
+                target.birthdate = submitted.birthdate;
+                target.contact_number = submitted.contact_number;
+                target.address = submitted.address;
+                target.assignments = merged;
+
+                // Update rewrites contractor_project from the merged p_projects JSON
+                // (delete-all + re-insert) - exactly the merge result.
+                var result = await _contractorRepository.Update(target);
+                if (result == null)
+                {
+                    return (new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Error updating contractor",
+                        Data = null
+                    }, false);
+                }
+
+                _logger.LogInformation("Contractor merged into existing account: {EmployeeId}", existing.employee_id);
+
+                if (log_audit)
+                {
+                    await _auditLogService.Log("contractor", "update", existing.employee_id, existing, result, admin_employee_id);
+                }
+
+                return (new Response<contractor_employee>
+                {
+                    Success = true,
+                    Message = "Contractor already enrolled under this provider — existing account updated with the submitted details",
+                    Data = result
+                }, true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error merging contractor into existing account: {EmployeeId}", existing.employee_id);
+                return (new Response<contractor_employee>
+                {
+                    Success = false,
+                    Message = "Error merging contractor",
+                    Data = null
+                }, false);
             }
         }
 
@@ -619,10 +748,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         /// <summary>
         /// Bulk-import contractors for a single provider/project from a parsed file.
         /// Provider/project are validated once (and must belong together); each row is
-        /// then inserted via Create() so it reuses the same field + DOLE 18+ validation
-        /// and the {provider_code}-NNNNNN auto employee_id generation. Valid rows insert;
-        /// invalid rows are collected with row number + reason. One audit_log batch row
-        /// is written regardless of partial failures.
+        /// then processed via CreateOrMerge so it reuses the same field + DOLE 18+
+        /// validation and the {provider_code}-NNNNNN auto employee_id generation. A row
+        /// whose name + birthdate is already enrolled under the provider is merged into
+        /// that existing account (details updated, the batch project/position added or
+        /// replaced) instead of failing; merged rows are reported separately via
+        /// merged_count/merged_employee_ids. Invalid rows are collected with row number +
+        /// reason. One audit_log batch row is written regardless of partial failures.
         /// </summary>
         public async Task<Response<bulk_enrollment_result>> BulkCreate(bulk_enrollment_request request, string admin_employee_id)
         {
@@ -728,11 +860,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                     // Per-row audit is suppressed here; BulkCreate writes one summary
                     // bulk_enrollment audit entry for the whole batch (see below).
-                    var created = await Create(employee, admin_employee_id, log_audit: false);
+                    var (created, merged) = await CreateOrMerge(employee, admin_employee_id, log_audit: false);
                     if (created.Success && created.Data != null)
                     {
                         result.success_count++;
-                        result.enrolled_employee_ids.Add(created.Data.employee_id);
+                        if (merged)
+                        {
+                            result.merged_count++;
+                            result.merged_employee_ids.Add(created.Data.employee_id);
+                        }
+                        else
+                        {
+                            result.enrolled_employee_ids.Add(created.Data.employee_id);
+                        }
                     }
                     else
                     {
@@ -765,10 +905,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     "Bulk enrollment complete: {Success} succeeded, {Errors} failed (project {ProjectCode}, admin {Admin})",
                     result.success_count, result.error_count, request.project_code, admin_employee_id);
 
+                var createdCount = result.success_count - result.merged_count;
+                var mergedSuffix = result.merged_count > 0 ? $" and updated {result.merged_count} existing" : string.Empty;
+
                 return new Response<bulk_enrollment_result>
                 {
                     Success = true,
-                    Message = $"Enrolled {result.success_count} of {result.total} contractor(s); {result.error_count} failed.",
+                    Message = $"Enrolled {createdCount} of {result.total} contractor(s){mergedSuffix}; {result.error_count} failed.",
                     Data = result
                 };
             }
@@ -809,6 +952,36 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             create_at = source.create_at,
             update_at = source.update_at
         };
+
+        /// <summary>
+        /// Parses the read-derived project_positions JSON map ({"code":"position"}) into
+        /// assignments. Mirrors the repository's EnsureAssignmentsHydrated, but returns
+        /// null on an unparseable snapshot so the merge can abort instead of saving (an
+        /// empty list fed to Update would wipe all mappings).
+        /// </summary>
+        private static List<contractor_project_assignment>? ParseProjectPositions(string? projectPositions)
+        {
+            if (string.IsNullOrWhiteSpace(projectPositions))
+            {
+                return new List<contractor_project_assignment>();
+            }
+
+            try
+            {
+                var map = JsonSerializer.Deserialize<Dictionary<string, string>>(projectPositions);
+                return map?
+                    .Select(kv => new contractor_project_assignment
+                    {
+                        project_code = kv.Key,
+                        position = kv.Value ?? string.Empty
+                    })
+                    .ToList() ?? new List<contractor_project_assignment>();
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
 
         /// <summary>True when the project_codes CSV contains the given project code.</summary>
         private static bool IsAssignedToProject(string? projectCodesCsv, string project_code)

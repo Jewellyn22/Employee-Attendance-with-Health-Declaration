@@ -356,10 +356,10 @@
 
   <h3 class="sub">Contractors</h3>
   <ul class="plain">
-    <li>Employee ID is generated automatically as <code>{ProjectCode}-{NNNN}</code> when saving (read-only in the form). Required fields: name, gender, birthdate, position, area of destination, provider, and project — the project must belong to the chosen provider. Contact number and address are optional.</li>
+    <li>Employee ID is generated automatically as <code>{ProviderCode}-NNNNNN</code> when saving (read-only in the form). Required fields: name, gender, birthdate, provider, and one or more project assignments (each with a per-project position) — every project must belong to the chosen provider. Contact number and address are optional.</li>
     <li>Birthdate must not be a future date, and the contractor must be at least 18 years old — <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></li>
-    <li>Duplicate enrollment is blocked on same name (case-insensitive) + birthdate in the same project (active or inactive enrollments both count) — including rows committed earlier in the same bulk batch.</li>
-    <li>Bulk Excel import commits valid rows and reports per-row success/failure (partial success is visible).</li>
+    <li>Re-enrolling the same name (case-insensitive) + birthdate within the same provider merges into the existing account instead of being rejected: gender/birthdate/contact number/address are overwritten from the submission, the submitted project/position replaces an already-assigned project's position or is added as a new assignment, and the employee ID, registered name, and active status are kept (the Add form's Active checkbox is ignored on merge). The same person under a different provider gets a new account.</li>
+    <li>Bulk Excel import commits valid rows, merges already-enrolled rows into their accounts (shown separately in the result), and reports per-row success/failure (partial success is visible).</li>
     <li>Contractors are deactivated, never hard-deleted; the list supports project/status filters, reset, and Excel export.</li>
   </ul>
 
@@ -528,8 +528,8 @@
 
   <h3 class="sub">Admin — manage contractors</h3>
   <ul class="plain">
-    <li><strong>Add New Contractor</strong>: fill the identity fields; the project must belong to the chosen provider, and the employee ID is generated automatically when saving. Duplicates (same name + birthdate on the same project) are rejected.</li>
-    <li><strong>Bulk Import</strong>: upload an Excel file, select the provider and project, review the preview, then import — the result lists succeeded and failed rows.</li>
+    <li><strong>Add New Contractor</strong>: fill the identity fields; the project must belong to the chosen provider, and the employee ID is generated automatically when saving. Re-enrolling an existing contractor (same name + birthdate under the same provider) merges into their account — details are updated and the project/position is added or replaced, with the employee ID unchanged.</li>
+    <li><strong>Bulk Import</strong>: upload an Excel file, select the provider and project, review the preview (already-enrolled rows show an amber "will update existing" notice), then import — the result lists new, updated-existing, and failed rows.</li>
     <li><strong>Edit</strong>: update details or reactivate an inactive contractor.</li>
     <li><strong>Delete / Delete Selected</strong>: deactivates contractors (attendance history is preserved).</li>
     <li>Filter by project and Active/Inactive status, reset the filters, or export the filtered list to Excel.</li>
@@ -658,11 +658,11 @@
     <tbody>
       <tr><td class="step">TC-C-01</td><td>Submit the create form with required fields missing (e.g. no name or birthdate)</td><td>Rejected with a clear message; nothing saved</td></tr>
       <tr><td class="step">TC-C-02</td><td>Enroll a contractor choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">The selected project does not belong to the selected provider.</span></td></tr>
-      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice into the same project</td><td>Second attempt rejected: <span class="msg">A contractor with this name and birthdate is already enrolled in this project.</span></td></tr>
-      <tr><td class="step">TC-C-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still rejected — matching is case- and whitespace-insensitive</td></tr>
-      <tr><td class="step">TC-C-05</td><td>Enroll the same person under a different project</td><td>Allowed — a new employee ID is issued for the new assignment</td></tr>
-      <tr><td class="step">TC-C-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, and rows missing fields</td><td>Valid rows committed; failed rows listed individually — partial success is visible</td></tr>
-      <tr><td class="step">TC-C-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>First occurrence commits; the later one is rejected by the same duplicate guard</td></tr>
+      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice under the same provider (second attempt with a new project/position and different contact/address)</td><td>Second attempt merges into the existing account: details overwritten, project/position added, employee ID unchanged — <span class="msg">Contractor already enrolled under this provider — existing account updated with the submitted details</span></td></tr>
+      <tr><td class="step">TC-C-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still matched (case- and whitespace-insensitive) and merged into the same account; the registered name casing is kept</td></tr>
+      <tr><td class="step">TC-C-05</td><td>Enroll the same person under a different project of the same provider, then under a different provider</td><td>Same provider: merged — the project/position is added to the existing account (no new employee ID). Different provider: a new account with its own provider-scoped employee ID</td></tr>
+      <tr><td class="step">TC-C-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, and rows missing fields</td><td>Valid rows committed; duplicates flagged <span class="msg">Already enrolled — will update the existing account</span> and merged (reported separately as "updated existing"); rows missing fields listed individually as failed</td></tr>
+      <tr><td class="step">TC-C-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>Second row flagged <span class="msg">Duplicate of another row in this file</span>; Process Import stays blocked until it is fixed or removed</td></tr>
       <tr><td class="step">TC-C-08</td><td>Deactivate a contractor, then scan their ID at the kiosk</td><td><span class="msg">Contractor is inactive</span>; attendance history preserved</td></tr>
       <tr><td class="step">TC-C-09</td><td>Edit an inactive contractor back to active, then scan</td><td>Scan processes normally again</td></tr>
       <tr><td class="step">TC-C-10</td><td>Filter by project and status, reset, then export</td><td>Filters narrow the table; Reset restores the full list; export matches the active filters</td></tr>

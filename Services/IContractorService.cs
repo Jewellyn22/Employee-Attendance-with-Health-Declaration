@@ -10,6 +10,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<IEnumerable<contractor_employee>>> GetByProjectCode(string project_code);
         // log_audit defaults true for single-row creates; BulkCreate passes false and
         // writes its own single bulk_enrollment summary entry instead.
+        // Merge-on-duplicate: when the same name + birthdate is already enrolled under
+        // the provider, the existing account is updated (details overwritten,
+        // assignments replace-or-append) instead of a new one being created.
         Task<Response<contractor_employee>> Create(contractor_employee employee, string admin_employee_id, bool log_audit = true);
         Task<Response<contractor_employee>> Update(contractor_employee employee, string admin_employee_id);
         Task<Response<bool>> SetInactive(string employee_id);
@@ -35,7 +38,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<int>> CascadeReactivateByProject(string project_code, string admin_employee_id);
 
         // Bulk-import contractors for a single provider/project from a parsed file.
-        // Reuses Create() per row (field + DOLE 18+ + existence validation, auto employee_id).
+        // Reuses Create() per row (field + DOLE 18+ + existence validation, auto employee_id);
+        // already-enrolled rows merge into their existing account and are reported
+        // separately (merged_count / merged_employee_ids).
         // Returns per-batch totals + per-row errors; writes one audit_log batch row.
         Task<Response<bulk_enrollment_result>> BulkCreate(bulk_enrollment_request request, string admin_employee_id);
     }

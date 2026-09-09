@@ -1573,13 +1573,15 @@ const AdminPage = {
 
         // Flag duplicate rows in the preview: against existing project contractors AND
         // within the file itself. Idempotent — clears prior duplicate flags first so it
-        // can be re-run when the selected project changes. Duplicates are stored as a
-        // normal row.error (red badge, blocks Process Import) plus a row.duplicate flag.
+        // can be re-run when the selected project changes. A row matching an already-
+        // enrolled contractor (same provider) is NOT an error: the server merges it into
+        // the existing account, so it gets a non-blocking row.notice (amber badge). Only
+        // duplicates WITHIN the file stay blocking errors (row.error + row.duplicate).
         _flagBulkDuplicates: function() {
             const self = this;
             // Reset previously-flagged duplicates (leave field errors intact).
             this.parsedBulkRows.forEach(function(r) {
-                if (r.duplicate) { r.error = null; r.duplicate = false; }
+                if (r.duplicate) { r.error = null; r.notice = null; r.duplicate = false; }
             });
             const dbKeys = this._buildBulkDuplicateKeys();
             const batchSeen = {};
@@ -1588,8 +1590,9 @@ const AdminPage = {
                 const key = self._bulkDuplicateKey(r.name, r.birthdate);
                 if (!key || key === '|') return;
                 if (dbKeys.has(key)) {
-                    r.error = 'Duplicate — already enrolled';
+                    r.notice = 'Already enrolled — will update the existing account';
                     r.duplicate = true;
+                    batchSeen[key] = true;
                 } else if (batchSeen[key]) {
                     r.error = 'Duplicate of another row in this file';
                     r.duplicate = true;
@@ -1886,6 +1889,8 @@ const AdminPage = {
                     badge = '<span class="badge bg-secondary">Sample — skipped</span>';
                 } else if (r.error) {
                     badge = '<span class="badge bg-danger">' + r.error + '</span>';
+                } else if (r.notice) {
+                    badge = '<span class="badge bg-warning text-dark">' + r.notice + '</span>';
                 } else {
                     badge = '<span class="badge bg-success">OK</span>';
                 }
@@ -1907,7 +1912,9 @@ const AdminPage = {
             });
 
             // Total count at the top of the preview, with a valid/error/skipped breakdown.
+            const updating = this.parsedBulkRows.filter(function(r) { return r.notice && !r.error && !r.skipped; });
             const parts = [valid.length + ' valid'];
+            if (updating.length) parts.push('<span class="text-warning">' + updating.length + ' will update existing</span>');
             if (invalid.length) parts.push('<span class="text-danger">' + invalid.length + ' with errors</span>');
             if (skipped.length) parts.push('<span class="text-secondary">' + skipped.length + ' sample skipped</span>');
             $('#bulk-preview-summary').html(
@@ -2070,13 +2077,23 @@ const AdminPage = {
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
 
+            // Merged rows (duplicates that updated an existing account) are reported
+            // separately from the newly created ones. Older batches have no
+            // merged_count field — default it.
+            const mergedCount = data.merged_count || 0;
+            const newCount = (data.success_count || 0) - mergedCount;
+            const mergedSuffix = mergedCount > 0 ? ' (+ ' + mergedCount + ' updated existing)' : '';
+
             Swal.fire({
                 icon: data.error_count > 0 ? 'warning' : 'success',
                 title: 'Bulk Import Complete',
-                html: '<div>Successfully enrolled: <strong>' + data.success_count + '</strong> of ' +
+                html: '<div>Successfully enrolled: <strong>' + newCount + ' new' + mergedSuffix + '</strong> of ' +
                       data.total + '</div>' +
                       (data.enrolled_employee_ids && data.enrolled_employee_ids.length
-                          ? '<div class="text-muted small mt-1">IDs: ' + data.enrolled_employee_ids.join(', ') + '</div>'
+                          ? '<div class="text-muted small mt-1">New IDs: ' + data.enrolled_employee_ids.join(', ') + '</div>'
+                          : '') +
+                      (mergedCount > 0 && data.merged_employee_ids && data.merged_employee_ids.length
+                          ? '<div class="text-muted small mt-1">Updated existing IDs: ' + data.merged_employee_ids.join(', ') + '</div>'
                           : '') +
                       errorRows,
                 confirmButtonText: 'OK',
@@ -2230,6 +2247,7 @@ const AdminPage = {
             const to = this._safeParse(row.data_to);
             if (row.entity_type === 'bulk_enrollment' && to) {
                 return '<span class="badge bg-success">' + (to.success_count || 0) + ' enrolled</span> ' +
+                       (to.merged_count ? '<span class="badge bg-warning text-dark">' + to.merged_count + ' updated existing</span> ' : '') +
                        '<span class="badge bg-danger">' + (to.error_count || 0) + ' failed</span>' +
                        (to.file_name ? '<div class="text-muted small">' + to.file_name + '</div>' : '');
             }
@@ -2255,6 +2273,7 @@ const AdminPage = {
             if (row.entity_type === 'bulk_enrollment' && to) {
                 body += '<div class="mb-2">' +
                     '<span class="badge bg-success me-1">' + (to.success_count || 0) + ' enrolled</span>' +
+                    (to.merged_count ? '<span class="badge bg-warning text-dark me-1">' + to.merged_count + ' updated existing</span>' : '') +
                     '<span class="badge bg-danger me-1">' + (to.error_count || 0) + ' failed</span>' +
                     '<span class="badge bg-secondary">' + (to.total || 0) + ' total</span>' +
                     (to.provider_code ? '<div class="text-muted small mt-1">Provider: ' + to.provider_code + '</div>' : '') +
@@ -2262,6 +2281,9 @@ const AdminPage = {
                     '</div>';
                 if (to.enrolled_employee_ids && to.enrolled_employee_ids.length) {
                     body += '<div class="mb-2"><strong>Enrolled IDs:</strong> ' + to.enrolled_employee_ids.join(', ') + '</div>';
+                }
+                if (to.merged_employee_ids && to.merged_employee_ids.length) {
+                    body += '<div class="mb-2"><strong>Updated existing IDs:</strong> ' + to.merged_employee_ids.join(', ') + '</div>';
                 }
                 if (to.errors && to.errors.length) {
                     body += '<strong>Failed rows:</strong>' +
@@ -2311,7 +2333,9 @@ const AdminPage = {
                 const to = self._safeParse(row.data_to);
                 let summary = '';
                 if (row.entity_type === 'bulk_enrollment' && to) {
-                    summary = (to.success_count || 0) + ' enrolled / ' + (to.error_count || 0) + ' failed';
+                    summary = (to.success_count || 0) + ' enrolled' +
+                        (to.merged_count ? ' / ' + to.merged_count + ' updated' : '') +
+                        ' / ' + (to.error_count || 0) + ' failed';
                 } else {
                     summary = self._descriptor(row);
                 }
