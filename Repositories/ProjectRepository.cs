@@ -54,6 +54,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_provider_code = project.provider_code,
                     p_provider_pic = project.provider_pic,
                     p_provider_pic_number = project.provider_pic_number,
+                    p_area_of_destination = project.area_of_destination,
                     p_contract_startdate = project.contract_startdate,
                     p_contract_enddate = project.contract_enddate,
                     p_active = project.active
@@ -74,6 +75,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                     p_provider_code = project.provider_code,
                     p_provider_pic = project.provider_pic,
                     p_provider_pic_number = project.provider_pic_number,
+                    p_area_of_destination = project.area_of_destination,
                     p_contract_startdate = project.contract_startdate,
                     p_contract_enddate = project.contract_enddate,
                     p_active = project.active

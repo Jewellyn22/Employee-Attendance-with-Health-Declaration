@@ -20,17 +20,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<int>> Delete(List<string> employee_ids, string admin_employee_id);
         Task<Response<int>> GetActiveCount();
 
-        // Project-status cascade: deactivate every active contractor under the
-        // project, each audit-logged as contractor/deactivate_by_project so a
-        // later project re-activation can restore exactly these contractors.
-        // Mirrors the nightly expiry sweep (sp_project_DeactivateExpired) for
-        // manual admin deactivation of a project.
+        // Project-status cascade: deactivate every active contractor whose LAST active
+        // project is this one (employees still on another active project are skipped),
+        // each audit-logged as contractor/deactivate_by_project so a later project
+        // re-activation can restore exactly these contractors. Mirrors the nightly
+        // expiry sweep (sp_project_DeactivateExpired) for manual admin deactivation.
         Task<Response<int>> CascadeDeactivateByProject(string project_code, string admin_employee_id);
 
         // Restore contractors deactivated by a project cascade. Audit-verified:
         // only contractors whose latest active 1->0 transition was a
-        // deactivate_by_project entry for this project are re-activated;
-        // contractors deactivated individually by an admin stay In-Active.
+        // deactivate_by_project entry for this project AND who are still assigned
+        // to it are re-activated; contractors deactivated individually by an admin
+        // stay In-Active.
         Task<Response<int>> CascadeReactivateByProject(string project_code, string admin_employee_id);
 
         // Bulk-import contractors for a single provider/project from a parsed file.

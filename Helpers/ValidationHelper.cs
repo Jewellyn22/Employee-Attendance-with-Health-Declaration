@@ -27,14 +27,24 @@ namespace ContractorAttendanceWithHealthDeclaration.Helpers
         /// Returns null when valid, else the first field error encountered. Does NOT
         /// validate employee_id (auto-generated on create, validated separately on
         /// update) or gender (validated only in BulkCreate) - those are the callers' job.
+        /// Position is validated per assignment (it is a per-project attribute since
+        /// the employee-level column was dropped), replacing the old project_codes CSV
+        /// and single-position checks.
         /// </summary>
         public static string? ValidateContractorEmployee(contractor_employee? employee)
         {
             if (employee == null)                                  return "Contractor data is required";
             if (string.IsNullOrWhiteSpace(employee.name))          return "Name is required";
-            if (string.IsNullOrWhiteSpace(employee.project_code))  return "Project code is required";
+            if (employee.assignments == null || employee.assignments.Count == 0)
+                                                                  return "At least one project must be assigned";
+            if (employee.assignments.Count > 50)                   return "A contractor can be assigned to at most 50 projects";
+            if (employee.assignments.Any(a => string.IsNullOrWhiteSpace(a.project_code)))
+                                                                  return "Project is required for every assignment row";
+            if (employee.assignments.Any(a => string.IsNullOrWhiteSpace(a.position)))
+                                                                  return "Position is required";
+            if (employee.assignments.GroupBy(a => a.project_code.Trim(), StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+                                                                  return "Each project can only be assigned once";
             if (string.IsNullOrWhiteSpace(employee.provider_code)) return "Provider code is required";
-            if (string.IsNullOrWhiteSpace(employee.position))     return "Position is required";
             return ValidateBirthdate(employee.birthdate);
         }
 

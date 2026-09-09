@@ -253,12 +253,16 @@ const HomePage = {
                 return;
             }
 
-           
+
             $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (contractor.provider_code ? ' (' + contractor.provider_code + ')' : '') + ' ' + (contractor.provider_name));
-            $('#project').html('<i class="fa-solid fa-gear"></i> ' + (contractor.project_code ? ' (' + contractor.project_code + ')' : '') + ' ' + (contractor.project_name));
-            $('#area_of_destination').html('<i class="fa-solid fa-location-dot"></i> ' + 'Assigned Area: ' + contractor.area_of_destination);
+            // Multi-project: codes/names/areas arrive as comma-joined CSVs from the
+            // joined read — "(code1,code2) Name 1, Name 2" and "Area 1, Area 2".
+            $('#project').html('<i class="fa-solid fa-gear"></i> ' + (contractor.project_codes ? ' (' + contractor.project_codes + ')' : '') + ' ' + (contractor.project_names || ''));
+            $('#area_of_destination').html('<i class="fa-solid fa-location-dot"></i> ' + 'Assigned Area: ' + (contractor.areas || ''));
             $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + contractor.name);
-            
+            // Per-project positions arrive as a comma-joined CSV ("Admin, Safety Officer").
+            $('#positions').html('<i class="fa-solid fa-id-badge"></i> ' + 'Position(s): ' + (contractor.positions || ''));
+
             $('#contractor-info').show();
         },
 

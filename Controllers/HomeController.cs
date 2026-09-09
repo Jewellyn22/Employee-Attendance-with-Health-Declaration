@@ -118,11 +118,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                         name = contractor.name,
                         provider_code = contractor.provider_code,
                         provider_name = contractor.provider_name,
-                        position = contractor.position,
-                        area_of_destination = contractor.area_of_destination,
-                        project_code = contractor.project_code,
-                        project_name = contractor.project_name
-
+                        // Multi-project CSVs: comma-joined codes/names, DISTINCT areas, and
+                        // per-project positions of the contractor's assigned projects (kiosk
+                        // renders them joined).
+                        project_codes = contractor.project_codes,
+                        project_names = contractor.project_names,
+                        areas = contractor.areas,
+                        positions = contractor.positions
                     }
                 };
 

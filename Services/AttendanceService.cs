@@ -9,7 +9,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     {
         private readonly IContractorEmployeeRepository _contractorRepository;
         private readonly ITimeLogsRepository _timeLogsRepository;
-        private readonly IProjectRepository _projectRepository;
         private readonly IProviderRepository _providerRepository;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ILogger<AttendanceService> _logger;
@@ -17,14 +16,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         public AttendanceService(
             IContractorEmployeeRepository contractorRepository,
             ITimeLogsRepository timeLogsRepository,
-            IProjectRepository projectRepository,
             IProviderRepository providerRepository,
             ISystemConfigService systemConfigService,
             ILogger<AttendanceService> logger)
         {
             _contractorRepository = contractorRepository;
             _timeLogsRepository = timeLogsRepository;
-            _projectRepository = projectRepository;
             _providerRepository = providerRepository;
             _systemConfigService = systemConfigService;
             _logger = logger;
@@ -120,14 +117,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 4b: Validate project and provider are active before allowing TIME IN
-                // (placed after the open-session check so deactivating a project/provider
-                // mid-day never blocks a contractor from timing out)
-                var project = await _projectRepository.GetByProjectCode(employee.project_code);
-                if (project == null || project.active == 0)
+                // Step 4b: Validate the contractor still has an ACTIVE project before
+                // allowing TIME IN (placed after the open-session check so deactivating
+                // a project/provider mid-day never blocks a contractor from timing out).
+                // Multi-project: one active assignment is enough; active_project_count
+                // comes from the GetByEmployeeId join over contractor_project.
+                if (employee.active_project_count == 0)
                 {
-                    _logger.LogInformation("TIME IN blocked for {EmployeeId}: project {ProjectCode} is inactive",
-                        employee_id, employee.project_code);
+                    _logger.LogInformation("TIME IN blocked for {EmployeeId}: no active project assignment",
+                        employee_id);
 
                     return new Response<time_log>
                     {

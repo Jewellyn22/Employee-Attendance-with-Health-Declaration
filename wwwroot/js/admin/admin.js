@@ -301,6 +301,7 @@ const AdminPage = {
                             return `${data.provider_name} (${data.provider_code})`;
                         }
                     },
+                    { data: 'area_of_destination' },
                     {
                         data: null,
                         render: function(data) {
@@ -401,6 +402,7 @@ const AdminPage = {
                 self.loadProvidersForDatalist();
 
                 $('#project_name').val('');
+                $('#project_area_of_destination').val('');
                 $('#provider_pic').val('');
                 $('#provider_pic_number').val('');
                 $('#contract_startdate').val('');
@@ -435,6 +437,7 @@ const AdminPage = {
 
                 // Editable project fields
                 $('#project_name').val(project.project_name);
+                $('#project_area_of_destination').val(project.area_of_destination || '');
                 $('#provider_pic').val(project.provider_pic);
                 $('#provider_pic_number').val(project.provider_pic_number);
                 $('#contract_startdate').val(AdminPage.common.formatDateForInput(project.contract_startdate));
@@ -458,15 +461,16 @@ const AdminPage = {
                 self.loadContractors(projectCode);
             });
 
-            // Delete project button (soft delete: enrolled employees are marked
-            // deleted first, then the project — data is retained in the database)
+            // Delete project button (soft delete: enrolled employees whose LAST active
+            // project is this one are marked deleted first, then the project — data is
+            // retained in the database; employees still on another active project survive)
             $(document).on('click', '.btn-delete-project', function() {
                 const projectCode = $(this).data('project-code');
                 const contractorCount = $(this).data('contractor-count') || 0;
 
                 let message = `Are you sure you want to delete project ${projectCode}?`;
                 if (contractorCount > 0) {
-                    message = `Delete project ${projectCode}? All ${contractorCount} enrolled employee(s) (inactive enrollments included) will also be deleted and will no longer be able to scan at the kiosk.`;
+                    message = `Delete project ${projectCode}? Enrolled employee(s) without another active project (up to ${contractorCount}) will also be deleted and will no longer be able to scan at the kiosk. Employees still assigned to another active project are kept.`;
                 }
 
                 AdminPage.common.showConfirmation(message, function() {
@@ -503,6 +507,12 @@ const AdminPage = {
                 const projectName = $('#project_name').val().trim();
                 if (!projectName) {
                     AdminPage.common.showError('Project Name is required');
+                    return;
+                }
+
+                const projectArea = $('#project_area_of_destination').val().trim();
+                if (!projectArea) {
+                    AdminPage.common.showError('Area of Destination is required');
                     return;
                 }
 
@@ -561,6 +571,7 @@ const AdminPage = {
                     provider_name: providerName,
                     provider_pic: providerPic,
                     provider_pic_number: contactNo,
+                    area_of_destination: projectArea,
                     contract_startdate: $('#contract_startdate').val(),
                     contract_enddate: $('#contract_enddate').val(),
                     active: $('#project_active').is(':checked') ? 1 : 0
@@ -677,8 +688,7 @@ const AdminPage = {
                 columns: [
                     { data: 'employee_id' },
                     { data: 'name' },
-                    { data: 'position' },
-                    { data: 'area_of_destination' }
+                    { data: 'position' }
                 ],
                 pageLength: 10
             });
@@ -697,8 +707,7 @@ const AdminPage = {
             const exportData = tableData.map(row => ({
                 'Employee ID': row.employee_id,
                 'Name': row.name,
-                'Position': row.position,
-                'Area': row.area_of_destination
+                'Position': row.position
             }));
 
             // Create Excel file using SheetJS
@@ -734,6 +743,7 @@ const AdminPage = {
                 'PIC Contact Number': row.provider_pic_number || '',
                 'Project Code': row.project_code,
                 'Project Name': row.project_name,
+                'Area of Destination': row.area_of_destination || '',
                 'Contract Start Date': row.contract_startdate ? AdminPage.common.formatDateTime(row.contract_startdate) : '',
                 'Contract End Date': row.contract_enddate ? AdminPage.common.formatDateTime(row.contract_enddate) : '',
                 'Active Contractors': row.contractor_count || 0,
@@ -761,8 +771,8 @@ const AdminPage = {
     contractors: {
         contractorTable: null,
         isEditing: false,
-        currentEditingProject: null,
-        currentEditingProjectName: null,
+        currentEditingAssignments: [],   // [{project_code, position}] of the contractor being edited (add-row picker pre-fill)
+        availableProjects: [],   // provider's projects cached for the add-row picker (code, name, contract_enddate)
         skipProjectCascade: false,   // suppress cascade during programmatic provider set (edit init)
         selectedContractorIds: new Set(),   // checked employee_ids; survives pagination/filters, cleared after delete
 
@@ -793,13 +803,17 @@ const AdminPage = {
                     { data: 'employee_id' },
                     { data: 'name' },
                     {
-                        data: 'project_code',
+                        // Multi-project: comma-joined project names (CSV from the
+                        // canonical joined read); fall back to the codes if absent.
+                        data: 'project_names',
                         render: function(data, type, row) {
-                            return row.project_name || data;   // show Project Name; fall back to code
+                            return data || row.project_codes;
                         }
                     },
-                    { data: 'position' },
-                    { data: 'area_of_destination' },
+                    // Multi-project: comma-joined per-project positions (CSV from the
+                    // canonical joined read; '' entries skipped by the SP).
+                    { data: 'positions' },
+                    { data: 'areas' },
                     {
                         data: 'active',
                         render: function(data) {
@@ -842,7 +856,9 @@ const AdminPage = {
                 if (statusVal && String(rowData.active) !== String(statusVal)) return false;
 
                 const projectVal = $('#filter-project').val();
-                if (projectVal && rowData.project_code !== projectVal) return false;
+                // Multi-project: project_codes is a CSV — exact-match against the
+                // split list so "ACI-26-001" doesn't match "ACI-26-0010".
+                if (projectVal && !(rowData.project_codes || '').split(',').map(c => c.trim()).includes(projectVal)) return false;
 
                 return true;
             });
@@ -882,58 +898,71 @@ const AdminPage = {
                 self._syncContractorCheckboxState();
             });
 
-            // Initialize Select2 and setup modal event handler
-            $('#contractor-modal').on('shown.bs.modal', function() {
-                // Initialize Select2 with dropdownParent configuration for Bootstrap modal
-                // Initialize Select2 with dropdownParent for Bootstrap modal
-                if (!$('#project_code').data('select2')) {
-                    $('#project_code').select2({
-                        placeholder: 'Select Project',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: $('#contractor-modal')
-                    });
+            // Add-row picker: append/remove assignment rows (project select + position
+            // input). Delegated so rows created later are covered automatically.
+            $('#contractor-projects-container').on('click', '.cpa-remove', function() {
+                self.removeProjectRow($(this).closest('.contractor-assignment-row'));
+            });
+            $('#contractor-projects-container').on('change', '.cpa-project', function() {
+                // A row's project choice changes which projects the OTHER rows may offer
+                self.rebuildRowOptions();
+            });
+            $('#add-project-row').on('click', function() {
+                if ($('#contractor-projects-container .contractor-assignment-row').length >= 50) {
+                    AdminPage.common.showError('A contractor can be assigned to at most 50 projects');
+                    return;
                 }
+                self.addProjectRow(null, '');
+            });
 
+            // Tear the picker down when the modal closes so the next open starts clean
+            // (Select2 instances destroyed; container emptied).
+            $('#contractor-modal').on('hidden.bs.modal', function() {
+                self.resetProjectRows();
+            });
+
+            // Setup modal event handler
+            $('#contractor-modal').on('shown.bs.modal', function() {
                 // Always load providers (for both add and edit modes).
                 // In edit mode, suppress the provider->project cascade while we programmatically
-                // set the provider value, so it doesn't fire a second loadProjectsByProvider(..., null)
-                // that would clobber the pre-selected project.
+                // set the provider value, so it doesn't fire a second picker rebuild
+                // that would clobber the pre-filled rows.
                 if (self.isEditing) {
                     self.skipProjectCascade = true;
                 }
-                self.loadProviders(self.currentEditingProvider, self.isEditing ? function () {
+                // Capture before the async callback: the editing vars are reset at the end of
+                // this handler, but loadProviders' callback runs only after its AJAX completes
+                // — reading self.currentEditing* there would see the reset nulls/empties.
+                const editProvider = self.currentEditingProvider;
+                const editAssignments = self.currentEditingAssignments;
+                self.loadProviders(editProvider, self.isEditing ? function () {
                     self.skipProjectCascade = false;
+                    // Projects stay editable in edit mode (multi-project assignments):
+                    // cache the provider's project list, then pre-fill one picker row per
+                    // current {project, position} assignment.
+                    self.fetchProjectsForProvider(editProvider, function () {
+                        self.resetProjectRows();
+                        editAssignments.forEach(function(a) {
+                            self.addProjectRow(a.project_code, a.position);
+                        });
+                        if (!editAssignments.length) {
+                            self.addProjectRow(null, '');
+                        }
+                    });
                 } : null);
 
                 if (self.isEditing) {
-                    // Provider + Project are locked once a contractor is registered. Populate the
-                    // Project dropdown directly from the contractor's own row data (no AJAX, so no
-                    // race with the provider load), pre-select the assigned project, then lock both.
-                    const $project = $('#project_code');
-                    $project.prop('disabled', false);
-                    $project.empty();
-                    if (self.currentEditingProject) {
-                        const label = self.currentEditingProjectName
-                            ? self.currentEditingProjectName + ' (' + self.currentEditingProject + ')'
-                            : self.currentEditingProject;
-                        $project.append('<option value="' + self.currentEditingProject + '">' + label + '</option>');
-                        $project.val(self.currentEditingProject);
-                    } else {
-                        $project.append('<option value="">No project assigned</option>');
-                    }
-                    $project.trigger('change.select2');   // render the selected option in Select2 (while enabled)
+                    // Provider is locked once a contractor is registered (employee_id is
+                    // provider-scoped); assignments remain editable via the picker rows.
                     $('#provider_code').prop('disabled', true);
-                    $project.prop('disabled', true).trigger('change'); // lock project (read-only) — Select2 greys it out, keeps showing the value
                 }
-                // Add mode: project dropdown stays disabled ("Select Provider first") until a provider is chosen
+                // Add mode: picker stays empty until a provider is chosen (cascade adds rows)
 
                 // Trigger resize to ensure Select2 recalculates position
                 $(window).trigger('resize');
 
                 // Reset editing variables
-                self.currentEditingProject = null;
-                self.currentEditingProjectName = null;
+                self.currentEditingAssignments = [];
                 self.currentEditingProvider = null;
             });
 
@@ -947,11 +976,12 @@ const AdminPage = {
                 $('#employee_id').val('');
                 $('#employee_id_field').hide();
 
-                // Reset provider; project depends on provider, so disable it until one is chosen
+                // Reset provider; the picker depends on provider, so start it empty
+                // (the cascade adds the first row once a provider is chosen)
                 $('#provider_code').val('');
                 $('#provider_code').prop('disabled', false);
-                $('#project_code').empty().append('<option value="">Select Provider first</option>')
-                    .val(null).trigger('change.select2').prop('disabled', true);
+                self.availableProjects = [];
+                self.resetProjectRows();
 
                 // Reset toggle to Active state for new contractors
                 $('#contractor_active').prop('checked', true);
@@ -971,9 +1001,21 @@ const AdminPage = {
 
                 self.isEditing = true;
 
-                // Store current provider/project for the edit modal (project is locked + shown directly)
-                self.currentEditingProject = contractor.project_code;
-                self.currentEditingProjectName = contractor.project_name;
+                // Store current provider + per-project assignments for the edit modal
+                // (provider locked; rows pre-filled from the exact project_positions map)
+                let assignments = [];
+                try {
+                    const map = JSON.parse(contractor.project_positions || '{}');
+                    assignments = Object.keys(map).map(function(code) {
+                        return { project_code: code, position: map[code] || '' };
+                    });
+                } catch (e) {
+                    // Unparseable map: fall back to the codes CSV with blank positions
+                    assignments = (contractor.project_codes || '')
+                        .split(',').map(function(c) { return c.trim(); }).filter(Boolean)
+                        .map(function(code) { return { project_code: code, position: '' }; });
+                }
+                self.currentEditingAssignments = assignments;
                 self.currentEditingProvider = contractor.provider_code;
 
                 // Employee ID is auto-generated and read-only
@@ -985,9 +1027,7 @@ const AdminPage = {
                 $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
                 $('#contact_number').val(contractor.contact_number);
                 $('#address').val(contractor.address || '');
-                $('#area_of_destination').val(contractor.area_of_destination);
                 $('#provider_code').val(contractor.provider_code);
-                $('#position').val(contractor.position);
 
                 // Set toggle state based on contractor status
                 $('#contractor_active').prop('checked', contractor.active === 1);
@@ -1098,17 +1138,21 @@ const AdminPage = {
                 $('#contractor_active_label').text(isActive ? 'Active' : 'Inactive');
             });
 
-            // Provider change -> reload projects filtered by the selected provider (cascade)
+            // Provider change -> rebuild the picker from the new provider's projects (cascade)
             $('#provider_code').on('change', function() {
                 // Skip the cascade while we programmatically set the provider during edit init
                 if (self.skipProjectCascade) return;
                 const providerCode = $(this).val();
                 if (providerCode) {
-                    self.loadProjectsByProvider(providerCode, null);
+                    self.fetchProjectsForProvider(providerCode, function() {
+                        self.resetProjectRows();
+                        self.addProjectRow(null, '');
+                    });
                 } else {
-                    // No provider selected: clear and disable the project dropdown
-                    $('#project_code').empty().append('<option value="">Select Provider first</option>')
-                        .val(null).trigger('change.select2').prop('disabled', true);
+                    // No provider selected: clear the picker and disable the Add button
+                    self.availableProjects = [];
+                    self.resetProjectRows();
+                    $('#add-project-row').prop('disabled', true);
                 }
             });
 
@@ -1133,9 +1177,23 @@ const AdminPage = {
                     return;
                 }
 
-                const projectCode = $('#project_code').val();
-                if (!projectCode) {
-                    AdminPage.common.showError('Project is required');
+                // Add-row picker: every row needs a project and a position, no duplicates
+                const assignments = self.collectAssignments();
+                if (assignments.length === 0) {
+                    AdminPage.common.showError('At least one project must be assigned');
+                    return;
+                }
+                if (assignments.some(a => !a.project_code)) {
+                    AdminPage.common.showError('Select a project for every row');
+                    return;
+                }
+                if (assignments.some(a => !a.position)) {
+                    AdminPage.common.showError('Position is required');
+                    return;
+                }
+                const codes = assignments.map(a => a.project_code);
+                if (codes.some((c, i) => codes.indexOf(c) !== i)) {
+                    AdminPage.common.showError('Each project can only be assigned once');
                     return;
                 }
 
@@ -1168,10 +1226,10 @@ const AdminPage = {
                     birthdate: birthdateStr,
                     contact_number: $('#contact_number').val(),
                     address: $('#address').val(),
-                    area_of_destination: $('#area_of_destination').val(),
                     provider_code: providerCode,
-                    project_code: projectCode,
-                    position: $('#position').val(),
+                    // Per-project assignments: [{project_code, position}] — the server
+                    // binds List<contractor_project_assignment> and serializes p_projects
+                    assignments: assignments,
                     active: $('#contractor_active').is(':checked') ? 1 : 0
                 };
 
@@ -1217,55 +1275,18 @@ const AdminPage = {
             }
         },
 
-        loadProjects: function(selectedProjectCode = null) {
-            const $dropdown = $('#project_code');
+        // ---- Add-row picker (per-project position) --------------------------------
+        //
+        // #contractor-projects-container is the <tbody> of the Project|Position
+        // table and holds one .contractor-assignment-row <tr> per assignment:
+        // a Select2 project dropdown | a position input | a remove button. Each
+        // row's dropdown offers the provider's non-expired projects minus the
+        // projects already chosen in OTHER rows.
 
-            // Clear existing options
-            $dropdown.empty().append('<option value="">Select Project</option>');
-
-            $.ajax({
-                url: '/Admin/GetAllProjects',
-                method: 'GET',
-                success: function(response) {
-                    if (response.success && response.data) {
-                        console.log('Loading projects:', response.data.length, 'projects found');
-
-                        response.data.forEach(project => {
-                            $dropdown.append('<option value="' + project.project_code + '">' +
-                                project.project_name + ' (' + project.project_code + ')</option>');
-                        });
-
-                        // Set selected project if provided (for edit mode)
-                        if (selectedProjectCode) {
-                            $dropdown.val(selectedProjectCode).trigger('change.select2');
-                            console.log('Project selected:', selectedProjectCode);
-                        }
-
-                        // Notify Select2 that options have changed
-                        $dropdown.trigger('change.select2');
-
-                        console.log('Projects loaded successfully');
-                    } else {
-                        console.error('Invalid response format:', response);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Failed to load projects:', { xhr, status, error });
-                    AdminPage.common.showError('Failed to load projects. Please try again.');
-                }
-            });
-        },
-
-        loadProjectsByProvider: function(providerCode, selectedProjectCode) {
-            const $dropdown = $('#project_code');
-            $dropdown.prop('disabled', false);
-            $dropdown.empty().append('<option value="">Select Project</option>');
-
-            if (!providerCode) {
-                $dropdown.val(null).trigger('change.select2');
-                return;
-            }
-
+        // Cache the provider's projects (ALL of them, expired flagged) for the
+        // picker rows; expired ones stay offerable only where already assigned.
+        fetchProjectsForProvider: function(providerCode, onComplete) {
+            const self = this;
             $.ajax({
                 url: '/Admin/GetProjectsByProvider',
                 method: 'GET',
@@ -1274,35 +1295,149 @@ const AdminPage = {
                     if (response.success && response.data) {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
-
-                        response.data.forEach(function(project) {
-                            // Skip expired projects (contract_enddate in the past).
-                            // Null enddate = open-ended contract (not expired).
-                            const isExpired = project.contract_enddate && new Date(project.contract_enddate) < today;
-                            // In edit mode, always keep the contractor's currently-assigned project visible.
-                            const isCurrentAssignment = selectedProjectCode && project.project_code === selectedProjectCode;
-                            if (isExpired && !isCurrentAssignment) {
-                                return;
-                            }
-                            $dropdown.append('<option value="' + project.project_code + '">' +
-                                project.project_name + ' (' + project.project_code + ')</option>');
+                        self.availableProjects = response.data.map(function(project) {
+                            // Expired = contract_enddate in the past; null enddate =
+                            // open-ended contract (not expired).
+                            const isExpired = !!(project.contract_enddate && new Date(project.contract_enddate) < today);
+                            return {
+                                project_code: project.project_code,
+                                project_name: project.project_name,
+                                isExpired: isExpired
+                            };
                         });
-
-                        if (selectedProjectCode) {
-                            $dropdown.val(selectedProjectCode).trigger('change.select2');
-                        } else {
-                            $dropdown.val(null).trigger('change.select2');
-                        }
+                        $('#add-project-row').prop('disabled', false);
                     } else {
-                        $dropdown.val(null).trigger('change.select2');
+                        self.availableProjects = [];
                     }
+                    if (onComplete) onComplete();
                 },
                 error: function(xhr, status, error) {
                     console.error('Failed to load projects for provider:', { xhr, status, error });
                     AdminPage.common.showError('Failed to load projects. Please try again.');
+                    self.availableProjects = [];
+                    if (onComplete) onComplete();
                 }
             });
         },
+
+        // Codes currently picked in some row (for the other rows' exclusions and
+        // the expired-but-assigned allowance)
+        pickedProjectCodes: function() {
+            return $('#contractor-projects-container .cpa-project')
+                .map(function() { return $(this).val() || null; })
+                .get()
+                .filter(Boolean);
+        },
+
+        // Append one assignment row (optionally pre-selected + pre-filled) and
+        // rebuild every row's option list. Rows are <tr>s of the Project|Position
+        // table: select | position input | remove button.
+        addProjectRow: function(selectedCode, positionText) {
+            const self = this;
+            const $row = $(
+                '<tr class="contractor-assignment-row">' +
+                    '<td><select class="form-control cpa-project"></select></td>' +
+                    '<td><input type="text" class="form-control cpa-position" placeholder="Position on this project" maxlength="255"></td>' +
+                    '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger cpa-remove" title="Remove this project"><i class="fas fa-times"></i></button></td>' +
+                '</tr>'
+            );
+            $('#contractor-projects-container').append($row);
+
+            const $select = $row.find('.cpa-project');
+            $select.select2({
+                placeholder: 'Select Project',
+                allowClear: false,
+                width: '100%',
+                dropdownParent: $('#contractor-modal')
+            });
+            $row.find('.cpa-position').val(positionText || '');
+
+            self.rebuildRowOptions($row, selectedCode);
+        },
+
+        // Destroy the row's Select2 BEFORE removing it (its dropdown lives in the
+        // modal body and would be orphaned otherwise), then refresh the others.
+        removeProjectRow: function($row) {
+            const $select = $row.find('.cpa-project');
+            if ($select.data('select2')) {
+                $select.select2('destroy');
+            }
+            $row.remove();
+            this.rebuildRowOptions();
+        },
+
+        // Rebuild each row's <option>s: provider's projects minus the projects
+        // chosen in other rows; expired projects offered only when already picked
+        // somewhere (edit mode keeps expired-but-assigned projects selectable).
+        // Pass $focusRow + selectedCode to set a value into a freshly added row.
+        rebuildRowOptions: function($focusRow, selectedCode) {
+            const self = this;
+            const picked = self.pickedProjectCodes();
+
+            $('#contractor-projects-container .contractor-assignment-row').each(function() {
+                const $row = $(this);
+                const $select = $row.find('.cpa-project');
+                const currentValue = ($row.is($focusRow) && selectedCode) ? selectedCode : $select.val();
+
+                // Projects offered to THIS row: everything except what OTHER rows took
+                const takenByOthers = picked.filter(function(code) { return code !== currentValue; });
+
+                $select.empty().append('<option value=""></option>');
+                self.availableProjects.forEach(function(project) {
+                    if (takenByOthers.indexOf(project.project_code) !== -1) return;
+                    // Skip expired projects unless the assignment already exists in
+                    // some row — matches the old edit-mode behavior.
+                    const isAssignedSomewhere = picked.indexOf(project.project_code) !== -1;
+                    if (project.isExpired && !isAssignedSomewhere) return;
+                    $select.append('<option value="' + project.project_code + '">' +
+                        project.project_name + ' (' + project.project_code + ')</option>');
+                });
+
+                if (currentValue) {
+                    // Keep a value that is no longer among the options (e.g., an
+                    // expired assignment) by re-adding it explicitly.
+                    if ($select.find('option[value="' + currentValue + '"]').length === 0) {
+                        $select.append('<option value="' + currentValue + '">' + currentValue + '</option>');
+                    }
+                    $select.val(currentValue);
+                } else {
+                    $select.val(null);
+                }
+                $select.trigger('change.select2');
+            });
+
+            // Hide remove buttons when only one row remains (>= 1 assignment required)
+            const $rows = $('#contractor-projects-container .contractor-assignment-row');
+            $rows.find('.cpa-remove').toggle($rows.length > 1);
+        },
+
+        // Read the picker rows into [{project_code, position}] (trimmed)
+        collectAssignments: function() {
+            return $('#contractor-projects-container .contractor-assignment-row')
+                .map(function() {
+                    const $row = $(this);
+                    return {
+                        project_code: ($row.find('.cpa-project').val() || '').trim(),
+                        position: ($row.find('.cpa-position').val() || '').trim()
+                    };
+                })
+                .get();
+        },
+
+        // Tear down every row (Select2 destroy + empty the container)
+        resetProjectRows: function() {
+            $('#contractor-projects-container .contractor-assignment-row').each(function() {
+                const $select = $(this).find('.cpa-project');
+                if ($select.data('select2')) {
+                    $select.select2('destroy');
+                }
+            });
+            $('#contractor-projects-container').empty();
+            $('#add-project-row').prop('disabled', false);
+        },
+
+        // (loadProjectsByProvider was removed: the add-row picker helpers above
+        // replaced it — fetchProjectsForProvider + rebuildRowOptions.)
 
         loadProviders: function(selectedProviderCode = null, onComplete = null) {
             const $dropdown = $('#provider_code');
@@ -1364,10 +1499,10 @@ const AdminPage = {
                 'Employee ID': row.employee_id,
                 'Name': row.name,
                 'Provider Name': row.provider_name || '',
-                'Project Name': row.project_name || '',
-                'Project Code': row.project_code || '',
-                'Position': row.position || '',
-                'Area of Destination': row.area_of_destination || '',
+                'Project Names': row.project_names || '',
+                'Project Codes': row.project_codes || '',
+                'Position(s)': row.positions || '',
+                'Areas': row.areas || '',
                 'Status': row.active === 1 ? 'Active' : 'Inactive'
             }));
 
@@ -1389,17 +1524,18 @@ const AdminPage = {
         // contains them, they are auto-detected and skipped (never inserted). Shared by
         // downloadBulkTemplate and the skip-detector so the two never drift apart.
         _bulkSampleRows: [
-            { name: 'Juan Dela Cruz', gender: 'Male', birthdate: '1990-01-15', position: 'Welder', area_of_destination: 'Building A', contact_number: '09171234567', address: 'Quezon City' },
-            { name: 'Maria Santos', gender: 'Female', birthdate: '1995-07-22', position: 'Admin Clerk', area_of_destination: 'Building B', contact_number: '', address: '' }
+            { name: 'Juan Dela Cruz', gender: 'Male', birthdate: '1990-01-15', position: 'Welder', contact_number: '09171234567', address: 'Quezon City' },
+            { name: 'Maria Santos', gender: 'Female', birthdate: '1995-07-22', position: 'Admin Clerk', contact_number: '', address: '' }
         ],
 
-        // Normalized signature of a row's 7 user fields. Matching all fields makes a
-        // real-contractor collision effectively impossible.
+        // Normalized signature of a row's 6 user fields. Matching all fields makes a
+        // real-contractor collision effectively impossible. (Area of Destination is
+        // no longer a bulk column — it comes from the selected project — so legacy
+        // templates that still carry an Area column still match the samples.)
         _bulkRowSignature: function(row) {
             return [
                 (row.name || ''), (row.gender || ''), (row.birthdate || ''),
-                (row.position || ''), (row.area_of_destination || ''),
-                (row.contact_number || ''), (row.address || '')
+                (row.position || ''), (row.contact_number || ''), (row.address || '')
             ].map(function(v) { return String(v).trim().toLowerCase(); }).join('|');
         },
 
@@ -1418,16 +1554,17 @@ const AdminPage = {
             return n + '|' + b;
         },
 
-        // Build the set of already-enrolled contractor keys for the selected project from
-        // the loaded contractors DataTable (active + inactive, per the duplicate policy).
+        // Build the set of already-enrolled contractor keys for the selected provider from
+        // the loaded contractors DataTable (active + inactive, per the duplicate policy —
+        // duplicates are provider-scoped since employee IDs and duplicate checks are).
         // No new endpoint — reuses the data behind /Admin/GetAllContractors.
         _buildBulkDuplicateKeys: function() {
             const keys = new Set();
-            const projectCode = $('#bulk_project_code').val();
-            if (!projectCode || !this.contractorTable) return keys;
+            const providerCode = $('#bulk_provider_code').val();
+            if (!providerCode || !this.contractorTable) return keys;
             this.contractorTable.data().each(function(row) {
-                if (!row || !row.project_code) return;
-                if (row.project_code !== projectCode) return;
+                if (!row) return;
+                if (row.provider_code !== providerCode) return;
                 const key = AdminPage.contractors._bulkDuplicateKey(row.name, row.birthdate);
                 if (key && key !== '|') keys.add(key);
             });
@@ -1496,7 +1633,9 @@ const AdminPage = {
                 self.parsedBulkRows = [];
             });
 
-            // Provider -> Project cascade (bulk selects)
+            // Provider -> Project cascade (bulk selects). The duplicate set is
+            // provider-scoped, so re-run duplicate detection (and re-render) whenever
+            // the provider changes and a file is already loaded.
             $('#bulk_provider_code').on('change', function() {
                 const providerCode = $(this).val();
                 if (providerCode) {
@@ -1505,12 +1644,6 @@ const AdminPage = {
                     $('#bulk_project_code').empty().append('<option value="">Select Provider first</option>')
                         .val(null).trigger('change.select2').prop('disabled', true);
                 }
-            });
-
-            // The duplicate set depends on the selected project. A file may already be
-            // loaded, so re-run duplicate detection (and re-render) whenever the project
-            // changes.
-            $('#bulk_project_code').on('change', function() {
                 if (self.parsedBulkRows.length) {
                     self._flagBulkDuplicates();
                     self.renderBulkPreview();
@@ -1702,7 +1835,6 @@ const AdminPage = {
                 birthdate: birthdateRaw,
                 contact_number: get('contact_number') || get('contact'),
                 address: get('address'),
-                area_of_destination: get('area_of_destination') || get('area'),
                 position: get('position'),
                 error: null
             };
@@ -1717,7 +1849,6 @@ const AdminPage = {
             else if (!birthdateRaw) row.error = 'Birthdate is required';
             else if (!validDob) row.error = 'Birthdate is not a valid date';
             else if (!row.position) row.error = 'Position is required';
-            else if (!row.area_of_destination) row.error = 'Area of Destination is required';
             else {
                 // DOLE 18+ pre-check (mirrors ContractorService.ValidateBirthdate)
                 const d = new Date(dob); d.setHours(0, 0, 0, 0);
@@ -1765,7 +1896,6 @@ const AdminPage = {
                     '<td>' + (r.gender || '') + '</td>' +
                     '<td>' + (r.birthdate || '') + '</td>' +
                     '<td>' + (r.position || '') + '</td>' +
-                    '<td>' + (r.area_of_destination || '') + '</td>' +
                     '<td>' + badge + '</td>' +
                     '<td class="text-center">' +
                         '<button type="button" class="btn btn-sm btn-link text-danger p-0 bulk-row-delete" data-index="' + idx + '" title="Remove row">' +
@@ -1809,9 +1939,15 @@ const AdminPage = {
 
             const projects = {};
             self.contractorTable.data().each(function(row) {
-                if (row.project_code && !projects[row.project_code]) {
-                    projects[row.project_code] = row.project_name || row.project_code;
-                }
+                // Multi-project: split the CSVs and register each unique code->name
+                // pair (a project shared by many contractors appears once).
+                const codes = String(row.project_codes || '').split(',').map(function(c) { return c.trim(); }).filter(Boolean);
+                const names = String(row.project_names || '').split(',').map(function(n) { return n.trim(); });
+                codes.forEach(function(code, i) {
+                    if (!projects[code]) {
+                        projects[code] = names[i] || code;
+                    }
+                });
             });
             Object.keys(projects).sort().forEach(function(code) {
                 $sel.append($('<option></option>').val(code).text(projects[code] + ' (' + code + ')'));
@@ -1884,7 +2020,6 @@ const AdminPage = {
                         birthdate: r.birthdate,
                         contact_number: r.contact_number,
                         address: r.address,
-                        area_of_destination: r.area_of_destination,
                         position: r.position
                     };
                 })
@@ -2029,7 +2164,10 @@ const AdminPage = {
         },
 
         // Fields that change on every save (bookkeeping) — never shown in the diff table
-        _diffIgnoreFields: ['created_at', 'create_at', 'updated_at', 'update_at', 'updated_by', 'log_id'],
+        // active_project_count/other_active_project_count are computed read fields
+        // (derived from the contractor_project mappings), not stored state — excluded
+        // so audit diffs show only real edits.
+        _diffIgnoreFields: ['created_at', 'create_at', 'updated_at', 'update_at', 'updated_by', 'log_id', 'active_project_count', 'other_active_project_count', 'project_positions', 'assignments'],
 
         _esc: function(v) {
             return String(v == null ? '' : v)

@@ -430,6 +430,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 return "Project name is required";
             }
 
+            if (string.IsNullOrWhiteSpace(project.area_of_destination))
+            {
+                return "Area of Destination is required";
+            }
+
             if (project.contract_startdate == null)
             {
                 return "Contract start date is required";

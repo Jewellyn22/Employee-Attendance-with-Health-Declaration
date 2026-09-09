@@ -9,6 +9,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         public string provider_name { get; set; }
         public string provider_pic { get; set; }
         public string provider_pic_number { get; set; }
+        public string area_of_destination { get; set; }
         public DateTime? contract_startdate { get; set; }
         public DateTime? contract_enddate { get; set; }
         public int? contractor_count { get; set; }

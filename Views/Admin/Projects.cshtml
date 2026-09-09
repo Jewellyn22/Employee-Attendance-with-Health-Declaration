@@ -134,9 +134,10 @@
                     <table id="projects-table" class="table table-striped table-bordered">
                         <thead>
                             <tr class="text-center">
-                                <th style="width: 24%;">Project Name</th>
-                                <th style ="width: 24%;">Provider</th>
-                                <th style="width: 20%;">Contract</th>
+                                <th style="width: 20%;">Project Name</th>
+                                <th style ="width: 18%;">Provider</th>
+                                <th style="width: 14%;">Area</th>
+                                <th style="width: 16%;">Contract</th>
                                 <th style="width: 7%;">Contractors</th>
                                 <th style="width: 9%;">Remaining Days</th>
                                 <th style="width: 9%;">Project Status</th>
@@ -211,6 +212,11 @@
                         <input type="text" id="project_name" class="form-control" required placeholder="Type project name...">
                     </div>
 
+                    <div class="mb-3">
+                        <label for="project_area_of_destination" class="form-label">Area of Destination:</label>
+                        <input type="text" id="project_area_of_destination" class="form-control" required placeholder="Work location of this project (e.g., Building A)">
+                    </div>
+
                     <div class="row">
                         <div class="col-6">
                             <div class="mb-3">
@@ -258,7 +264,6 @@
                             <th>Employee ID</th>
                             <th>Name</th>
                             <th>Position</th>
-                            <th>Area</th>
                         </tr>
                     </thead>
                     <tbody></tbody>

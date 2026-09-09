@@ -57,8 +57,8 @@
                                 <th style="width:8%">Employee ID</th>
                                 <th style="width:18%">Name</th>
                                 <th style="width:26%">Project</th>
-                                <th style="width:15%">Position</th>
-                                <th style="width:13%">Area</th>
+                                <th style="width:15%">Position(s)</th>
+                                <th style="width:13%">Area(s)</th>
                                 <th style="width:5%">Active</th>
                                 <th style="width:8%">Actions</th>
                             </tr>
@@ -79,8 +79,16 @@
                 <h5 class="modal-title">Contractor Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body">
                 <form id="contractor-form">
+                    <div class="mb-3">
+                        <label for="contractor_active" class="form-label">Status:</label>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" id="contractor_active" class="form-check-input">
+                            <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-9">
                             <div class="mb-3">
@@ -128,109 +136,46 @@
                         </div>
                     </div>
 
-                     <div class="row">
+                    <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="provider_code" class="form-label">Provider:</label>
                                 <select id="provider_code" class="form-control">
                                     <option value="">Select Provider</option>
                                 </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="area_of_destination" class="form-label">Area of Destination:</label>
-                                <input type="text" id="area_of_destination" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label for="contractor_active" class="form-label">Status:</label>
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="contractor_active" class="form-check-input">
-                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="project_code" class="form-label">Project:</label>
-                                <select id="project_code" class="form-control">
-                                    <option value="">Select Project</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="position" class="form-label">Position:</label>
-                                <input type="text" id="position" class="form-control">
                             </div>
                         </div>
                     </div>
 
-
-                   @*  <div class="row">
-                        <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-12">
                             <div class="mb-3">
-                                <label for="name" class="form-label">Name:</label>
-                                <input type="text" id="name" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="contact_number" class="form-label">Contact Number:</label>
-                                <input type="text" id="contact_number" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label for="birthdate" class="form-label">Birthdate:</label>
-                                <input type="date" id="birthdate" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="provider_code" class="form-label">Provider:</label>
-                                <select id="provider_code" class="form-control">
-                                    <option value="">Select Provider</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="area_of_destination" class="form-label">Area of Destination:</label>
-                                <input type="text" id="area_of_destination" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label for="contractor_active" class="form-label">Status:</label>
-                                <div class="form-check form-switch">
-                                    <input type="checkbox" id="contractor_active" class="form-check-input">
-                                    <label class="form-check-label" for="contractor_active" id="contractor_active_label">Inactive</label>
-                                </div>
+                                <label class="form-label">Project(s) &amp; Position(s): <span class="text-danger">*</span></label>
+                                <table id="contractor-projects-table" class="table table-sm table-bordered align-middle mb-2">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:55%">Project</th>
+                                            <th style="width:35%">Position</th>
+                                            <th style="width:10%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="contractor-projects-container"></tbody>
+                                </table>
+                                <button type="button" id="add-project-row" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-plus"></i> Add Project
+                                </button>
+                                <div class="form-text">One position per project: each row picks a project of the selected provider and the contractor's position on it.</div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            
-                            <div class="mb-3" id="employee_id_field">
-                                <label for="employee_id" class="form-label">Employee ID:</label>
-                                <input type="text" id="employee_id" class="form-control" readonly placeholder="Auto-generated on save">
-                            </div>
-                            <div class="mb-3">
-                                <label for="gender" class="form-label">Gender:</label>
-                                <select id="gender" class="form-control">
-                                    <option value="">Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="address" class="form-label">Address:</label>
-                                <input type="text" id="address" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label for="project_code" class="form-label">Project:</label>
-                                <select id="project_code" class="form-control">
-                                    <option value="">Select Project</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="position" class="form-label">Position:</label>
-                                <input type="text" id="position" class="form-control">
-                            </div>
-                        </div>
-                    </div> *@
+                    </div>
                 </form>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" id="save-contractor" class="btn btn-primary">Save</button>
             </div>
+            
         </div>
     </div>
 </div>
@@ -269,8 +214,10 @@
                     <label for="bulk_file" class="form-label">CSV / Excel file: <span class="text-danger">*</span></label>
                     <input type="file" id="bulk_file" class="form-control" accept=".csv,.xlsx,.xls">
                     <div class="form-text">
-                        Required columns: <strong>name, gender (Male/Female), birthdate (YYYY-MM-DD), position, area_of_destination</strong>.
-                        Optional: contact_number, address. Provider &amp; Project come from the selects above.
+                        Required columns: <strong>name, gender (Male/Female), birthdate (YYYY-MM-DD), position</strong>.
+                        Optional: contact_number, address. Provider &amp; Project come from the selects above;
+                        Area of Destination comes from the selected Project, and the row's position is the
+                        contractor's position <strong>for the selected Project</strong>.
                     </div>
                 </div>
                 <div class="mb-3">
@@ -287,13 +234,12 @@
                             <thead class="sticky-top bg-light">
                                 <tr>
                                     <th style="width:5%">#</th>
-                                    <th style="width:20%">Name</th>
-                                    <th style="width:10%">Gender</th>
-                                    <th style="width:13%">Birthdate</th>
-                                    <th style="width:16%">Position</th>
-                                    <th style="width:15%">Area</th>
+                                    <th style="width:24%">Name</th>
+                                    <th style="width:12%">Gender</th>
+                                    <th style="width:15%">Birthdate</th>
+                                    <th style="width:19%">Position</th>
                                     <th style="width:14%">Status</th>
-                                    <th class="text-center" style="width:7%">Action</th>
+                                    <th class="text-center" style="width:8%">Action</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
