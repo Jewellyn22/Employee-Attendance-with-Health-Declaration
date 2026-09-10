@@ -40,27 +40,28 @@
                         <hr />
                         <div class="f-body">
                             <div id="contractor-info">
-                                <div class="row">
-                                    <div class="col-5">
-                                        <p id="provider" class="mb-1">[Provider]</p>
-                                    </div>
-                                    <div class="col-5">
-                                        <p id="project" class="mb-1">[Project]</p>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-5">
-                                        <p id="employee_name" class="mb-1">[Name]</p>
-                                    </div>
-                                    <div class="col-5">
-                                        <p id="area_of_destination" class="mb-1">[Area]</p>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-10">
-                                        <p id="positions" class="mb-1">[Position]</p>
-                                    </div>
-                                </div>
+                                <table class="table mb-0 align-middle">
+                                    <colgroup>
+                                        <col style="width: 40%;" />
+                                        <col style="width: 30%;" />
+                                        <col style="width: 30%;" />
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <td id="employee_name" colspan="2"></td>
+                                            <td id="provider"></td>
+                                        </tr>
+                                        <tr id="project-header">
+                                            <th class="table-light">Project Name</th>
+                                            <th class="table-light">Area</th>
+                                            <th class="table-light">Position</th>
+                                        </tr>
+                                    </tbody>
+                                    @* One row per assigned project (Project | Area | Position),
+                                       JS-populated; cleared at the start of every displayContractorInfo
+                                       call so back-to-back scans never accumulate stale rows. *@
+                                    <tbody id="project-rows"></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -195,7 +196,7 @@
 
 
 @section Scripts {
-    <script src="~/js/home/home.js?v=3.0.0.0"></script>
+    <script src="~/js/home/home.js?v=3.1.2.0"></script>
     <script src="~/js/scanner-detection.js?v=2.9.11.0"></script>
     <script>
         // Initialize health declaration window from server config

@@ -124,7 +124,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                         project_codes = contractor.project_codes,
                         project_names = contractor.project_names,
                         areas = contractor.areas,
-                        positions = contractor.positions
+                        positions = contractor.positions,
+                        // JSON array string [{project_name, area, position}] per assigned project --
+                        // index-aligned (unlike the DISTINCT areas CSV); kiosk Personal Detail rows.
+                        project_rows = contractor.project_rows
                     }
                 };
 

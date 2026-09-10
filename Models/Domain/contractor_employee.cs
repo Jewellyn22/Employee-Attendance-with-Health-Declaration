@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
 {
@@ -60,6 +61,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         // admin Contractors table + Excel export display only. READ-DERIVED ONLY
         // (sp_contractor_employee_GetAll); never written, never audited.
         public string? project_details { get; set; }
+
+        // JSON array string of per-project display rows [{ "project_name", "area", "position" }]
+        // ordered by project_code -- kiosk Personal Detail table only (Home/Scan payload).
+        // READ-DERIVED ONLY (sp_contractor_employee_GetByEmployeeId); never written, never audited.
+        // [JsonIgnore] keeps it out of audit data_from/data_to snapshots (Update/merge/delete pass
+        // whole GetByEmployeeId entities to IAuditLogService). Dapper still maps it (JSON attributes
+        // are ignored), and the kiosk payload re-projects it manually in the controller.
+        [JsonIgnore]
+        public string? project_rows { get; set; }
         public int active_project_count { get; set; }       // assigned projects with active=1, is_deleted=0 (scan gate)
         public int? other_active_project_count { get; set; } // only from sp_contractor_employee_GetByProjectCode (cascade skip)
 

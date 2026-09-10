@@ -253,15 +253,38 @@ const HomePage = {
                 return;
             }
 
+            // Names only -- no provider_code / project codes in the kiosk block.
+            $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + (contractor.name || ''));
+            $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (contractor.provider_name || ''));
 
-            $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (contractor.provider_code ? ' (' + contractor.provider_code + ')' : '') + ' ' + (contractor.provider_name));
-            // Multi-project: codes/names/areas arrive as comma-joined CSVs from the
-            // joined read — "(code1,code2) Name 1, Name 2" and "Area 1, Area 2".
-            $('#project').html('<i class="fa-solid fa-gear"></i> ' + (contractor.project_codes ? ' (' + contractor.project_codes + ')' : '') + ' ' + (contractor.project_names || ''));
-            $('#area_of_destination').html('<i class="fa-solid fa-location-dot"></i> ' + 'Assigned Area: ' + (contractor.areas || ''));
-            $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + contractor.name);
-            // Per-project positions arrive as a comma-joined CSV ("Admin, Safety Officer").
-            $('#positions').html('<i class="fa-solid fa-id-badge"></i> ' + 'Position(s): ' + (contractor.positions || ''));
+            // Clear rows appended by a previous scan (back-to-back scans call this
+            // repeatedly; TIME OUT scans render this block too).
+            $('#project-rows').empty();
+
+            // Per-project rows arrive as a JSON array string
+            // [{"project_name":"...","area":"...","position":"..."}] ordered by project
+            // code (index-aligned, unlike the DISTINCT areas CSV).
+            var rows = [];
+            try {
+                rows = JSON.parse(contractor.project_rows || '[]') || [];
+            } catch (e) {
+                rows = []; // malformed payload -> row 1 only, never block the form
+            }
+
+            // Headers only make sense above project rows -- zero-project TIME OUT
+            // scans keep the row-1-only look.
+            $('#project-header').toggle(rows.length > 0);
+
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                $('#project-rows').append(
+                    '<tr>' +
+                    '<td>' + (r.project_name || '') + '</td>' +
+                    '<td>' + (r.area || '') + '</td>' +
+                    '<td>' + (r.position || '&mdash;') + '</td>' +
+                    '</tr>'
+                );
+            }
 
             $('#contractor-info').show();
         },
