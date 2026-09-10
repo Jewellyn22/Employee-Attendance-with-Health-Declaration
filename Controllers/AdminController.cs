@@ -266,6 +266,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
+        // GET: /Admin/GetContractorQrCodes — the stored QR PNGs (generated at
+        // enrollment) as {employee_id, qr_code_image(base64)} for the Contractors
+        // Excel export. Kept separate from GetAllContractors so the grid payload
+        // never carries the blobs.
+        [HttpGet]
+        public async Task<IActionResult> GetContractorQrCodes()
+        {
+            var result = await _contractorService.GetQrCodes();
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateContractor([FromBody] contractor_employee contractor)
         {

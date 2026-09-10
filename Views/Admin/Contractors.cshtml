@@ -257,6 +257,9 @@
 
 @section Scripts {
     <script src="~/lib/xlsx/xlsx.full.min.js"></script>
+    @* ExcelJS: embeds the stored QR PNGs in the Contractors Excel export
+       (community SheetJS cannot write images). xlsx stays for the bulk template/import. *@
+    <script src="~/lib/exceljs/exceljs.min.js"></script>
     <script>
         $(document).ready(function() {
             AdminPage.contractors.init();

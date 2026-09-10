@@ -7,6 +7,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
     {
         Task<Response<contractor_employee>> GetByEmployeeId(string employee_id);
         Task<Response<IEnumerable<contractor_employee>>> GetAll();
+        // Export-only read for the Contractors Excel export: the stored QR PNG per
+        // enrolled employee (base64 over the wire). QRs are generated once at
+        // enrollment; this never generates.
+        Task<Response<IEnumerable<contractor_qr_code>>> GetQrCodes();
         Task<Response<IEnumerable<contractor_employee>>> GetByProjectCode(string project_code);
         // log_audit defaults true for single-row creates; BulkCreate passes false and
         // writes its own single bulk_enrollment summary entry instead.

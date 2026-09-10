@@ -1488,7 +1488,7 @@ const AdminPage = {
             return dateString.split('T')[0];
         },
 
-        exportToExcel: function() {
+        exportToExcel: async function() {
             // Export only the rows currently shown (respects global search + Status/Project filters)
             const tableData = this.contractorTable.rows({ search: 'applied' }).data().toArray();
 
@@ -1497,25 +1497,76 @@ const AdminPage = {
                 return;
             }
 
-            const exportData = tableData.map(row => ({
-                'Employee ID': row.employee_id,
-                'Name': row.name,
-                'Provider Name': row.provider_name || '',
-                // One cell per contractor: "Name (Position - Area)" lines joined by
-                // CHAR(10) (Excel Alt+Enter) — enable Wrap Text in Excel to stack them.
-                'Project (Position - Area)': row.project_details || row.project_names || row.project_codes || '',
-                'Status': row.active === 1 ? 'Active' : 'Inactive'
-            }));
+            Swal.fire({ title: 'Generating Excel...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            ws['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 55 }, { wch: 10 }];
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
+            try {
+                // The QR PNGs are generated once at enrollment and stored on
+                // contractor_employee (contractor_employee.qr_code_image) — the export
+                // only fetches and embeds them, it never generates.
+                const qrRes = await fetch('/Admin/GetContractorQrCodes');
+                const qrJson = await qrRes.json();
+                const qrMap = {};
+                (qrJson.success && qrJson.data ? qrJson.data : []).forEach(q => { qrMap[q.employee_id] = q.qr_code_image; });
 
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
-            XLSX.writeFile(wb, `Contractors_${timestamp}.xlsx`);
+                // ExcelJS (not SheetJS) because community SheetJS cannot embed images.
+                const wb = new ExcelJS.Workbook();
+                const ws = wb.addWorksheet('Contractors', { views: [{ state: 'frozen', ySplit: 1 }] });
+                ws.columns = [
+                    { header: 'Employee ID', key: 'employee_id', width: 14 },
+                    { header: 'Name', key: 'name', width: 30 },
+                    { header: 'Provider Name', key: 'provider_name', width: 25 },
+                    { header: 'Project (Position - Area)', key: 'project_details', width: 55 },
+                    { header: 'Status', key: 'status', width: 10 },
+                    { header: 'QR Code', key: 'qr', width: 16 }
+                ];
+                ws.getRow(1).font = { bold: true };
+                // Wrap text set here so the LF-joined "Name (Position - Area)" lines
+                // stack without the user enabling Wrap Text in Excel (community SheetJS
+                // could not do this — a bonus of the ExcelJS switch).
+                ws.getColumn(4).alignment = { wrapText: true, vertical: 'top' };
 
-            AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
+                tableData.forEach(row => {
+                    const added = ws.addRow({
+                        employee_id: row.employee_id,
+                        name: row.name,
+                        provider_name: row.provider_name || '',
+                        project_details: row.project_details || row.project_names || row.project_codes || '',
+                        status: row.active === 1 ? 'Active' : 'Inactive'
+                    });
+                    const r = added.number;  // 1-based worksheet row (header = 1)
+
+                    // qr_code_image arrives as a raw base64 string (System.Text.Json
+                    // byte[] encoding — no "data:" prefix), exactly what addImage wants.
+                    const base64 = qrMap[row.employee_id];
+                    if (base64) {
+                        const imgId = wb.addImage({ base64: base64, extension: 'png' });
+                        // tl is 0-indexed INCLUDING the header → first data row = tl.row 1.
+                        ws.addImage(imgId, { tl: { col: 5, row: r - 1 }, ext: { width: 64, height: 64 } });
+                        // Row height is POINTS: 64px * 3/4 = 48pt + 2pt breathing room.
+                        ws.getRow(r).height = 50;
+                    }
+                });
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                // ExcelJS has no XLSX.writeFile equivalent — anchor-click download.
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Contractors_${timestamp}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                Swal.close();
+                AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
+            } catch (err) {
+                console.error('Contractors Excel export failed:', err);
+                Swal.close();
+                AdminPage.common.showError('Could not generate the Excel file.');
+            }
         },
 
         // ===== Bulk Import Contractors =====

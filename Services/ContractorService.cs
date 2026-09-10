@@ -86,6 +86,33 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
+        // Export-only read (GET /Admin/GetContractorQrCodes): hands the stored QR blobs
+        // to the client at export time. Kept off the domain model so audit snapshots
+        // and the grid payload never carry base64.
+        public async Task<Response<IEnumerable<contractor_qr_code>>> GetQrCodes()
+        {
+            try
+            {
+                var qr_codes = await _contractorRepository.GetQrCodes();
+                return new Response<IEnumerable<contractor_qr_code>>
+                {
+                    Success = true,
+                    Message = "QR codes retrieved successfully",
+                    Data = qr_codes
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting contractor QR codes");
+                return new Response<IEnumerable<contractor_qr_code>>
+                {
+                    Success = false,
+                    Message = "Error retrieving QR codes",
+                    Data = null
+                };
+            }
+        }
+
         public async Task<Response<contractor_employee>> Create(contractor_employee employee, string admin_employee_id, bool log_audit = true)
         {
             var (response, _) = await CreateOrMerge(employee, admin_employee_id, log_audit);
@@ -196,6 +223,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 _logger.LogInformation("Contractor created: {EmployeeId}", result.employee_id);
 
+                // Persist the QR badge image at registration time (content = employee_id)
+                // so the Excel export only ever embeds stored blobs. Best-effort — see EnsureQrCode.
+                await EnsureQrCode(result.employee_id);
+
                 if (log_audit)
                 {
                     await _auditLogService.Log("contractor", "create", result.employee_id, null, result, admin_employee_id);
@@ -217,6 +248,22 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     Message = "Error creating contractor",
                     Data = null
                 }, false);
+            }
+        }
+
+        // QR persistence for both enrollment paths (create + merge-on-duplicate).
+        // Best-effort by design: the contractor row is valid without the QR — a
+        // failure is logged and leaves qr_code_image NULL (blank cell in the Excel
+        // export) until the contractor is re-enrolled, which regenerates it.
+        private async Task EnsureQrCode(string employee_id)
+        {
+            try
+            {
+                await _contractorRepository.SetQrCode(employee_id, QrCodeHelper.GeneratePng(employee_id));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist QR code for {EmployeeId}", employee_id);
             }
         }
 
@@ -311,6 +358,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 _logger.LogInformation("Contractor merged into existing account: {EmployeeId}", existing.employee_id);
+
+                // Same QR persistence as the create path: the content is the immutable
+                // employee_id, so this is byte-identical for rows that already have a QR
+                // and doubles as the backfill for rows enrolled before the feature.
+                await EnsureQrCode(existing.employee_id);
 
                 if (log_audit)
                 {
