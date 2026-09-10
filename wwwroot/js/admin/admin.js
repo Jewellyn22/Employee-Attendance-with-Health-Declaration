@@ -803,17 +803,19 @@ const AdminPage = {
                     { data: 'employee_id' },
                     { data: 'name' },
                     {
-                        // Multi-project: comma-joined project names (CSV from the
-                        // canonical joined read); fall back to the codes if absent.
-                        data: 'project_names',
+                        // One line per assigned project: "Name (Position - Area)", LF-joined by
+                        // the SP ('\n' = Excel Alt+Enter). Display swaps LF for <br> (raw, like
+                        // the other unescaped renders); sort/search use the raw text. Fallback
+                        // to the names/codes CSV for zero-assignment rows or pre-script data.
+                        data: 'project_details',
                         render: function(data, type, row) {
-                            return data || row.project_codes;
+                            const text = data || row.project_names || row.project_codes || '';
+                            if (type === 'display') {
+                                return String(text).split('\n').join('<br>');
+                            }
+                            return text;
                         }
                     },
-                    // Multi-project: comma-joined per-project positions (CSV from the
-                    // canonical joined read; '' entries skipped by the SP).
-                    { data: 'positions' },
-                    { data: 'areas' },
                     {
                         data: 'active',
                         render: function(data) {
@@ -1499,14 +1501,14 @@ const AdminPage = {
                 'Employee ID': row.employee_id,
                 'Name': row.name,
                 'Provider Name': row.provider_name || '',
-                'Project Names': row.project_names || '',
-                'Project Codes': row.project_codes || '',
-                'Position(s)': row.positions || '',
-                'Areas': row.areas || '',
+                // One cell per contractor: "Name (Position - Area)" lines joined by
+                // CHAR(10) (Excel Alt+Enter) — enable Wrap Text in Excel to stack them.
+                'Project (Position - Area)': row.project_details || row.project_names || row.project_codes || '',
                 'Status': row.active === 1 ? 'Active' : 'Inactive'
             }));
 
             const ws = XLSX.utils.json_to_sheet(exportData);
+            ws['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 25 }, { wch: 55 }, { wch: 10 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
 

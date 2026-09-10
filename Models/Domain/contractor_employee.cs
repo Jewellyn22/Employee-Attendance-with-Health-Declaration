@@ -56,6 +56,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         public string? areas { get; set; }                  // CSV (DISTINCT) of assigned projects' area_of_destination
         public string? positions { get; set; }              // CSV of per-project positions ('' entries skipped)
         public string? project_positions { get; set; }      // JSON object {"project_code":"position"} (edit modal / hydration source)
+        // Newline-joined "ProjectName (Position - Area)" per assigned project --
+        // admin Contractors table + Excel export display only. READ-DERIVED ONLY
+        // (sp_contractor_employee_GetAll); never written, never audited.
+        public string? project_details { get; set; }
         public int active_project_count { get; set; }       // assigned projects with active=1, is_deleted=0 (scan gate)
         public int? other_active_project_count { get; set; } // only from sp_contractor_employee_GetByProjectCode (cascade skip)
 
