@@ -298,21 +298,27 @@ const HomePage = {
             }
 
             // Display success message inline under employee_id field
+            let durationSeconds;
             if (message.includes('TIME OUT')) {
                 // Use blue/primary styling for TIME OUT messages
+                // (same display seconds as the error scan result)
                 $('#scan-result').html('<div class="time-out-success-popup mt-2" role="alert">' + message + '</div>');
+                durationSeconds = 7;
             } else {
                 // Use green styling for other success messages
+                // (stays for the configured health declaration window seconds,
+                // same setting as the Health Declaration Form; falls back to 5s)
                 $('#scan-result').html('<div class="alert alert-success mt-2" role="alert">' + message + '</div>');
+                durationSeconds = window.healthDeclarationWindowSeconds || 5;
             }
 
-            // Auto-clear the message after 5 seconds
+            // Auto-clear after the branch-specific duration
             self.scanResultTimeout = setTimeout(function() {
                 $('#scan-result').fadeOut('slow', function() {
                     $(this).empty().show();
                     self.scanResultTimeout = null;
                 });
-            }, 5000);
+            }, durationSeconds * 1000);
         },
 
         clearScanResult: function() {
