@@ -344,6 +344,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var existing = await _systemConfigRepository.GetByKey(config.key);
 
                 var result = await _systemConfigRepository.Update(config);
+                if (result == null)
+                {
+                    // The key does not exist (the SP matched nothing) — report the
+                    // failure instead of auditing and answering success.
+                    return new Response<bool>
+                    {
+                        Success = false,
+                        Message = "Error updating configuration",
+                        Data = false
+                    };
+                }
 
                 await _auditLogService.Log("system_config", "update", config.key, existing, config, admin_employee_id);
 

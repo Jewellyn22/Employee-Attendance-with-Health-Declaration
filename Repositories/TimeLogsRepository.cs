@@ -177,5 +177,26 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
                 commandType: CommandType.StoredProcedure
             );
         }
+
+        // Dashboard daily stats (v3.3.0.0)
+        public async Task<IEnumerable<dashboard_daily_stat>> GetDailyStatsByProvider(DateTime from_date, DateTime to_date)
+        {
+            const string storedProc = "sp_time_logs_GetDailyStatsByProvider";
+            return await _db.QueryAsync<dashboard_daily_stat>(
+                storedProc,
+                new { p_from_date = from_date, p_to_date = to_date },
+                commandType: CommandType.StoredProcedure
+            );
+        }
+
+        public async Task<IEnumerable<dashboard_daily_stat>> GetDailyStatsByProject(DateTime from_date, DateTime to_date)
+        {
+            const string storedProc = "sp_time_logs_GetDailyStatsByProject";
+            return await _db.QueryAsync<dashboard_daily_stat>(
+                storedProc,
+                new { p_from_date = from_date, p_to_date = to_date },
+                commandType: CommandType.StoredProcedure
+            );
+        }
     }
 }

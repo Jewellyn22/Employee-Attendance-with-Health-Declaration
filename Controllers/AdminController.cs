@@ -67,6 +67,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             return Json(new { success = true, data = result.Data });
         }
 
+        // GET: /Admin/GetDashboardStats?from_date=YYYY-MM-DD&to_date=YYYY-MM-DD
+        // Returns { overall, by_provider, by_project } per-day aggregates for the dashboard charts.
+        [HttpGet]
+        public async Task<IActionResult> GetDashboardStats(DateTime? from_date = null, DateTime? to_date = null)
+        {
+            var result = await _historyLogsService.GetDashboardStats(from_date, to_date);
+            return Json(new { success = result.Success, message = result.Message, data = result.Data });
+        }
+
         #region Project Management
 
         // GET: /Admin/Projects

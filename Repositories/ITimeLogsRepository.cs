@@ -22,5 +22,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Repositories
         // New methods for dashboard
         Task<int> GetOpenSessionsCount();
         Task<IEnumerable<attendance_log_with_employee>> GetRecentForDashboard();
+
+        // Dashboard daily stats (v3.3.0.0)
+        Task<IEnumerable<dashboard_daily_stat>> GetDailyStatsByProvider(DateTime from_date, DateTime to_date);
+        Task<IEnumerable<dashboard_daily_stat>> GetDailyStatsByProject(DateTime from_date, DateTime to_date);
     }
 }

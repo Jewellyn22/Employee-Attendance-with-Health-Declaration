@@ -135,5 +135,79 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 };
             }
         }
+
+        public async Task<Response<dashboard_stats>> GetDashboardStats(DateTime? from_date = null, DateTime? to_date = null)
+        {
+            try
+            {
+                var from = (from_date ?? DateTime.Today.AddDays(-6)).Date;
+                var to = (to_date ?? DateTime.Today).Date;
+
+                if (from > to)
+                {
+                    return new Response<dashboard_stats>
+                    {
+                        Success = false,
+                        Message = "From date must be on or before To date",
+                        Data = null
+                    };
+                }
+
+                if ((to - from).TotalDays > 366)
+                {
+                    return new Response<dashboard_stats>
+                    {
+                        Success = false,
+                        Message = "Date range cannot exceed one year",
+                        Data = null
+                    };
+                }
+
+                _logger.LogInformation("Getting dashboard stats - FromDate: {FromDate}, ToDate: {ToDate}", from, to);
+
+                var byProvider = (await _timeLogsRepository.GetDailyStatsByProvider(from, to)).ToList();
+                var byProject = (await _timeLogsRepository.GetDailyStatsByProject(from, to)).ToList();
+
+                // Overall = per-day sums across the PROVIDER dimension. Safe from double
+                // counting: each time_logs row joins exactly one contractor_employee row,
+                // so every attendance record contributes to exactly one provider_code.
+                // (Summing the project rows would double-count multi-project contractors.)
+                var overall = byProvider
+                    .GroupBy(r => r.stat_date.Date)
+                    .OrderBy(g => g.Key)
+                    .Select(g => new dashboard_daily_stat
+                    {
+                        stat_date = g.Key,
+                        total_count = g.Sum(r => r.total_count),
+                        fit_count = g.Sum(r => r.fit_count),
+                        unfit_count = g.Sum(r => r.unfit_count),
+                        understood_count = g.Sum(r => r.understood_count),
+                        not_understood_count = g.Sum(r => r.not_understood_count)
+                    })
+                    .ToList();
+
+                return new Response<dashboard_stats>
+                {
+                    Success = true,
+                    Message = "Dashboard stats retrieved successfully",
+                    Data = new dashboard_stats
+                    {
+                        overall = overall,
+                        by_provider = byProvider,
+                        by_project = byProject
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting dashboard stats");
+                return new Response<dashboard_stats>
+                {
+                    Success = false,
+                    Message = "Error retrieving dashboard stats",
+                    Data = null
+                };
+            }
+        }
     }
 }

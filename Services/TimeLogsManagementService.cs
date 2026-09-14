@@ -59,6 +59,16 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
         public async Task<Response<time_log>> UpdateTimeLog(time_log timelog, string admin_employee_id)
         {
+            if (timelog == null)
+            {
+                return new Response<time_log>
+                {
+                    Success = false,
+                    Message = "Invalid timelog data",
+                    Data = null
+                };
+            }
+
             try
             {
                 _logger.LogInformation("Admin {AdminId} updating timelog: {AttendanceId}", admin_employee_id, timelog.attendance_id);
@@ -105,6 +115,17 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 var updatedLog = await _timeLogsRepository.Update(timelog);
+                if (updatedLog == null)
+                {
+                    // The record vanished (or the SP matched nothing) — report it instead
+                    // of auditing a no-op as a successful update.
+                    return new Response<time_log>
+                    {
+                        Success = false,
+                        Message = "Timelog record not found",
+                        Data = null
+                    };
+                }
 
                 await _auditLogService.Log("timelog", "update", timelog.attendance_id.ToString(), existing, updatedLog, admin_employee_id);
 
@@ -120,7 +141,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating timelog: {AttendanceId}", timelog.attendance_id);
+                _logger.LogError(ex, "Error updating timelog: {AttendanceId}", timelog?.attendance_id);
                 return new Response<time_log>
                 {
                     Success = false,

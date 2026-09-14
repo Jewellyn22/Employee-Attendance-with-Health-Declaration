@@ -34,5 +34,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         /// Get recent time logs for admin dashboard (last 7 days, limited to 50 records)
         /// </summary>
         Task<Response<IEnumerable<attendance_log_with_employee>>> GetRecentForDashboard();
+
+        /// <summary>
+        /// Aggregated per-day attendance stats for the dashboard charts.
+        /// Null dates default to the last 7 days (today-6 .. today).
+        /// </summary>
+        Task<Response<dashboard_stats>> GetDashboardStats(DateTime? from_date = null, DateTime? to_date = null);
     }
 }

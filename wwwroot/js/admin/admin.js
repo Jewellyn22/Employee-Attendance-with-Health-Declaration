@@ -3059,16 +3059,384 @@ const AdminPage = {
         }
     },
 
-    // Index.cshtml - Admin dashboard
+    // Index.cshtml - Admin dashboard (stat cards + Recent TimeLogs + ApexCharts)
     index: {
+        recentTable: null,        // Recent TimeLogs DataTable
+        charts: {},               // ApexCharts instances keyed 'attendance' | 'health' | 'consent'
+        stats: null,              // cached /Admin/GetDashboardStats payload
+        providers: [],            // active providers (from /Admin/GetAllProviders)
+        projects: [],             // active projects (from /Admin/GetAllProjects, filtered active===1)
+        loadingStats: false,      // guard against double-Apply
+        currentAxis: [],          // ['YYYY-MM-DD', ...] currently displayed
+        currentLabels: [],        // display labels for the axis (e.g. 'Sep 5')
+
+        cards: {
+            attendance: {
+                dimension: '#chart-attendance-dimension',
+                entity: '#chart-attendance-entity',
+                mount: 'chart-attendance',
+                colors: ['#0d6efd'],
+                stacked: false
+            },
+            health: {
+                dimension: '#chart-health-dimension',
+                entity: '#chart-health-entity',
+                mount: 'chart-health',
+                colors: ['#198754', '#dc3545'],   // FIT green / UNFIT red (badge colors)
+                stacked: true
+            },
+            consent: {
+                dimension: '#chart-consent-dimension',
+                entity: '#chart-consent-entity',
+                mount: 'chart-consent',
+                colors: ['#198754', '#ffc107'],   // UNDERSTOOD green / NOT_UNDERSTOOD amber (badge colors)
+                stacked: true
+            }
+        },
+
         init: function() {
-            // Dashboard initialization
-            console.log('Admin dashboard initialized');
+            const self = AdminPage.index;
+
+            // Default the shared date range to the last 7 days (today-6 .. today)
+            const today = new Date();
+            const sevenDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+            $('#chart-from-date').val(AdminPage.timeLogs.toDateInputValue(sevenDaysAgo));
+            $('#chart-to-date').val(AdminPage.timeLogs.toDateInputValue(today));
+
+            // Recent TimeLogs DataTable (moved from the inline view script)
+            self.recentTable = $('#recentTimeLogsTable').DataTable({
+                ajax: {
+                    url: '/Admin/GetRecentTimeLogs',
+                    dataSrc: 'data',
+                    type: 'GET'
+                },
+                columns: [
+                    { data: 'employee_id' },
+                    { data: 'name' },
+                    {
+                        data: 'provider_code',
+                        render: function(data, type, row) {
+                            return row.provider_name && row.provider_code
+                                ? `${row.provider_name} (${row.provider_code})`
+                                : row.provider_code || 'N/A';
+                        }
+                    },
+                    {
+                        data: 'project_code',
+                        render: function(data, type, row) {
+                            return row.project_name && row.project_code
+                                ? `${row.project_name} (${row.project_code})`
+                                : row.project_code || 'N/A';
+                        }
+                    },
+                    {
+                        data: 'time_in',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
+                        }
+                    },
+                    {
+                        data: 'time_out',
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : '<span class="badge bg-success">Active</span>';
+                        }
+                    },
+                    {
+                        data: 'health_status',
+                        render: function(data) {
+                            if (data === 'FIT') {
+                                return '<span class="badge bg-success">FIT</span>';
+                            } else if (data === 'UNFIT') {
+                                return '<span class="badge bg-danger">UNFIT</span>';
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        data: 'waiver_consent',
+                        render: function(data) {
+                            if (data === 'UNDERSTOOD') {
+                                return '<span class="badge bg-success">UNDERSTOOD</span>';
+                            } else if (data === 'NOT_UNDERSTOOD') {
+                                return '<span class="badge bg-warning text-dark">NOT UNDERSTOOD</span>';
+                            }
+                            return data || 'N/A';
+                        }
+                    }
+                ],
+                order: [[4, 'desc']],
+                pageLength: 10,
+                language: {
+                    emptyTable: 'No recent activity found'
+                }
+            });
+
+            // Wire chart events
+            $('#apply-chart-range').on('click', function() {
+                self.loadStats();
+            });
+            Object.keys(self.cards).forEach(function(key) {
+                $(self.cards[key].dimension).on('change', function() {
+                    self.onDimensionChange(key);
+                });
+                $(self.cards[key].entity).on('change', function() {
+                    self.refreshCard(key);   // re-render from cached payload, no refetch
+                });
+            });
+
+            // Create the three charts once, then load real data
+            Object.keys(self.cards).forEach(function(key) {
+                const cfg = self.cards[key];
+                self.renderChart(key, cfg.mount, self.chartBaseOptions(cfg.colors, cfg.stacked));
+            });
+
+            self.loadDropdownSources();
+            self.loadStats();
 
             // Initialize sidebar
             if (AdminPage.sidebar) {
                 AdminPage.sidebar.init();
             }
+        },
+
+        loadDropdownSources: function() {
+            const self = AdminPage.index;
+
+            // GetAllProviders is already active-filtered server-side
+            $.ajax({
+                url: '/Admin/GetAllProviders',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        self.providers = response.data || [];
+                        self.refreshEntitySelects();
+                    }
+                }
+            });
+
+            // GetAllProjects only filters is_deleted - inactive projects must be filtered here
+            $.ajax({
+                url: '/Admin/GetAllProjects',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        self.projects = (response.data || []).filter(function(p) { return p.active === 1; });
+                        self.refreshEntitySelects();
+                    }
+                }
+            });
+        },
+
+        refreshEntitySelects: function() {
+            // Re-populate any open entity select after providers/projects finish loading
+            const self = AdminPage.index;
+            Object.keys(self.cards).forEach(function(key) {
+                if ($(self.cards[key].dimension).val() !== 'overall') {
+                    self.onDimensionChange(key);
+                }
+            });
+        },
+
+        buildStatsUrl: function(fromDate, toDate) {
+            let url = '/Admin/GetDashboardStats?';
+            const params = [];
+
+            if (fromDate) params.push('from_date=' + encodeURIComponent(fromDate));
+            if (toDate) params.push('to_date=' + encodeURIComponent(toDate));
+
+            return url + params.join('&');
+        },
+
+        loadStats: function() {
+            const self = AdminPage.index;
+            if (self.loadingStats) return;
+
+            const fromDate = $('#chart-from-date').val();
+            const toDate = $('#chart-to-date').val();
+            if (!fromDate || !toDate) {
+                AdminPage.common.showError('Please select both From and To dates.');
+                return;
+            }
+
+            const from = self.parseDay(fromDate);
+            const to = self.parseDay(toDate);
+            if (from > to) {
+                AdminPage.common.showError('From date must be on or before To date.');
+                return;
+            }
+            if ((to - from) / 86400000 > 366) {
+                AdminPage.common.showError('Date range cannot exceed one year.');
+                return;
+            }
+
+            self.loadingStats = true;
+            $.ajax({
+                url: self.buildStatsUrl(fromDate, toDate),
+                method: 'GET',
+                success: function(response) {
+                    if (response.success && response.data) {
+                        self.stats = response.data;
+                        self.refreshAllCharts();
+                    } else {
+                        AdminPage.common.showError(response.message || 'Failed to load dashboard stats');
+                    }
+                },
+                error: function() {
+                    AdminPage.common.showError('Failed to load dashboard stats');
+                },
+                complete: function() {
+                    self.loadingStats = false;
+                }
+            });
+        },
+
+        parseDay: function(dayString) {
+            // Parse 'YYYY-MM-DD' with LOCAL date parts
+            // (never feed the plain string to new Date() - that parses as UTC)
+            const parts = dayString.split('-').map(Number);
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        },
+
+        buildDateAxis: function(fromDate, toDate) {
+            // Inclusive ['YYYY-MM-DD', ...] axis; advance with local date arithmetic
+            const axis = [];
+            for (let d = this.parseDay(fromDate); d <= this.parseDay(toDate); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+                axis.push(AdminPage.timeLogs.toDateInputValue(d));
+            }
+            return axis;
+        },
+
+        selectRows: function(dimension, entityCode) {
+            if (!this.stats) return [];
+            if (dimension === 'provider') {
+                return (this.stats.by_provider || []).filter(function(r) { return r.provider_code === entityCode; });
+            }
+            if (dimension === 'project') {
+                return (this.stats.by_project || []).filter(function(r) { return r.project_code === entityCode; });
+            }
+            return this.stats.overall || [];
+        },
+
+        dayMap: function(rows) {
+            // { 'YYYY-MM-DD': row } for zero-fill lookups against the axis
+            const map = {};
+            (rows || []).forEach(function(r) {
+                map[r.stat_date ? r.stat_date.slice(0, 10) : ''] = r;
+            });
+            return map;
+        },
+
+        getSeriesForCard: function(key) {
+            const self = AdminPage.index;
+            const cfg = self.cards[key];
+            const rows = self.selectRows($(cfg.dimension).val(), $(cfg.entity).val());
+            const map = self.dayMap(rows);
+            const count = function(day, field) { return map[day] ? map[day][field] : 0; };
+
+            if (key === 'attendance') {
+                return [{ name: 'Attendance', data: self.currentAxis.map(function(d) { return count(d, 'total_count'); }) }];
+            }
+            if (key === 'health') {
+                return [
+                    { name: 'FIT', data: self.currentAxis.map(function(d) { return count(d, 'fit_count'); }) },
+                    { name: 'UNFIT', data: self.currentAxis.map(function(d) { return count(d, 'unfit_count'); }) }
+                ];
+            }
+            return [
+                { name: 'UNDERSTOOD', data: self.currentAxis.map(function(d) { return count(d, 'understood_count'); }) },
+                { name: 'NOT_UNDERSTOOD', data: self.currentAxis.map(function(d) { return count(d, 'not_understood_count'); }) }
+            ];
+        },
+
+        chartBaseOptions: function(colors, stacked) {
+            return {
+                // ApexCharts v5 requires `series` at construction; empty data shows
+                // the noData overlay until the first loadStats() replaces it
+                series: [{ name: '', data: [] }],
+                chart: {
+                    type: 'bar',
+                    stacked: stacked,
+                    height: 300,
+                    fontFamily: 'inherit',
+                    toolbar: { show: false },
+                    animations: { enabled: false }
+                },
+                plotOptions: {
+                    bar: { columnWidth: '55%' }
+                },
+                dataLabels: { enabled: false },
+                colors: colors,
+                xaxis: {
+                    categories: [],
+                    labels: { rotate: -45, style: { fontSize: '11px' } },
+                    tooltip: { enabled: false }
+                },
+                yaxis: {
+                    min: 0,
+                    forceNiceScale: true,
+                    labels: { formatter: function(v) { return Math.round(v); } }
+                },
+                legend: { position: 'bottom', show: stacked },
+                noData: { text: 'No data for the selected period', align: 'center' },
+                // ApexCharts v5 defaults tooltip.intersect to true; shared requires intersect:false
+                tooltip: { shared: true, intersect: false }
+            };
+        },
+
+        renderChart: function(key, mountId, options) {
+            if (this.charts[key]) return;   // create-once
+            const el = document.getElementById(mountId);
+            if (!el || typeof ApexCharts === 'undefined') return;
+            this.charts[key] = new ApexCharts(el, options);
+            this.charts[key].render();
+        },
+
+        refreshAllCharts: function() {
+            const self = AdminPage.index;
+            const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            self.currentAxis = self.buildDateAxis($('#chart-from-date').val(), $('#chart-to-date').val());
+            self.currentLabels = self.currentAxis.map(function(d) {
+                const p = d.split('-');
+                return MONTHS[Number(p[1]) - 1] + ' ' + Number(p[2]);
+            });
+
+            Object.keys(self.cards).forEach(function(key) {
+                self.refreshCard(key);
+            });
+        },
+
+        refreshCard: function(key) {
+            const self = AdminPage.index;
+            const chart = self.charts[key];
+            if (!chart) return;
+
+            // updateOptions (not updateSeries) so the category axis moves on range changes
+            chart.updateOptions({
+                series: self.getSeriesForCard(key),
+                xaxis: { categories: self.currentLabels }
+            }, false, true);
+        },
+
+        onDimensionChange: function(key) {
+            const self = AdminPage.index;
+            const cfg = self.cards[key];
+            const dimension = $(cfg.dimension).val();
+            const $entity = $(cfg.entity);
+
+            if (dimension === 'overall') {
+                $entity.empty().addClass('d-none').prop('disabled', true);
+            } else {
+                const source = dimension === 'provider' ? self.providers : self.projects;
+                $entity.empty();
+                source.forEach(function(e) {
+                    const code = e.provider_code || e.project_code;
+                    const name = e.provider_name || e.project_name || code;
+                    $entity.append($('<option></option>').attr('value', code).text(name + ' (' + code + ')'));
+                });
+                $entity.removeClass('d-none').prop('disabled', false);
+            }
+            self.refreshCard(key);
         }
     }
 };

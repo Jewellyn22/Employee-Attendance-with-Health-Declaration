@@ -483,6 +483,18 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 var result = await _contractorRepository.Update(employee);
+                if (result == null)
+                {
+                    // The row vanished between the existence check and the save — report
+                    // the failure instead of answering success with a null payload.
+                    return new Response<contractor_employee>
+                    {
+                        Success = false,
+                        Message = "Error updating contractor",
+                        Data = null
+                    };
+                }
+
                 _logger.LogInformation("Contractor updated: {EmployeeId}", employee.employee_id);
 
                 await _auditLogService.Log("contractor", "update", employee.employee_id, existing, result, admin_employee_id);
@@ -578,18 +590,25 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 _logger.LogInformation("Admin {AdminId} soft-deleted {DeletedCount} contractor(s)", admin_employee_id, deletedCount);
 
-                // One audit entry for the call (mirrors timelog/project delete: previous
-                // state in data_from, null data_to). audit_log.reference_id is VARCHAR(100),
-                // so bulk deletes use a count summary instead of the full id CSV.
-                var referenceId = existing.Count == 1 ? existing[0].employee_id : $"{existing.Count} contractors";
-                await _auditLogService.Log("contractor", "delete", referenceId, existing, null, admin_employee_id);
-
                 var skipped = ids.Count - deletedCount;
+
+                if (deletedCount > 0)
+                {
+                    // One audit entry for the call (mirrors timelog/project delete: previous
+                    // state in data_from, null data_to). audit_log.reference_id is VARCHAR(100),
+                    // so bulk deletes use a count summary instead of the full id CSV.
+                    // Skipped when the SP deleted nothing — a no-op is not a mutation.
+                    var referenceId = existing.Count == 1 ? existing[0].employee_id : $"{existing.Count} contractors";
+                    await _auditLogService.Log("contractor", "delete", referenceId, existing, null, admin_employee_id);
+                }
+
                 return new Response<int>
                 {
                     Success = deletedCount > 0,
-                    Message = $"Deleted {deletedCount} contractor(s) successfully"
-                        + (skipped > 0 ? $" ({skipped} skipped - not found or already deleted)" : string.Empty),
+                    Message = deletedCount > 0
+                        ? $"Deleted {deletedCount} contractor(s) successfully"
+                            + (skipped > 0 ? $" ({skipped} skipped - not found or already deleted)" : string.Empty)
+                        : "No contractors were deleted (they may have already been deleted)",
                     Data = deletedCount
                 };
             }
@@ -876,10 +895,15 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
 
                 // Insert each row. Create() enforces required fields, DOLE 18+ birthdate,
                 // and provider/project existence; gender is checked here because Create()
-                // does not validate it.
+                // does not validate it. Accepted values are normalized to canonical
+                // casing ("MALE"/"male" -> "Male") so the column stays consistent.
                 foreach (var row in request.contractors)
                 {
-                    var normalizedGender = (row.gender ?? string.Empty).Trim();
+                    var trimmedGender = (row.gender ?? string.Empty).Trim();
+                    var normalizedGender =
+                        string.Equals(trimmedGender, "Male", StringComparison.OrdinalIgnoreCase) ? "Male" :
+                        string.Equals(trimmedGender, "Female", StringComparison.OrdinalIgnoreCase) ? "Female" :
+                        trimmedGender;   // rejected by the validation below
                     if (!string.Equals(normalizedGender, "Male", StringComparison.OrdinalIgnoreCase) &&
                         !string.Equals(normalizedGender, "Female", StringComparison.OrdinalIgnoreCase))
                     {

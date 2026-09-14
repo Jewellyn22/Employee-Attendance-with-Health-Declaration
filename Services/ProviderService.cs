@@ -95,12 +95,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 var result = await _providerRepository.Create(provider);
+                if (result == null)
+                {
+                    return new Response<provider>
+                    {
+                        Success = false,
+                        Message = "Error creating provider",
+                        Data = null
+                    };
+                }
+
                 _logger.LogInformation("Provider created: {ProviderCode}", provider.provider_code);
 
-                if (result != null)
-                {
-                    await _auditLogService.Log("provider", "create", result.provider_code, null, result, admin_employee_id);
-                }
+                await _auditLogService.Log("provider", "create", result.provider_code, null, result, admin_employee_id);
 
                 return new Response<provider>
                 {
@@ -121,7 +128,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             }
         }
 
-        public async Task<Response<provider>> Update(provider provider)
+        public async Task<Response<provider>> Update(provider provider, string admin_employee_id)
         {
             try
             {
@@ -138,7 +145,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 }
 
                 var result = await _providerRepository.Update(provider);
+                if (result == null)
+                {
+                    return new Response<provider>
+                    {
+                        Success = false,
+                        Message = "Error updating provider",
+                        Data = null
+                    };
+                }
+
                 _logger.LogInformation("Provider updated: {ProviderCode}", provider.provider_code);
+
+                await _auditLogService.Log("provider", "update", provider.provider_code, existing, result, admin_employee_id);
 
                 return new Response<provider>
                 {

@@ -65,6 +65,85 @@
         </div>
     </div>
 
+    <!-- Attendance Charts Section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex flex-wrap align-items-center">
+            <h5 class="mb-0 me-auto">Attendance Charts</h5>
+            <!-- One shared date range drives all three charts (single AJAX call) -->
+            <div class="d-flex align-items-end gap-2">
+                <div>
+                    <label for="chart-from-date" class="form-label mb-0 small">From</label>
+                    <input type="date" id="chart-from-date" class="form-control form-control-sm">
+                </div>
+                <div>
+                    <label for="chart-to-date" class="form-label mb-0 small">To</label>
+                    <input type="date" id="chart-to-date" class="form-control form-control-sm">
+                </div>
+                <button id="apply-chart-range" class="btn btn-primary btn-sm">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- Attendance count per day -->
+                <div class="col-xl-4 col-lg-6 col-12">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-1">Attendance per Day</h6>
+                            <select id="chart-attendance-dimension" class="form-select form-select-sm">
+                                <option value="overall" selected>Overall</option>
+                                <option value="provider">Per Provider</option>
+                                <option value="project">Per Project</option>
+                            </select>
+                            <select id="chart-attendance-entity" class="form-select form-select-sm mt-1 d-none" disabled></select>
+                        </div>
+                        <div class="card-body">
+                            <div id="chart-attendance" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- FIT vs UNFIT per day -->
+                <div class="col-xl-4 col-lg-6 col-12">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-1">FIT vs UNFIT per Day</h6>
+                            <select id="chart-health-dimension" class="form-select form-select-sm">
+                                <option value="overall" selected>Overall</option>
+                                <option value="provider">Per Provider</option>
+                                <option value="project">Per Project</option>
+                            </select>
+                            <select id="chart-health-entity" class="form-select form-select-sm mt-1 d-none" disabled></select>
+                        </div>
+                        <div class="card-body">
+                            <div id="chart-health" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- UNDERSTOOD vs NOT_UNDERSTOOD per day -->
+                <div class="col-xl-4 col-lg-6 col-12">
+                    <div class="card h-100">
+                        <div class="card-header py-2">
+                            <h6 class="mb-1">Waiver Consent per Day</h6>
+                            <select id="chart-consent-dimension" class="form-select form-select-sm">
+                                <option value="overall" selected>Overall</option>
+                                <option value="provider">Per Provider</option>
+                                <option value="project">Per Project</option>
+                            </select>
+                            <select id="chart-consent-entity" class="form-select form-select-sm mt-1 d-none" disabled></select>
+                        </div>
+                        <div class="card-body">
+                            <div id="chart-consent" style="height: 300px;"></div>
+                            <small class="text-muted d-block mt-1">
+                                Per Project counts a contractor under every project they are assigned to.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Recent Time Logs Section -->
     <div class="row">
         <div class="col-12">
@@ -114,80 +193,10 @@
 </style>
 
 @section Scripts {
+    <script src="~/lib/apexcharts/apexcharts.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable for recent time logs
-            $('#recentTimeLogsTable').DataTable({
-                ajax: {
-                    url: '@Url.Action("GetRecentTimeLogs", "Admin")',
-                    dataSrc: 'data',
-                    type: 'GET'
-                },
-                columns: [
-                    { data: 'employee_id' },
-                    { data: 'name' },
-                    {
-                        data: 'provider_code',
-                        render: function(data, type, row) {
-                            return row.provider_name && row.provider_code
-                                ? `${row.provider_name} (${row.provider_code})`
-                                : row.provider_code || 'N/A';
-                        }
-                    },
-                    {
-                        data: 'project_code',
-                        render: function(data, type, row) {
-                            return row.project_name && row.project_code
-                                ? `${row.project_name} (${row.project_code})`
-                                : row.project_code || 'N/A';
-                        }
-                    },
-                    {
-                        data: 'time_in',
-                        render: function(data) {
-                            return data ? new Date(data).toLocaleString() : 'N/A';
-                        }
-                    },
-                    {
-                        data: 'time_out',
-                        render: function(data) {
-                            return data ? new Date(data).toLocaleString() : '<span class="badge bg-success">Active</span>';
-                        }
-                    },
-                    {
-                        data: 'health_status',
-                        render: function(data) {
-                            if (data === 'FIT') {
-                                return '<span class="badge bg-success">FIT</span>';
-                            } else if (data === 'UNFIT') {
-                                return '<span class="badge bg-danger">UNFIT</span>';
-                            }
-                            return data;
-                        }
-                    },
-                    {
-                        data: 'waiver_consent',
-                        render: function(data) {
-                            if (data === 'UNDERSTOOD') {
-                                return '<span class="badge bg-success">UNDERSTOOD</span>';
-                            } else if (data === 'NOT_UNDERSTOOD') {
-                                return '<span class="badge bg-warning text-dark">NOT UNDERSTOOD</span>';
-                            }
-                            return data || 'N/A';
-                        }
-                    }
-                ],
-                order: [[4, 'desc']],
-                pageLength: 10,
-                language: {
-                    emptyTable: 'No recent activity found'
-                }
-            });
-
-            // Initialize sidebar active state
-            if (typeof AdminPage !== 'undefined' && AdminPage.sidebar) {
-                AdminPage.sidebar.init();
-            }
+            AdminPage.index.init();
         });
     </script>
 }
