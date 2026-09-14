@@ -3501,65 +3501,13 @@ const AdminPage = {
                 '<div style="padding: 4px 10px; min-width: 170px;">' + items + '</div>';
         },
 
-        // Per-bar data labels. Attendance: the value on each bar. Health
-        // Declaration: ONE numeric label per bar (the bar total), on the top
-        // segment (every 4th series in Overall mode); bars with zero
-        // declarations stay unlabeled.
-        dataLabelsFor: function(key, seriesCount) {
-            const self = AdminPage.index;
-            if (key === 'attendance') {
-                // Plain black number floating just ABOVE each bar — no pill
-                // background/shadow. Bar labels resolve color per series (hence
-                // one black entry per series), and the -18 offsetY is applied
-                // while computing the label position, lifting the baseline from
-                // top-inside ('top' is the bar-chart default) to over the top.
-                return {
-                    enabled: true,
-                    formatter: function(v) { return v > 0 ? v : ''; },
-                    background: { enabled: false },
-                    dropShadow: { enabled: false },
-                    offsetY: -18,
-                    style: {
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        colors: new Array(seriesCount || 0).fill('#212529')
-                    }
-                };
-            }
-            // Health (stacked): follow the ApexCharts default anchoring (labels
-            // anchor to the top combo's segment edge). Black text, no pill.
-            const combosPerProvider = 4;
+        // Native ApexCharts data labels: the library's default pill (series-colored
+        // rounded background, white number, default anchoring). Bars/segments with
+        // zero stay unlabeled so quiet days don't fill with "0" pills.
+        dataLabelsFor: function() {
             return {
                 enabled: true,
-                formatter: function(v, o) {
-                    // Only the top combo of each provider's stack carries the label
-                    if (o.seriesIndex % combosPerProvider !== combosPerProvider - 1) return '';
-                    const dIdx = o.dataPointIndex;
-                    if (dIdx < 0 || !self.currentAxis[dIdx]) return '';
-                    const day = self.currentAxis[dIdx];
-
-                    let row;
-                    if ($(self.cards.health.dimension).val() === 'overall') {
-                        const g = self.providerGroups()[Math.floor(o.seriesIndex / combosPerProvider)];
-                        if (!g) return '';
-                        row = g.map[day];
-                    } else {
-                        const selected = $(self.cards.health.entity).val();
-                        row = self.dayMap(self.selectRows('provider', selected))[day];
-                    }
-                    // Sum the drawn segments (NULL-field rows are in no bucket)
-                    const total = row
-                        ? row.fit_understood_count + row.fit_not_understood_count + row.unfit_understood_count + row.unfit_not_understood_count
-                        : 0;
-                    return total > 0 ? total : '';
-                },
-                background: { enabled: false },
-                dropShadow: { enabled: false },
-                style: {
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    colors: new Array(seriesCount || 0).fill('#212529')
-                }
+                formatter: function(v) { return v > 0 ? v : ''; }
             };
         },
 
@@ -3577,14 +3525,10 @@ const AdminPage = {
                 series: series,
                 colors: self.seriesColors(key, series.length),
                 legend: { show: key !== 'health' && series.length > 1 },
-                dataLabels: self.dataLabelsFor(key, series.length),
+                dataLabels: self.dataLabelsFor(),
                 xaxis: { categories: self.currentLabels }
             };
             if (key === 'health') {
-                // Native label anchoring, but keep hideOverflowingLabels off: a
-                // zero-height top combo (UNFIT + Not Understood = 0 is common)
-                // would otherwise clear the bar's total entirely.
-                opts.plotOptions = { bar: { dataLabels: { hideOverflowingLabels: false } } };
                 // Per-segment hover with a custom renderer. intersect:false would
                 // column-snap a shared:false tooltip to the first series, making
                 // every bar on a date report the same (first) provider; with a
