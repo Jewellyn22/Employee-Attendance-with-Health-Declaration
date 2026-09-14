@@ -259,7 +259,7 @@
     <li><a href="#manual"><span>System manual</span></a></li>
     <li><a href="#tests"><span>Test cases</span></a></li>
   </ol>
-  <p class="toc-note">Applies to system version <strong>3.2.1.0</strong>.</p>
+  <p class="toc-note">Applies to system version <strong>3.4.0.3</strong>.</p>
 </nav>
 
 <main>
@@ -270,8 +270,8 @@
   <h1>Contractor Attendance &amp; Health Declaration Monitoring</h1>
   <p class="standfirst">A web-based system that records contractor attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
   <table class="doc-control">
-    <tr><th>System version</th><td>3.2.1.0</td></tr>
-    <tr><th>Document date</th><td>11 September 2026</td></tr>
+    <tr><th>System version</th><td>3.4.0.3</td></tr>
+    <tr><th>Document date</th><td>14 September 2026</td></tr>
     <tr><th>Audience</th><td>Management, QA, and development</td></tr>
     <tr><th>Platform</th><td>ASP.NET Core 8 MVC · MySQL (stored procedures via Dapper) · LDAP</td></tr>
   </table>
@@ -338,6 +338,14 @@
     <li>Client-side Excel export contains exactly the filtered rows; the export button is hidden when the result set is empty.</li>
   </ul>
 
+  <h3 class="sub">Dashboard charts</h3>
+  <ul class="plain">
+    <li>The admin dashboard renders two charts — <strong>Attendance</strong> and <strong>Health Declaration</strong> — driven by one shared date range and a single admin-only data request.</li>
+    <li>Both charts are per-day and, in the default Overall view, split per provider; totals are computed from the provider dimension only, so multi-project contractors are never double-counted.</li>
+    <li>The range is validated on the client and the server: both dates required, From on or before To, and a maximum span of 366 days.</li>
+    <li>Charts render fully offline (the charting library is bundled with the app — no CDN).</li>
+  </ul>
+
   <h3 class="sub">Authentication &amp; session</h3>
   <ul class="plain">
     <li>Admin login authenticates against corporate LDAP and requires membership of the configured AD group.</li>
@@ -396,6 +404,8 @@
       <tr><td>Error handling</td><td>Structured success/message responses; raw exceptions never reach the kiosk</td></tr>
       <tr><td>Security</td><td>HTTP-only session cookie, 30-minute idle timeout, enforced server-side on every admin request</td></tr>
       <tr><td>Exports</td><td>Client-side Excel generation handles 1000+ filtered records without error (SheetJS; ExcelJS for the Contractors export, which embeds QR images)</td></tr>
+      <tr><td>Analytics</td><td>Dashboard charts render fully offline (bundled charting library, no CDN); chart queries are capped at a 366-day range</td></tr>
+      <tr><td>Testing</td><td>An automated xUnit/NSubstitute suite — unit tests with mocked repositories plus real-database integration tests isolated to TST-prefixed rows — covers services, helpers, and repositories alongside manual UI QA</td></tr>
       <tr><td>Concurrency</td><td>Project code generation is transaction-protected; concurrent creations never issue duplicate codes</td></tr>
       <tr><td>Configurability</td><td>Business-rule changes via System Config apply on the next request, without restart</td></tr>
       <tr><td>Browsers</td><td>Evergreen desktop browsers (Edge/Chrome); kiosk supports keyboard-wedge barcode scanners</td></tr>
@@ -454,6 +464,16 @@
     <li>History logs, TimeLogs, and Contractors lists each export to Excel reflecting the active filters.</li>
     <li>The Contractors export (ExcelJS) stacks one <code>Name (Position - Area)</code> line per project and embeds each contractor's stored QR code (64 px) in a QR Code column — contractors without a stored QR export with a blank QR cell.</li>
     <li>Per-project contractor lists are viewable and exportable (Employee ID, Name, Position) from the Projects page.</li>
+  </ul>
+
+  <h3 class="sub">Dashboard charts</h3>
+  <ul class="plain">
+    <li>A shared From/To range — defaulting to the last 7 days — drives both charts in a single data call; <strong>Apply</strong> reloads them.</li>
+    <li><strong>Attendance</strong> — scans per day. Overall: grouped bars, one series per provider with data in the range (the legend lists the providers). Per Provider: a single total series for the provider picked in the dropdown.</li>
+    <li><strong>Health Declaration</strong> — health status × waiver consent per day. Overall: one stacked bar per provider per day, each stack split into four fixed-color segments — <span class="pill fit">FIT</span> + Understood (green), <span class="pill fit">FIT</span> + Not Understood (yellow), <span class="pill unfit">UNFIT</span> + Understood (orange), <span class="pill unfit">UNFIT</span> + Not Understood (red). The chart's native legend stays off; a static four-item strip below the chart is the key. Per Provider: one four-segment stack per day for the selected provider.</li>
+    <li>Hovering a bar shows a tooltip naming that bar's provider (name and code) and listing all four combination counts.</li>
+    <li>Bars and segments display their totals as data labels; zero values stay unlabeled; a range with no data shows <em>No data for the selected period</em>.</li>
+    <li>Range validation messages: <span class="msg">Please select both From and To dates.</span> · <span class="msg">From date must be on or before To date.</span> · <span class="msg">Date range cannot exceed one year.</span> — the one-year cap is enforced on the client and again on the server.</li>
   </ul>
 
   <h3 class="sub">Code generation</h3>
@@ -521,7 +541,8 @@
 
   <h3 class="sub">Admin — dashboard</h3>
   <ul class="plain">
-    <li><code>/Admin</code> shows Active Projects, Active Contractors, and On Premises cards plus a Recent TimeLogs table covering the last 7 days.</li>
+    <li><code>/Admin</code> shows the Active Projects, Active Contractors, and On Premises cards, an <strong>Attendance Charts</strong> panel, and a Recent TimeLogs table covering the last 7 days (employee ID, name, provider, project, time in/out, health, consent).</li>
+    <li><strong>Attendance Charts</strong>: pick a From/To range (defaults to the last 7 days) and Apply — the <strong>Attendance</strong> chart (scans per day) and the <strong>Health Declaration</strong> chart (four-way FIT/UNFIT × waiver-consent breakdown, stacked per provider) reload together. Each chart has an Overall / Per Provider selector; the fixed color strip under the health chart is the legend.</li>
   </ul>
 
   <h3 class="sub">Admin — manage projects &amp; providers</h3>
@@ -642,6 +663,21 @@
       <tr><td class="step">TC-A-04</td><td>Navigate directly to <code>/Admin/Contractors</code> (and call an admin JSON endpoint) without a session</td><td>Redirect to <code>/Auth/Login</code>; endpoint returns no data</td></tr>
       <tr><td class="step">TC-A-05</td><td>Leave an admin idle past 30 minutes, then submit an admin action</td><td>Redirect to login — not a silent failure</td></tr>
       <tr><td class="step">TC-A-06</td><td>Log out, then return to an admin page</td><td>Session cleared; admin pages unreachable without re-login</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sub">Dashboard &amp; charts</h3>
+  <div class="tbl-wrap"><table class="grid">
+    <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td class="step">TC-D-01</td><td>Open <code>/Admin</code> with scans recorded within the last 7 days</td><td>Cards show Active Projects / Active Contractors / On Premises counts; both charts render the default last-7-days range; Recent TimeLogs lists the last 7 days</td></tr>
+      <tr><td class="step">TC-D-02</td><td>Change From/To and click Apply</td><td>Both charts reload with the new range in a single request; x-axis labels follow the range</td></tr>
+      <tr><td class="step">TC-D-03</td><td>Set From after To, then clear one of the dates, and Apply each time</td><td>Rejected with the corresponding message; charts unchanged</td></tr>
+      <tr><td class="step">TC-D-04</td><td>Apply a range longer than 366 days</td><td>Rejected: <span class="msg">Date range cannot exceed one year.</span> — the client blocks the request; a forced API call is rejected by the server too</td></tr>
+      <tr><td class="step">TC-D-05</td><td>Attendance chart: switch Overall ↔ Per Provider</td><td>Overall shows one bar series per provider with data in the range and a legend; Per Provider shows a single total series for the provider chosen in the dropdown</td></tr>
+      <tr><td class="step">TC-D-06</td><td>Health Declaration chart with known UNFIT and NOT_UNDERSTOOD records in the range</td><td>Each day renders one stacked bar per provider split into the four fixed-color combinations matching the static legend strip; hovering a bar shows a tooltip naming that bar's provider with all four counts</td></tr>
+      <tr><td class="step">TC-D-07</td><td>A contractor assigned to two active projects under one provider TIME INs once</td><td>The scan is counted once per day in both Overall charts — totals come from the provider dimension, so assignments never double-count</td></tr>
+      <tr><td class="step">TC-D-08</td><td>Choose a range where one provider has no scans; then a range with no data at all</td><td>The quiet provider contributes no Overall series; zero bars/segments show no data label; a fully empty range shows "No data for the selected period"</td></tr>
     </tbody>
   </table></div>
 
