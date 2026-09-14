@@ -3065,7 +3065,6 @@ const AdminPage = {
         charts: {},               // ApexCharts instances keyed 'attendance' | 'health' | 'consent'
         stats: null,              // cached /Admin/GetDashboardStats payload
         providers: [],            // active providers (from /Admin/GetAllProviders)
-        projects: [],             // active projects (from /Admin/GetAllProjects, filtered active===1)
         loadingStats: false,      // guard against double-Apply
         currentAxis: [],          // ['YYYY-MM-DD', ...] currently displayed
         currentLabels: [],        // display labels for the axis (e.g. 'Sep 5')
@@ -3213,22 +3212,10 @@ const AdminPage = {
                     }
                 }
             });
-
-            // GetAllProjects only filters is_deleted - inactive projects must be filtered here
-            $.ajax({
-                url: '/Admin/GetAllProjects',
-                method: 'GET',
-                success: function(response) {
-                    if (response.success) {
-                        self.projects = (response.data || []).filter(function(p) { return p.active === 1; });
-                        self.refreshEntitySelects();
-                    }
-                }
-            });
         },
 
         refreshEntitySelects: function() {
-            // Re-populate any open entity select after providers/projects finish loading
+            // Re-populate any open entity select after providers finish loading
             const self = AdminPage.index;
             Object.keys(self.cards).forEach(function(key) {
                 if ($(self.cards[key].dimension).val() !== 'overall') {
@@ -3311,9 +3298,6 @@ const AdminPage = {
             if (dimension === 'provider') {
                 return (this.stats.by_provider || []).filter(function(r) { return r.provider_code === entityCode; });
             }
-            if (dimension === 'project') {
-                return (this.stats.by_project || []).filter(function(r) { return r.project_code === entityCode; });
-            }
             return this.stats.overall || [];
         },
 
@@ -3326,10 +3310,82 @@ const AdminPage = {
             return map;
         },
 
+        providerGroups: function() {
+            // Overall view: one group per provider that has data in the range.
+            // Built from by_provider (1 time_log -> 1 provider), so per-provider
+            // series never double-count multi-project contractors.
+            const self = AdminPage.index;
+            const groups = [];
+            const byCode = {};
+            ((self.stats && self.stats.by_provider) || []).forEach(function(r) {
+                const code = r.provider_code || '';
+                if (!byCode[code]) {
+                    byCode[code] = { code: code, name: r.provider_name || code, rows: [] };
+                    groups.push(byCode[code]);
+                }
+                byCode[code].rows.push(r);
+            });
+            groups.forEach(function(g) { g.map = self.dayMap(g.rows); });
+            return groups;
+        },
+
+        getOverallSeries: function(key) {
+            // Overall = one series per provider so the legend shows the mix.
+            // attendance: grouped bar per provider; health/consent: each provider
+            // contributes a stacked pair named '<Provider> — <STATUS>'.
+            const self = AdminPage.index;
+            const groups = self.providerGroups();
+            if (!groups.length) return [];
+
+            if (key === 'attendance') {
+                return groups.map(function(g) {
+                    return {
+                        name: g.name,
+                        data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].total_count : 0; })
+                    };
+                });
+            }
+            if (key === 'health') {
+                const out = [];
+                groups.forEach(function(g) {
+                    out.push({ name: g.name + ' — FIT', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].fit_count : 0; }) });
+                    out.push({ name: g.name + ' — UNFIT', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].unfit_count : 0; }) });
+                });
+                return out;
+            }
+            const out = [];
+            groups.forEach(function(g) {
+                out.push({ name: g.name + ' — UNDERSTOOD', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].understood_count : 0; }) });
+                out.push({ name: g.name + ' — NOT_UNDERSTOOD', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].not_understood_count : 0; }) });
+            });
+            return out;
+        },
+
+        seriesColors: function(key, seriesCount) {
+            const self = AdminPage.index;
+            if (key === 'attendance') {
+                // Categorical palette for the per-provider grouped bars (cycles if > 10 providers)
+                const palette = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6c757d'];
+                const colors = [];
+                for (let i = 0; i < seriesCount; i++) colors.push(palette[i % palette.length]);
+                return colors;
+            }
+            // Health/consent: repeat the card's pair per provider so every provider's
+            // stack keeps its green/red (green/amber) identity — the name carries the provider
+            const cfg = self.cards[key];
+            const colors = [];
+            for (let i = 0; i < seriesCount; i++) colors.push(cfg.colors[i % cfg.colors.length]);
+            return colors;
+        },
+
         getSeriesForCard: function(key) {
             const self = AdminPage.index;
             const cfg = self.cards[key];
-            const rows = self.selectRows($(cfg.dimension).val(), $(cfg.entity).val());
+            const dimension = $(cfg.dimension).val();
+            if (dimension === 'overall') {
+                return self.getOverallSeries(key);
+            }
+            const rows = self.selectRows(dimension, $(cfg.entity).val());
             const map = self.dayMap(rows);
             const count = function(day, field) { return map[day] ? map[day][field] : 0; };
 
@@ -3376,7 +3432,8 @@ const AdminPage = {
                     forceNiceScale: true,
                     labels: { formatter: function(v) { return Math.round(v); } }
                 },
-                legend: { position: 'bottom', show: stacked },
+                // Initial legend state; refreshCard sets show from the live series count
+                legend: { position: 'bottom', show: false },
                 noData: { text: 'No data for the selected period', align: 'center' },
                 // ApexCharts v5 defaults tooltip.intersect to true; shared requires intersect:false
                 tooltip: { shared: true, intersect: false }
@@ -3411,9 +3468,13 @@ const AdminPage = {
             const chart = self.charts[key];
             if (!chart) return;
 
-            // updateOptions (not updateSeries) so the category axis moves on range changes
+            const series = self.getSeriesForCard(key);
+            // updateOptions (not updateSeries) so the category axis moves on range changes;
+            // colors + legend follow the live series (per-provider Overall repeats pairs)
             chart.updateOptions({
-                series: self.getSeriesForCard(key),
+                series: series,
+                colors: self.seriesColors(key, series.length),
+                legend: { show: series.length > 1 },
                 xaxis: { categories: self.currentLabels }
             }, false, true);
         },
@@ -3426,13 +3487,10 @@ const AdminPage = {
 
             if (dimension === 'overall') {
                 $entity.empty().addClass('d-none').prop('disabled', true);
-            } else {
-                const source = dimension === 'provider' ? self.providers : self.projects;
+            } else {   // provider
                 $entity.empty();
-                source.forEach(function(e) {
-                    const code = e.provider_code || e.project_code;
-                    const name = e.provider_name || e.project_name || code;
-                    $entity.append($('<option></option>').attr('value', code).text(name + ' (' + code + ')'));
+                self.providers.forEach(function(p) {
+                    $entity.append($('<option></option>').attr('value', p.provider_code).text(p.provider_name + ' (' + p.provider_code + ')'));
                 });
                 $entity.removeClass('d-none').prop('disabled', false);
             }
