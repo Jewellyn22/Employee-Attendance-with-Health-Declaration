@@ -182,7 +182,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                         fit_count = g.Sum(r => r.fit_count),
                         unfit_count = g.Sum(r => r.unfit_count),
                         understood_count = g.Sum(r => r.understood_count),
-                        not_understood_count = g.Sum(r => r.not_understood_count)
+                        not_understood_count = g.Sum(r => r.not_understood_count),
+                        fit_understood_count = g.Sum(r => r.fit_understood_count),
+                        fit_not_understood_count = g.Sum(r => r.fit_not_understood_count),
+                        unfit_understood_count = g.Sum(r => r.unfit_understood_count),
+                        unfit_not_understood_count = g.Sum(r => r.unfit_not_understood_count)
                     })
                     .ToList();
 

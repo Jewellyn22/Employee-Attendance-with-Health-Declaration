@@ -69,7 +69,7 @@
     <div class="card mb-4">
         <div class="card-header d-flex flex-wrap align-items-center">
             <h5 class="mb-0 me-auto">Attendance Charts</h5>
-            <!-- One shared date range drives all three charts (single AJAX call) -->
+            <!-- One shared date range drives both charts (single AJAX call) -->
             <div class="d-flex align-items-end gap-2">
                 <div>
                     <label for="chart-from-date" class="form-label mb-0 small">From</label>
@@ -87,10 +87,10 @@
         <div class="card-body">
             <div class="row g-3">
                 <!-- Attendance count per day -->
-                <div class="col-xl-4 col-lg-6 col-12">
+                <div class="col-xl-6 col-lg-6 col-12">
                     <div class="card h-100">
                         <div class="card-header py-2">
-                            <h6 class="mb-1">Attendance per Day</h6>
+                            <h6 class="mb-1">Attendance</h6>
                             <select id="chart-attendance-dimension" class="form-select form-select-sm">
                                 <option value="overall" selected>Overall</option>
                                 <option value="provider">Per Provider</option>
@@ -102,11 +102,12 @@
                         </div>
                     </div>
                 </div>
-                <!-- FIT vs UNFIT per day -->
-                <div class="col-xl-4 col-lg-6 col-12">
+                <!-- Health Declaration: health_status x waiver_consent per day,
+                     one stacked bar per provider (grouped stacked bars) -->
+                <div class="col-xl-6 col-lg-6 col-12">
                     <div class="card h-100">
                         <div class="card-header py-2">
-                            <h6 class="mb-1">FIT vs UNFIT per Day</h6>
+                            <h6 class="mb-1">Health Declaration</h6>
                             <select id="chart-health-dimension" class="form-select form-select-sm">
                                 <option value="overall" selected>Overall</option>
                                 <option value="provider">Per Provider</option>
@@ -115,22 +116,14 @@
                         </div>
                         <div class="card-body">
                             <div id="chart-health" style="height: 300px;"></div>
-                        </div>
-                    </div>
-                </div>
-                <!-- UNDERSTOOD vs NOT_UNDERSTOOD per day -->
-                <div class="col-xl-4 col-lg-6 col-12">
-                    <div class="card h-100">
-                        <div class="card-header py-2">
-                            <h6 class="mb-1">Waiver Consent per Day</h6>
-                            <select id="chart-consent-dimension" class="form-select form-select-sm">
-                                <option value="overall" selected>Overall</option>
-                                <option value="provider">Per Provider</option>
-                            </select>
-                            <select id="chart-consent-entity" class="form-select form-select-sm mt-1 d-none" disabled></select>
-                        </div>
-                        <div class="card-body">
-                            <div id="chart-consent" style="height: 300px;"></div>
+                            <!-- Static legend: the chart's native legend is always off
+                                 (Overall mode would repeat 4 entries per provider) -->
+                            <div class="d-flex flex-wrap justify-content-center gap-3 mt-1 small text-muted">
+                                <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded" style="width: 12px; height: 12px; background-color: #198754;"></span>FIT + Understood</span>
+                                <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded" style="width: 12px; height: 12px; background-color: #e0a800;"></span>FIT + Not Understood</span>
+                                <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded" style="width: 12px; height: 12px; background-color: #d05600;"></span>UNFIT + Understood</span>
+                                <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded" style="width: 12px; height: 12px; background-color: #96202c;"></span>UNFIT + Not Understood</span>
+                            </div>
                         </div>
                     </div>
                 </div>

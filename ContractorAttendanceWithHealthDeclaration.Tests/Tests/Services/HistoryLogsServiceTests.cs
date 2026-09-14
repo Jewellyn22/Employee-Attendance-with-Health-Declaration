@@ -117,7 +117,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Services
         }
 
         private static dashboard_daily_stat Stat(DateTime stat_date, string provider_code,
-            int total, int fit, int unfit, int understood, int not_understood) => new()
+            int total, int fit, int unfit, int understood, int not_understood,
+            int fit_understood = 0, int fit_not_understood = 0,
+            int unfit_understood = 0, int unfit_not_understood = 0) => new()
         {
             stat_date = stat_date,
             provider_code = provider_code,
@@ -126,7 +128,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Services
             fit_count = fit,
             unfit_count = unfit,
             understood_count = understood,
-            not_understood_count = not_understood
+            not_understood_count = not_understood,
+            fit_understood_count = fit_understood,
+            fit_not_understood_count = fit_not_understood,
+            unfit_understood_count = unfit_understood,
+            unfit_not_understood_count = unfit_not_understood
         };
 
         [Fact]
@@ -216,6 +222,33 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Services
             Assert.True(result.Success);
             var overall = Assert.Single(result.Data!.overall);
             Assert.Equal(5, overall.total_count);   // provider sums, not the project double count (10)
+        }
+
+        [Fact]
+        public async Task GetDashboardStats_overall_sums_the_four_way_cross_counts()
+        {
+            // The Health Declaration chart needs the health_status x waiver_consent
+            // cross-breakdown (FIT/UNFIT x UNDERSTOOD/NOT_UNDERSTOOD), not just marginals.
+            var day1 = DateTime.Today.AddDays(-1);
+            var providerRows = new[]
+            {
+                Stat(day1, "P1", total: 5, fit: 3, unfit: 2, understood: 3, not_understood: 2,
+                    fit_understood: 2, fit_not_understood: 1, unfit_understood: 1, unfit_not_understood: 1),
+                Stat(day1, "P2", total: 3, fit: 2, unfit: 1, understood: 1, not_understood: 2,
+                    fit_understood: 1, unfit_not_understood: 2)
+            };
+            _timeLogsRepository.GetDailyStatsByProvider(Arg.Any<DateTime>(), Arg.Any<DateTime>()).Returns(providerRows);
+            _timeLogsRepository.GetDailyStatsByProject(Arg.Any<DateTime>(), Arg.Any<DateTime>())
+                .Returns(Array.Empty<dashboard_daily_stat>());
+
+            var result = await CreateService().GetDashboardStats();
+
+            Assert.True(result.Success);
+            var overall = Assert.Single(result.Data!.overall);
+            Assert.Equal(3, overall.fit_understood_count);
+            Assert.Equal(1, overall.fit_not_understood_count);
+            Assert.Equal(1, overall.unfit_understood_count);
+            Assert.Equal(3, overall.unfit_not_understood_count);
         }
 
         [Fact]

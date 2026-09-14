@@ -17,5 +17,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         public int unfit_count { get; set; }
         public int understood_count { get; set; }
         public int not_understood_count { get; set; }
+        public int fit_understood_count { get; set; }
+        public int fit_not_understood_count { get; set; }
+        public int unfit_understood_count { get; set; }
+        public int unfit_not_understood_count { get; set; }
     }
 }

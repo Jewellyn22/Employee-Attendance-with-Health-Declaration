@@ -3062,7 +3062,7 @@ const AdminPage = {
     // Index.cshtml - Admin dashboard (stat cards + Recent TimeLogs + ApexCharts)
     index: {
         recentTable: null,        // Recent TimeLogs DataTable
-        charts: {},               // ApexCharts instances keyed 'attendance' | 'health' | 'consent'
+        charts: {},               // ApexCharts instances keyed 'attendance' | 'health'
         stats: null,              // cached /Admin/GetDashboardStats payload
         providers: [],            // active providers (from /Admin/GetAllProviders)
         loadingStats: false,      // guard against double-Apply
@@ -3081,14 +3081,10 @@ const AdminPage = {
                 dimension: '#chart-health-dimension',
                 entity: '#chart-health-entity',
                 mount: 'chart-health',
-                colors: ['#198754', '#dc3545'],   // FIT green / UNFIT red (badge colors)
-                stacked: true
-            },
-            consent: {
-                dimension: '#chart-consent-dimension',
-                entity: '#chart-consent-entity',
-                mount: 'chart-consent',
-                colors: ['#198754', '#ffc107'],   // UNDERSTOOD green / NOT_UNDERSTOOD amber (badge colors)
+                // Health Declaration stack segments, fixed order = fixed colors:
+                // FIT+Understood green / FIT+Not Understood yellow /
+                // UNFIT+Understood orange / UNFIT+Not Understood red
+                colors: ['#198754', '#e0a800', '#d05600', '#96202c'],
                 stacked: true
             }
         },
@@ -3330,9 +3326,11 @@ const AdminPage = {
         },
 
         getOverallSeries: function(key) {
-            // Overall = one series per provider so the legend shows the mix.
-            // attendance: grouped bar per provider; health/consent: each provider
-            // contributes a stacked pair named '<Provider> — <STATUS>'.
+            // Overall = one series set per provider with data in the range.
+            // attendance: grouped bar per provider; health: grouped STACKS via
+            // series[].group — each provider contributes a 4-segment stack
+            // (health_status x waiver_consent, fixed order = fixed colors) so a
+            // date with N providers renders N side-by-side stacked bars.
             const self = AdminPage.index;
             const groups = self.providerGroups();
             if (!groups.length) return [];
@@ -3345,18 +3343,19 @@ const AdminPage = {
                     };
                 });
             }
-            if (key === 'health') {
-                const out = [];
-                groups.forEach(function(g) {
-                    out.push({ name: g.name + ' — FIT', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].fit_count : 0; }) });
-                    out.push({ name: g.name + ' — UNFIT', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].unfit_count : 0; }) });
-                });
-                return out;
-            }
             const out = [];
             groups.forEach(function(g) {
-                out.push({ name: g.name + ' — UNDERSTOOD', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].understood_count : 0; }) });
-                out.push({ name: g.name + ' — NOT_UNDERSTOOD', data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d].not_understood_count : 0; }) });
+                const combo = function(label, field) {
+                    return {
+                        name: g.name + ' — ' + label,
+                        group: g.code,   // ApexCharts grouped-stacked: one group per provider
+                        data: self.currentAxis.map(function(d) { return g.map[d] ? g.map[d][field] : 0; })
+                    };
+                };
+                out.push(combo('FIT + Understood',       'fit_understood_count'));
+                out.push(combo('FIT + Not Understood',   'fit_not_understood_count'));
+                out.push(combo('UNFIT + Understood',     'unfit_understood_count'));
+                out.push(combo('UNFIT + Not Understood', 'unfit_not_understood_count'));
             });
             return out;
         },
@@ -3370,8 +3369,8 @@ const AdminPage = {
                 for (let i = 0; i < seriesCount; i++) colors.push(palette[i % palette.length]);
                 return colors;
             }
-            // Health/consent: repeat the card's pair per provider so every provider's
-            // stack keeps its green/red (green/amber) identity — the name carries the provider
+            // Health: repeat the 4-color combo palette per provider — 4 series per
+            // provider in fixed order realigns every stack to the same combo colors
             const cfg = self.cards[key];
             const colors = [];
             for (let i = 0; i < seriesCount; i++) colors.push(cfg.colors[i % cfg.colors.length]);
@@ -3392,15 +3391,13 @@ const AdminPage = {
             if (key === 'attendance') {
                 return [{ name: 'Attendance', data: self.currentAxis.map(function(d) { return count(d, 'total_count'); }) }];
             }
-            if (key === 'health') {
-                return [
-                    { name: 'FIT', data: self.currentAxis.map(function(d) { return count(d, 'fit_count'); }) },
-                    { name: 'UNFIT', data: self.currentAxis.map(function(d) { return count(d, 'unfit_count'); }) }
-                ];
-            }
+            // Health Declaration: one 4-segment stack per date; bare names match
+            // the static HTML legend strip in the card
             return [
-                { name: 'UNDERSTOOD', data: self.currentAxis.map(function(d) { return count(d, 'understood_count'); }) },
-                { name: 'NOT_UNDERSTOOD', data: self.currentAxis.map(function(d) { return count(d, 'not_understood_count'); }) }
+                { name: 'FIT + Understood',       data: self.currentAxis.map(function(d) { return count(d, 'fit_understood_count'); }) },
+                { name: 'FIT + Not Understood',   data: self.currentAxis.map(function(d) { return count(d, 'fit_not_understood_count'); }) },
+                { name: 'UNFIT + Understood',     data: self.currentAxis.map(function(d) { return count(d, 'unfit_understood_count'); }) },
+                { name: 'UNFIT + Not Understood', data: self.currentAxis.map(function(d) { return count(d, 'unfit_not_understood_count'); }) }
             ];
         },
 
@@ -3463,6 +3460,109 @@ const AdminPage = {
             });
         },
 
+        // Health Declaration tooltip: one colored row per combo for the hovered
+        // bar. Overall-mode series are 4-per-provider in fixed order (see
+        // getOverallSeries), so floor(seriesIndex / 4) identifies the provider;
+        // Per Provider mode reads the selected provider's rows directly.
+        healthTooltip: function(o) {
+            const self = AdminPage.index;
+            const dIdx = o.dataPointIndex;
+            if (dIdx < 0 || !self.currentAxis[dIdx]) return '';
+            const day = self.currentAxis[dIdx];
+
+            let title;
+            let row;
+            if ($(self.cards.health.dimension).val() === 'overall') {
+                const g = self.providerGroups()[Math.floor(o.seriesIndex / 4)];
+                if (!g) return '';
+                title = g.code ? g.name + ' (' + g.code + ')' : g.name;
+                row = g.map[day];
+            } else {
+                const code = $(self.cards.health.entity).val();
+                const p = self.providers.filter(function(x) { return x.provider_code === code; })[0];
+                title = p ? p.provider_name + ' (' + p.provider_code + ')' : code;
+                row = self.dayMap(self.selectRows('provider', code))[day];
+            }
+
+            const combos = [
+                ['FIT + Understood',       '#198754', row ? row.fit_understood_count : 0],
+                ['FIT + Not Understood',   '#e0a800', row ? row.fit_not_understood_count : 0],
+                ['UNFIT + Understood',     '#d05600', row ? row.unfit_understood_count : 0],
+                ['UNFIT + Not Understood', '#96202c', row ? row.unfit_not_understood_count : 0]
+            ];
+            const items = combos.map(function(c) {
+                return '<div style="display:flex;align-items:center;gap:6px;padding:1px 0;">' +
+                    '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;flex:0 0 auto;background:' + c[1] + ';"></span>' +
+                    '<span style="flex:1 1 auto;">' + c[0] + '</span>' +
+                    '<span style="font-weight:600;margin-left:10px;">' + c[2] + '</span>' +
+                    '</div>';
+            }).join('');
+            return '<div class="apexcharts-tooltip-title">' + title + ' — ' + self.currentLabels[dIdx] + '</div>' +
+                '<div style="padding: 4px 10px; min-width: 170px;">' + items + '</div>';
+        },
+
+        // Per-bar data labels. Attendance: the value on each bar. Health
+        // Declaration: ONE numeric label per bar (the bar total), on the top
+        // segment (every 4th series in Overall mode); bars with zero
+        // declarations stay unlabeled.
+        dataLabelsFor: function(key, seriesCount) {
+            const self = AdminPage.index;
+            if (key === 'attendance') {
+                // Plain black number floating just ABOVE each bar — no pill
+                // background/shadow. Bar labels resolve color per series (hence
+                // one black entry per series), and the -18 offsetY is applied
+                // while computing the label position, lifting the baseline from
+                // top-inside ('top' is the bar-chart default) to over the top.
+                return {
+                    enabled: true,
+                    formatter: function(v) { return v > 0 ? v : ''; },
+                    background: { enabled: false },
+                    dropShadow: { enabled: false },
+                    offsetY: -18,
+                    style: {
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        colors: new Array(seriesCount || 0).fill('#212529')
+                    }
+                };
+            }
+            // Health (stacked): follow the ApexCharts default anchoring (labels
+            // anchor to the top combo's segment edge). Black text, no pill.
+            const combosPerProvider = 4;
+            return {
+                enabled: true,
+                formatter: function(v, o) {
+                    // Only the top combo of each provider's stack carries the label
+                    if (o.seriesIndex % combosPerProvider !== combosPerProvider - 1) return '';
+                    const dIdx = o.dataPointIndex;
+                    if (dIdx < 0 || !self.currentAxis[dIdx]) return '';
+                    const day = self.currentAxis[dIdx];
+
+                    let row;
+                    if ($(self.cards.health.dimension).val() === 'overall') {
+                        const g = self.providerGroups()[Math.floor(o.seriesIndex / combosPerProvider)];
+                        if (!g) return '';
+                        row = g.map[day];
+                    } else {
+                        const selected = $(self.cards.health.entity).val();
+                        row = self.dayMap(self.selectRows('provider', selected))[day];
+                    }
+                    // Sum the drawn segments (NULL-field rows are in no bucket)
+                    const total = row
+                        ? row.fit_understood_count + row.fit_not_understood_count + row.unfit_understood_count + row.unfit_not_understood_count
+                        : 0;
+                    return total > 0 ? total : '';
+                },
+                background: { enabled: false },
+                dropShadow: { enabled: false },
+                style: {
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    colors: new Array(seriesCount || 0).fill('#212529')
+                }
+            };
+        },
+
         refreshCard: function(key) {
             const self = AdminPage.index;
             const chart = self.charts[key];
@@ -3470,13 +3570,30 @@ const AdminPage = {
 
             const series = self.getSeriesForCard(key);
             // updateOptions (not updateSeries) so the category axis moves on range changes;
-            // colors + legend follow the live series (per-provider Overall repeats pairs)
-            chart.updateOptions({
+            // colors + legend follow the live series (per-provider Overall repeats palettes).
+            // Health card: native legend always off (Overall would list 4 x N duplicate
+            // entries) — the static 4-item HTML strip in the card is the legend.
+            const opts = {
                 series: series,
                 colors: self.seriesColors(key, series.length),
-                legend: { show: series.length > 1 },
+                legend: { show: key !== 'health' && series.length > 1 },
+                dataLabels: self.dataLabelsFor(key, series.length),
                 xaxis: { categories: self.currentLabels }
-            }, false, true);
+            };
+            if (key === 'health') {
+                // Native label anchoring, but keep hideOverflowingLabels off: a
+                // zero-height top combo (UNFIT + Not Understood = 0 is common)
+                // would otherwise clear the bar's total entirely.
+                opts.plotOptions = { bar: { dataLabels: { hideOverflowingLabels: false } } };
+                // Per-segment hover with a custom renderer. intersect:false would
+                // column-snap a shared:false tooltip to the first series, making
+                // every bar on a date report the same (first) provider; with a
+                // shared:true tooltip the grouped stacks would list 4 combos x
+                // every provider. The custom tooltip instead names ALL 4 combos
+                // of the bar actually hovered.
+                opts.tooltip = { shared: false, intersect: true, custom: self.healthTooltip };
+            }
+            chart.updateOptions(opts, false, true);
         },
 
         onDimensionChange: function(key) {

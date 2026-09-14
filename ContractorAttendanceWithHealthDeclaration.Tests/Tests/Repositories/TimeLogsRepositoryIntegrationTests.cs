@@ -297,6 +297,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Repositories
             Assert.Equal(1, daToday.unfit_count);
             Assert.Equal(1, daToday.understood_count);
             Assert.Equal(1, daToday.not_understood_count);
+            // Cross-breakdown: 1 FIT/UNDERSTOOD + 1 UNFIT/NOT_UNDERSTOOD.
+            Assert.Equal(1, daToday.fit_understood_count);
+            Assert.Equal(0, daToday.fit_not_understood_count);
+            Assert.Equal(0, daToday.unfit_understood_count);
+            Assert.Equal(1, daToday.unfit_not_understood_count);
             Assert.Equal("TST Dash A", daToday.provider_name);
 
             var dbToday = Assert.Single(mine, r => r.provider_code == "TST-DB" && r.stat_date.Date == DateTime.Today);
@@ -304,12 +309,38 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Repositories
             Assert.Equal(0, dbToday.unfit_count);
             Assert.Equal(0, dbToday.understood_count);
             Assert.Equal(1, dbToday.not_understood_count);
+            Assert.Equal(0, dbToday.fit_understood_count);
+            Assert.Equal(1, dbToday.fit_not_understood_count);
 
             var daYesterday = Assert.Single(mine, r => r.provider_code == "TST-DA" && r.stat_date.Date == DateTime.Today.AddDays(-1));
             Assert.Equal(1, daYesterday.total_count);
 
             // The 8-day-old scan is outside the window: no third TST-DA day.
             Assert.DoesNotContain(mine, r => r.stat_date.Date == DateTime.Today.AddDays(-8));
+        }
+
+        [Fact]
+        public async Task GetDailyStatsByProvider_cross_counts_cover_all_four_combos()
+        {
+            await using var connection = _fixture.CreateConnection();
+            await IntegrationSeed.CreateProviderAsync(connection, provider_code: "TST-DD", provider_name: "TST Dash D");
+            await IntegrationSeed.CreateContractorAsync(connection, employee_id: "TST-000065", provider_code: "TST-DD");
+            var repo = new TimeLogsRepository(connection);
+
+            // One log per health_status x waiver_consent combo.
+            await repo.Create(NewLog("TST-000065"));
+            await repo.Create(NewLog("TST-000065", waiver_consent: "NOT_UNDERSTOOD"));
+            await repo.Create(NewLog("TST-000065", health_status: "UNFIT"));
+            await repo.Create(NewLog("TST-000065", health_status: "UNFIT", waiver_consent: "NOT_UNDERSTOOD"));
+
+            var stats = (await repo.GetDailyStatsByProvider(DateTime.Today.AddDays(-6), DateTime.Today)).ToList();
+
+            var row = Assert.Single(stats, r => r.provider_code == "TST-DD");
+            Assert.Equal(4, row.total_count);
+            Assert.Equal(1, row.fit_understood_count);
+            Assert.Equal(1, row.fit_not_understood_count);
+            Assert.Equal(1, row.unfit_understood_count);
+            Assert.Equal(1, row.unfit_not_understood_count);
         }
 
         [Fact]
@@ -349,6 +380,8 @@ namespace ContractorAttendanceWithHealthDeclaration.Tests.Repositories
                 var row = Assert.Single(stats, r => r.project_code == code && r.stat_date.Date == DateTime.Today);
                 Assert.Equal(1, row.total_count);
                 Assert.Equal(1, row.fit_count);
+                // The project SP exposes the same cross-count columns as the provider SP.
+                Assert.Equal(1, row.fit_understood_count);
             }
         }
 
