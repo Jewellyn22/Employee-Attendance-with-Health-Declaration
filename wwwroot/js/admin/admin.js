@@ -99,6 +99,25 @@ const AdminPage = {
                 }
             });
 
+            // Click the field (or its decorative arrow) to open the full provider list
+            $('#provider_name_dropdown').on('mousedown', function () {
+                if ($(this).prop('readonly')) return;   // edit mode: provider field is read-only
+                const $datalist = $('#provider-list');
+                // Only open when real options are loaded (loaded <li>s carry data-provider-code;
+                // the "Loading providers..." / "Failed to load providers" placeholders do not)
+                if ($datalist.find('li[data-provider-code]').length === 0) return;
+
+                // Reset any active type-filter so the full list shows
+                $datalist.find('li').show();
+                $datalist.find('.no-results').hide();
+                focusedIndex = -1;
+
+                if ($datalist.is(':hidden')) {
+                    $datalist.show();
+                    isDatalistVisible = true;
+                }
+            });
+
             // Hide datalist when clicking outside
             $(document).on('click', function(e) {
                 if (!$(e.target).closest('#provider_name_dropdown').length &&
