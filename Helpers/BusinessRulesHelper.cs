@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Helpers
+namespace EmployeeAttendanceWithHealthDeclaration.Helpers
 {
     /// <summary>
     /// Encapsulates the attendance business rules that were duplicated across
@@ -7,7 +7,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Helpers
     public static class BusinessRulesHelper
     {
         /// <summary>
-        /// "Not allowed to enter" rule: a contractor may not enter if they are UNFIT,
+        /// "Not allowed to enter" rule: a employee may not enter if they are UNFIT,
         /// or if they are FIT but did NOT understand the waiver. Used both at scan time
         /// (block re-entry) and during admin edit (auto-fill time_out).
         /// Comparisons are case-insensitive so values that bypass the DB ENUM

@@ -1,8 +1,8 @@
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
 using Dapper;
 using System.Data;
 
-namespace ContractorAttendanceWithHealthDeclaration.Repositories
+namespace EmployeeAttendanceWithHealthDeclaration.Repositories
 {
     public class AuditLogRepository : IAuditLogRepository
     {

@@ -1,7 +1,7 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
 using System.Collections.Generic;
 
-namespace ContractorAttendanceWithHealthDeclaration.Models
+namespace EmployeeAttendanceWithHealthDeclaration.Models
 {
     // Payload POSTed from the bulk-import modal after client-side parsing.
     public class bulk_enrollment_request
@@ -9,6 +9,6 @@ namespace ContractorAttendanceWithHealthDeclaration.Models
         public string provider_code { get; set; }
         public string project_code { get; set; }
         public string file_name { get; set; }
-        public List<bulk_enrollment_row> contractors { get; set; } = new();
+        public List<bulk_enrollment_row> employees { get; set; } = new();
     }
 }

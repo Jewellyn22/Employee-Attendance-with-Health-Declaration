@@ -1,6 +1,6 @@
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
 
-namespace ContractorAttendanceWithHealthDeclaration.Helpers
+namespace EmployeeAttendanceWithHealthDeclaration.Helpers
 {
     /// <summary>
     /// Pure (non-DB) validation helpers shared across services. Each method returns
@@ -23,7 +23,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Helpers
                 : "Invalid waiver consent. Must be 'UNDERSTOOD' or 'NOT_UNDERSTOOD'";
 
         /// <summary>
-        /// Validates the contractor required fields shared by Create() and Update().
+        /// Validates the employee required fields shared by Create() and Update().
         /// Returns null when valid, else the first field error encountered. Does NOT
         /// validate employee_id (auto-generated on create, validated separately on
         /// update) or gender (validated only in BulkCreate) - those are the callers' job.
@@ -31,13 +31,13 @@ namespace ContractorAttendanceWithHealthDeclaration.Helpers
         /// the employee-level column was dropped), replacing the old project_codes CSV
         /// and single-position checks.
         /// </summary>
-        public static string? ValidateContractorEmployee(contractor_employee? employee)
+        public static string? ValidateEmployee(employee? employee)
         {
-            if (employee == null)                                  return "Contractor data is required";
+            if (employee == null)                                  return "Employee data is required";
             if (string.IsNullOrWhiteSpace(employee.name))          return "Name is required";
             if (employee.assignments == null || employee.assignments.Count == 0)
                                                                   return "At least one project must be assigned";
-            if (employee.assignments.Count > 50)                   return "A contractor can be assigned to at most 50 projects";
+            if (employee.assignments.Count > 50)                   return "An employee can be assigned to at most 50 projects";
             if (employee.assignments.Any(a => string.IsNullOrWhiteSpace(a.project_code)))
                                                                   return "Project is required for every assignment row";
             if (employee.assignments.Any(a => string.IsNullOrWhiteSpace(a.position)))
@@ -51,7 +51,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Helpers
         /// <summary>
         /// Validates birthdate: must be present, not a future date, and the employee
         /// must be at least 18 years old (DOLE employment regulations).
-        /// Moved verbatim from ContractorService.ValidateBirthdate.
+        /// Moved verbatim from EmployeeService.ValidateBirthdate.
         /// </summary>
         public static string? ValidateBirthdate(DateTime? birthdate)
         {

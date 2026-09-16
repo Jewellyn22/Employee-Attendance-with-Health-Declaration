@@ -1,8 +1,8 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class HistoryLogsService : IHistoryLogsService
     {
@@ -169,9 +169,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var byProject = (await _timeLogsRepository.GetDailyStatsByProject(from, to)).ToList();
 
                 // Overall = per-day sums across the PROVIDER dimension. Safe from double
-                // counting: each time_logs row joins exactly one contractor_employee row,
+                // counting: each time_logs row joins exactly one employee row,
                 // so every attendance record contributes to exactly one provider_code.
-                // (Summing the project rows would double-count multi-project contractors.)
+                // (Summing the project rows would double-count multi-project employees.)
                 var overall = byProvider
                     .GroupBy(r => r.stat_date.Date)
                     .OrderBy(g => g.Key)

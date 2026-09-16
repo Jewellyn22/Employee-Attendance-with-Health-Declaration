@@ -1,7 +1,7 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public interface IHistoryLogsService
     {
@@ -26,7 +26,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         );
 
         /// <summary>
-        /// Get count of open sessions (contractors currently on premises)
+        /// Get count of open sessions (employees currently on premises)
         /// </summary>
         Task<Response<int>> GetOpenSessionsCount();
 

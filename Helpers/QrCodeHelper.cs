@@ -1,12 +1,12 @@
 using QRCoder;
 
-namespace ContractorAttendanceWithHealthDeclaration.Helpers
+namespace EmployeeAttendanceWithHealthDeclaration.Helpers
 {
     /// <summary>
-    /// QR-code PNG generation for contractor ID badges. The QR content is the
+    /// QR-code PNG generation for employee ID badges. The QR content is the
     /// employee_id (immutable), so the image is fully derived data: generated once
-    /// at enrollment (ContractorService.CreateOrMerge) and persisted to
-    /// contractor_employee.qr_code_image — never regenerated at export time.
+    /// at enrollment (EmployeeService.CreateOrMerge) and persisted to
+    /// employee.qr_code_image — never regenerated at export time.
     /// Uses PngByteQRCode (pure managed PNG writer, no System.Drawing/GDI) so it
     /// stays host-agnostic.
     /// </summary>

@@ -1,10 +1,10 @@
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
-using ContractorAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories
+namespace EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories
 {
     public class LdapRepository : ILdapRepository
     {

@@ -1,9 +1,9 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 using System.Text.Json;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class AuditLogService : IAuditLogService
     {

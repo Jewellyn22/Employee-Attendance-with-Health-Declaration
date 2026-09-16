@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = "Contractor Attendance Monitoring";
+    ViewData["Title"] = "Employee Attendance Monitoring";
 }
 
 <div class="container-fluid">
@@ -39,7 +39,7 @@
                         <h6 class="category">Personal Detail</h6>
                         <hr />
                         <div class="f-body">
-                            <div id="contractor-info">
+                            <div id="employee-info">
                                 <table class="table mb-0 align-middle">
                                     <colgroup>
                                         <col style="width: 40%;" />
@@ -58,7 +58,7 @@
                                         </tr>
                                     </tbody>
                                     @* One row per assigned project (Project | Area | Position),
-                                       JS-populated; cleared at the start of every displayContractorInfo
+                                       JS-populated; cleared at the start of every displayEmployeeInfo
                                        call so back-to-back scans never accumulate stale rows. *@
                                     <tbody id="project-rows"></tbody>
                                 </table>

@@ -1,5 +1,5 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
-namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
+namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     public class project
     {
@@ -12,7 +12,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
         public string area_of_destination { get; set; }
         public DateTime? contract_startdate { get; set; }
         public DateTime? contract_enddate { get; set; }
-        public int? contractor_count { get; set; }
+        public int? employee_count { get; set; }
         public int active { get; set; }
 
         // Soft-delete flag: 1 = deleted via sp_project_Delete (hidden everywhere, row retained).

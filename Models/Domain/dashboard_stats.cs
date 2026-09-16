@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
+namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     /// <summary>
     /// Everything the dashboard charts need in one payload:

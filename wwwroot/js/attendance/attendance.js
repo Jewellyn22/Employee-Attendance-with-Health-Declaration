@@ -27,7 +27,7 @@ const AttendancePage = {
                     Swal.fire({
                         icon: 'success',
                         title: 'Waiver Approved',
-                        text: 'Contractor allowed to enter',
+                        text: 'Employee allowed to enter',
                         timer: 2000,
                         showConfirmButton: false
                     });
@@ -365,7 +365,7 @@ const AttendancePage = {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Approve Waiver?',
-                    text: 'Allow this contractor to enter despite health declaration?',
+                    text: 'Allow this employee to enter despite health declaration?',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#3085d6',

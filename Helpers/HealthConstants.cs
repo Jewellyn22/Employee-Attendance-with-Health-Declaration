@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Helpers
+namespace EmployeeAttendanceWithHealthDeclaration.Helpers
 {
     /// <summary>
     /// Canonical string values for the time_logs health_status and waiver_consent

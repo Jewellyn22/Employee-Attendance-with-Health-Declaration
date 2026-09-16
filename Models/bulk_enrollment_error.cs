@@ -1,5 +1,5 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
-namespace ContractorAttendanceWithHealthDeclaration.Models
+namespace EmployeeAttendanceWithHealthDeclaration.Models
 {
     // A single failed row in a bulk import, with the reason.
     public class bulk_enrollment_error

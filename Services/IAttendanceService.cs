@@ -1,12 +1,12 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public interface IAttendanceService
     {
         /// <summary>
-        /// Process contractor ID scan - creates TIME IN with FIT status, checks duplicate scan prevention
+        /// Process employee ID scan - creates TIME IN with FIT status, checks duplicate scan prevention
         /// </summary>
         Task<Response<time_log>> ProcessScan(string employee_id);
 
@@ -21,7 +21,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
         Task<Response<time_log>> GetByAttendanceId(int attendance_id);
 
         /// <summary>
-        /// Update health status (FIT/UNFIT) and waiver consent (UNDERSTOOD/NOT_UNDERSTOOD) for contractor self-declaration
+        /// Update health status (FIT/UNFIT) and waiver consent (UNDERSTOOD/NOT_UNDERSTOOD) for employee self-declaration
         /// </summary>
         Task<Response<bool>> UpdateHealthStatus(int attendance_id, string health_status, string waiver_consent);
 

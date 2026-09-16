@@ -1,26 +1,26 @@
-using ContractorAttendanceWithHealthDeclaration.Helpers;
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Helpers;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class AttendanceService : IAttendanceService
     {
-        private readonly IContractorEmployeeRepository _contractorRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly ITimeLogsRepository _timeLogsRepository;
         private readonly IProviderRepository _providerRepository;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ILogger<AttendanceService> _logger;
 
         public AttendanceService(
-            IContractorEmployeeRepository contractorRepository,
+            IEmployeeRepository employeeRepository,
             ITimeLogsRepository timeLogsRepository,
             IProviderRepository providerRepository,
             ISystemConfigService systemConfigService,
             ILogger<AttendanceService> logger)
         {
-            _contractorRepository = contractorRepository;
+            _employeeRepository = employeeRepository;
             _timeLogsRepository = timeLogsRepository;
             _providerRepository = providerRepository;
             _systemConfigService = systemConfigService;
@@ -33,14 +33,14 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
             {
                 _logger.LogInformation("Processing scan for employee: {EmployeeId}", employee_id);
 
-                // Step 1: Validate contractor exists and is active
-                var employee = await _contractorRepository.GetByEmployeeId(employee_id);
+                // Step 1: Validate employee exists and is active
+                var employee = await _employeeRepository.GetByEmployeeId(employee_id);
                 if (employee == null)
                 {
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = "Contractor not found",
+                        Message = "Employee not found",
                         Data = null
                     };
                 }
@@ -50,7 +50,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     return new Response<time_log>
                     {
                         Success = false,
-                        Message = $"{employee.name} - Contractor is inactive",
+                        Message = $"{employee.name} - Employee is inactive",
                         Data = null
                     };
                 }
@@ -74,11 +74,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 3: Check if contractor has already TIME-IN today with blocked health status
+                // Step 3: Check if employee has already TIME-IN today with blocked health status
                 var todayTimeIn = await _timeLogsRepository.GetTodayTimeIn(employee_id);
                 if (todayTimeIn != null)
                 {
-                    // Block entry if the contractor's latest TIME IN today is a "not allowed to enter"
+                    // Block entry if the employee's latest TIME IN today is a "not allowed to enter"
                     // combination (UNFIT, or FIT + NOT_UNDERSTOOD).
                     bool shouldBlock = BusinessRulesHelper.IsNotAllowedToEnter(todayTimeIn.health_status, todayTimeIn.waiver_consent);
 
@@ -117,11 +117,11 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                     };
                 }
 
-                // Step 4b: Validate the contractor still has an ACTIVE project before
+                // Step 4b: Validate the employee still has an ACTIVE project before
                 // allowing TIME IN (placed after the open-session check so deactivating
-                // a project/provider mid-day never blocks a contractor from timing out).
+                // a project/provider mid-day never blocks a employee from timing out).
                 // Multi-project: one active assignment is enough; active_project_count
-                // comes from the GetByEmployeeId join over contractor_project.
+                // comes from the GetByEmployeeId join over employee_project.
                 if (employee.active_project_count == 0)
                 {
                     _logger.LogInformation("TIME IN blocked for {EmployeeId}: no active project assignment",

@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
+namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     public class system_config
     {

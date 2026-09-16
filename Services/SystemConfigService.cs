@@ -1,8 +1,8 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class SystemConfigService : ISystemConfigService
     {
@@ -130,11 +130,14 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 var config = await _systemConfigRepository.GetByKey("AdminADGroup");
                 if (config == null)
                 {
+                    // No hardcoded default: the AD group is maintained in the
+                    // system_config table only. An empty group fails closed in
+                    // AuthController (group-membership check always denies).
                     return new Response<string>
                     {
                         Success = false,
                         Message = "AdminADGroup configuration not found",
-                        Data = "app.your_app.admin" // default
+                        Data = string.Empty
                     };
                 }
 
@@ -152,7 +155,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     Success = false,
                     Message = "Error retrieving configuration",
-                    Data = "app.your_app.admin" // default
+                    Data = string.Empty // fails closed - see GetAdminADGroup
                 };
             }
         }

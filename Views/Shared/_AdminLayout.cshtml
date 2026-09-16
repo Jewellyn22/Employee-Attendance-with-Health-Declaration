@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ContractorAttendanceWithHealthDeclaration</title>
+    <title>@ViewData["Title"] - EmployeeAttendanceWithHealthDeclaration</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
     <link rel="stylesheet" href="~/lib/select2/css/select2.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-sidebar.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/ContractorAttendanceWithHealthDeclaration.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/EmployeeAttendanceWithHealthDeclaration.styles.css" asp-append-version="true" />
 </head>
 <body>
     <!-- Top Navbar -->
@@ -17,7 +17,7 @@
         <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-0" style="background: linear-gradient(135deg, #FFF176 0%, #eb6585 100%);">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Admin" asp-action="Index">
-                    Contractor Attendance With Health Declaration
+                    Employee Attendance with Health Declaration
                 </a>
 
                 <button class="navbar-toggler" type="button"
@@ -71,9 +71,9 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="Contractors">
+                        <a class="nav-link sidebar-link" asp-controller="Admin" asp-action="Employees">
                             <i class="fas fa-users me-2"></i>
-                            Contractors
+                            Employees
                         </a>
                     </li>
                     <li class="nav-item">
@@ -109,7 +109,7 @@
     <!-- Footer -->
     <footer class="border-top footer footer-admin text-muted">
         <div class="container-fluid align-items-center">
-            &copy; 2026 - MIS_System | version @typeof(Program).Assembly.GetName().Version.ToString()
+            &copy; 2026 - JLPG | @typeof(Program).Assembly.GetName().Version.ToString()
         </div>
     </footer>
 

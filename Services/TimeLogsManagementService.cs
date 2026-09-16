@@ -1,9 +1,9 @@
-using ContractorAttendanceWithHealthDeclaration.Helpers;
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Helpers;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class TimeLogsManagementService : ITimeLogsManagementService
     {

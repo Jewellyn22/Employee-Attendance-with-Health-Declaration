@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 
-namespace ContractorAttendanceWithHealthDeclaration.Hubs
+namespace EmployeeAttendanceWithHealthDeclaration.Hubs
 {
     public class AttendanceHub : Hub
     {

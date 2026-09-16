@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contractor Attendance &amp; Health Declaration Monitoring · White Paper</title>
+<title>Employee Attendance &amp; Health Declaration Monitoring · White Paper</title>
 <style>
   /* ---------- Tokens: light (default) ---------- */
   :root {
@@ -259,7 +259,7 @@
     <li><a href="#manual"><span>System manual</span></a></li>
     <li><a href="#tests"><span>Test cases</span></a></li>
   </ol>
-  <p class="toc-note">Applies to system version <strong>3.4.0.3</strong>.</p>
+  <p class="toc-note">Applies to system version <strong>4.0.0.0</strong>.</p>
 </nav>
 
 <main>
@@ -267,11 +267,11 @@
 
 <header class="masthead">
   <p class="eyebrow">White Paper</p>
-  <h1>Contractor Attendance &amp; Health Declaration Monitoring</h1>
-  <p class="standfirst">A web-based system that records contractor attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
+  <h1>Employee Attendance &amp; Health Declaration Monitoring</h1>
+  <p class="standfirst">A web-based system that records employee attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
   <table class="doc-control">
-    <tr><th>System version</th><td>3.4.0.3</td></tr>
-    <tr><th>Document date</th><td>14 September 2026</td></tr>
+    <tr><th>System version</th><td>4.0.0.0</td></tr>
+    <tr><th>Document date</th><td>16 September 2026</td></tr>
     <tr><th>Audience</th><td>Management, QA, and development</td></tr>
     <tr><th>Platform</th><td>ASP.NET Core 8 MVC · MySQL (stored procedures via Dapper) · LDAP</td></tr>
   </table>
@@ -283,15 +283,15 @@
     <span class="mod-no">SECTION 01</span>
     <h2>System overview</h2>
   </div>
-  <p class="mod-desc">Contractors scan their ID card at an unattended kiosk. Each scan is either a <strong>TIME IN</strong> (starts an attendance session) or a <strong>TIME OUT</strong> (closes the open session). On TIME IN the contractor completes a short self-declaration — health status and waiver consent — within a configurable window. Combinations that mean "not allowed to enter" automatically close the session. A contractor can hold several project assignments under one provider, and each enrollment generates a printable QR code of the employee ID. Administrators manage reference data (providers, projects, contractors), correct attendance records, and every admin change is audit-logged.</p>
+  <p class="mod-desc">Employees scan their ID card at an unattended kiosk. Each scan is either a <strong>TIME IN</strong> (starts an attendance session) or a <strong>TIME OUT</strong> (closes the open session). On TIME IN the employee completes a short self-declaration — health status and waiver consent — within a configurable window. Combinations that mean "not allowed to enter" automatically close the session. An employee can hold several project assignments under one provider, and each enrollment generates a printable QR code of the employee ID. Administrators manage reference data (providers, projects, employees), correct attendance records, and every admin change is audit-logged.</p>
 
   <h3 class="sub">User roles</h3>
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>Role</th><th>Authentication</th><th>Capabilities</th></tr></thead>
     <tbody>
-      <tr><td>Contractor</td><td>None — kiosk is public</td><td>Scan ID (or its printed QR code); declare health status &amp; waiver consent within the window</td></tr>
+      <tr><td>Employee</td><td>None — kiosk is public</td><td>Scan ID (or its printed QR code); declare health status &amp; waiver consent within the window</td></tr>
       <tr><td>Public viewer</td><td>None</td><td>View, filter and export attendance history logs</td></tr>
-      <tr><td>Admin</td><td>LDAP login + membership of configured AD group; 30-minute session</td><td>Manage providers, projects, contractors (incl. bulk import and a QR-coded Excel roster), system configuration; edit/delete timelogs; view audit logs</td></tr>
+      <tr><td>Admin</td><td>LDAP login + membership of configured AD group; 30-minute session</td><td>Manage providers, projects, employees (incl. bulk import and a QR-coded Excel roster), system configuration; edit/delete timelogs; view audit logs</td></tr>
     </tbody>
   </table></div>
 
@@ -315,17 +315,17 @@
   <ul class="plain">
     <li>Scan input accepts typed or keyboard-wedge scanner input; it autofocuses, clears, and refocuses after every attempt, and can be locked read-only for scanner-only operation (<code>ScanInputReadOnly</code>).</li>
     <li>The scan input is cleared the moment a scan is submitted, and scanner-burst detection resets after each scan — a scan that starts while the previous request is still in flight is captured intact (no dropped first character).</li>
-    <li>Unknown employee ID is rejected with no record written; inactive contractors are rejected.</li>
-    <li>A scan within <code>DebounceThresholdSeconds</code> of the contractor's last scan event is rejected as a duplicate.</li>
+    <li>Unknown employee ID is rejected with no record written; inactive employees are rejected.</li>
+    <li>A scan within <code>DebounceThresholdSeconds</code> of the employee's last scan event is rejected as a duplicate.</li>
     <li>A blocked combination on today's latest TIME IN blocks all further scans that day, until an admin corrects the record.</li>
-    <li>TIME IN requires the contractor's provider to exist and be active <em>and</em> the contractor to hold at least one active project assignment — one active assignment is enough; an open session always allows TIME OUT.</li>
+    <li>TIME IN requires the employee's provider to exist and be active <em>and</em> the employee to hold at least one active project assignment — one active assignment is enough; an open session always allows TIME OUT.</li>
     <li>A passing TIME IN creates a record with <code>time_in = now</code>, <code>time_out = NULL</code>, defaulting to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>.</li>
   </ul>
 
   <h3 class="sub">Health declaration &amp; waiver</h3>
   <ul class="plain">
     <li>Two instant-save controls — health status and waiver consent — pre-selected to the safe defaults; sickness items come from configuration.</li>
-    <li>While the panel is open the kiosk shows the contractor's Personal Detail — name, provider, and one <code>Project Name / Area / Position</code> row per active project assignment.</li>
+    <li>While the panel is open the kiosk shows the employee's Personal Detail — name, provider, and one <code>Project Name / Area / Position</code> row per active project assignment.</li>
     <li>Changes are accepted only within <code>HealthDeclarationWindowSeconds</code> of TIME IN (server-enforced; falls back to 120 s).</li>
     <li><span class="pill unfit">UNFIT</span> or <span class="pill fit">FIT</span> + <code>NOT_UNDERSTOOD</code> persists, sets <code>time_out = now</code>, and blocks same-day re-entry.</li>
     <li>Returning to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> within the window clears the auto-set time_out and reopens the session.</li>
@@ -341,7 +341,7 @@
   <h3 class="sub">Dashboard charts</h3>
   <ul class="plain">
     <li>The admin dashboard renders two charts — <strong>Attendance</strong> and <strong>Health Declaration</strong> — driven by one shared date range and a single admin-only data request.</li>
-    <li>Both charts are per-day and, in the default Overall view, split per provider; totals are computed from the provider dimension only, so multi-project contractors are never double-counted.</li>
+    <li>Both charts are per-day and, in the default Overall view, split per provider; totals are computed from the provider dimension only, so multi-project employees are never double-counted.</li>
     <li>The range is validated on the client and the server: both dates required, From on or before To, and a maximum span of 366 days.</li>
     <li>Charts render fully offline (the charting library is bundled with the app — no CDN).</li>
   </ul>
@@ -358,19 +358,19 @@
     <li>Provider code is auto-generated from the provider name (acronym, with unique fallbacks); it is never typed manually.</li>
     <li>Project code is generated as <code>{ProviderCode}-{YY}-{NNN}</code>, sequential per provider per year, transaction-safe against duplicates.</li>
     <li>A project requires its provider, name, PIC, contact number, Area of Destination, and contract start/end dates; end must not precede start, and a past end date is rejected on creation.</li>
-    <li>Projects past their contract end auto-deactivate, cascading only to enrolled contractors with no other active project; restore via cascade reactivation brings back only the cascade-deactivated contractors — manually deactivated ones stay inactive.</li>
+    <li>Projects past their contract end auto-deactivate, cascading only to enrolled employees with no other active project; restore via cascade reactivation brings back only the cascade-deactivated employees — manually deactivated ones stay inactive.</li>
     <li>A project whose contract has expired cannot be set back to Active until the contract end date is extended.</li>
-    <li>Projects are soft-deleted (hidden, never removed) and cascade-deactivate only enrolled contractors with no other active project assignment (assignment mappings are retained; contractors on another active project are kept); providers have no delete operation — only activation status. Inactivity blocks TIME IN but not TIME OUT.</li>
+    <li>Projects are soft-deleted (hidden, never removed) and cascade-deactivate only enrolled employees with no other active project assignment (assignment mappings are retained; employees on another active project are kept); providers have no delete operation — only activation status. Inactivity blocks TIME IN but not TIME OUT.</li>
   </ul>
 
-  <h3 class="sub">Contractors</h3>
+  <h3 class="sub">Employees</h3>
   <ul class="plain">
-    <li>Employee ID is generated automatically as <code>{ProviderCode}-NNNNNN</code> when saving (read-only in the form) and stays stable regardless of later assignment changes. Required fields: name, gender, birthdate, provider, and one or more project assignments — each row pairs a project of the chosen provider with the contractor's position on it; up to 50 assignments and each project at most once. Contact number and address are optional.</li>
-    <li>Birthdate must not be a future date, and the contractor must be at least 18 years old — <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></li>
+    <li>Employee ID is generated automatically as <code>{ProviderCode}-NNNNNN</code> when saving (read-only in the form) and stays stable regardless of later assignment changes. Required fields: name, gender, birthdate, provider, and one or more project assignments — each row pairs a project of the chosen provider with the employee's position on it; up to 50 assignments and each project at most once. Contact number and address are optional.</li>
+    <li>Birthdate must not be a future date, and the employee must be at least 18 years old — <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></li>
     <li>Re-enrolling the same name (case-insensitive) + birthdate within the same provider merges into the existing account instead of being rejected: gender/birthdate/contact number/address are overwritten from the submission, the submitted project/position replaces an already-assigned project's position or is added as a new assignment, and the employee ID, registered name, and active status are kept (the Add form's Active checkbox is ignored on merge). The same person under a different provider gets a new account.</li>
     <li>A QR code encoding the employee ID (ECC level Q PNG) is generated automatically at enrollment and backfilled on merge — generation is best-effort and never blocks registration; exports reuse the stored code and never generate new ones.</li>
     <li>Bulk Excel import targets one provider + project chosen in the dialog; each file row carries its own position on that project. It commits valid rows, merges already-enrolled rows into their accounts (shown separately in the result), and reports per-row success/failure (partial success is visible).</li>
-    <li>Contractors are deactivated, never hard-deleted; the list supports project/status filters, reset, and Excel export (Employee ID, Name, Provider Name, one stacked <code>Name (Position - Area)</code> line per project, Status, and an embedded QR Code column).</li>
+    <li>Employees are deactivated, never hard-deleted; the list supports project/status filters, reset, and Excel export (Employee ID, Name, Provider Name, one stacked <code>Name (Position - Area)</code> line per project, Status, and an embedded QR Code column).</li>
   </ul>
 
   <h3 class="sub">TimeLogs management</h3>
@@ -391,7 +391,7 @@
 
   <h3 class="sub">Audit logging</h3>
   <ul class="plain">
-    <li>Every admin mutation (provider, project, contractor, bulk import, system config, timelog edit/delete) writes an audit entry with before/after JSON and the acting user.</li>
+    <li>Every admin mutation (provider, project, employee, bulk import, system config, timelog edit/delete) writes an audit entry with before/after JSON and the acting user.</li>
     <li>The audit view renders a changes-only diff (old vs. new per changed field).</li>
     <li>A failed audit write never fails the business operation that triggered it.</li>
   </ul>
@@ -403,7 +403,7 @@
       <tr><td>Data access</td><td>MySQL stored procedures via Dapper only — no ad-hoc SQL; procedures return result sets only</td></tr>
       <tr><td>Error handling</td><td>Structured success/message responses; raw exceptions never reach the kiosk</td></tr>
       <tr><td>Security</td><td>HTTP-only session cookie, 30-minute idle timeout, enforced server-side on every admin request</td></tr>
-      <tr><td>Exports</td><td>Client-side Excel generation handles 1000+ filtered records without error (SheetJS; ExcelJS for the Contractors export, which embeds QR images)</td></tr>
+      <tr><td>Exports</td><td>Client-side Excel generation handles 1000+ filtered records without error (SheetJS; ExcelJS for the Employees export, which embeds QR images)</td></tr>
       <tr><td>Analytics</td><td>Dashboard charts render fully offline (bundled charting library, no CDN); chart queries are capped at a 366-day range</td></tr>
       <tr><td>Testing</td><td>An automated xUnit/NSubstitute suite — unit tests with mocked repositories plus real-database integration tests isolated to TST-prefixed rows — covers services, helpers, and repositories alongside manual UI QA</td></tr>
       <tr><td>Concurrency</td><td>Project code generation is transaction-protected; concurrent creations never issue duplicate codes</td></tr>
@@ -423,19 +423,19 @@
 
   <h3 class="sub">Attendance cycle</h3>
   <ul class="plain">
-    <li><strong>Scan</strong> — the contractor scans their ID at the kiosk; the server evaluates the scan rules below.</li>
+    <li><strong>Scan</strong> — the employee scans their ID at the kiosk; the server evaluates the scan rules below.</li>
     <li><strong>TIME IN</strong> — a session opens with safe defaults and the health declaration panel appears with a countdown.</li>
-    <li><strong>Declare</strong> — the contractor answers the health self-assessment and waiver within the window; changes save instantly.</li>
+    <li><strong>Declare</strong> — the employee answers the health self-assessment and waiver within the window; changes save instantly.</li>
     <li><strong>TIME OUT</strong> — the next scan after the debounce window closes the session.</li>
   </ul>
 
   <h3 class="sub">Scan rule sequence</h3>
-  <p class="mod-desc">Every scan is evaluated in this fixed order; the first failing rule wins. Messages are prefixed with the contractor's name (shown as <code>&lt;name&gt;</code>); only <span class="msg">Contractor not found</span> is unprefixed.</p>
+  <p class="mod-desc">Every scan is evaluated in this fixed order; the first failing rule wins. Messages are prefixed with the employee's name (shown as <code>&lt;name&gt;</code>); only <span class="msg">Employee not found</span> is unprefixed.</p>
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>Step</th><th>Rule</th><th>Pass</th><th>Fail — exact message</th></tr></thead>
     <tbody>
-      <tr><td class="step">1</td><td>Contractor exists</td><td>Continue</td><td><span class="msg">Contractor not found</span></td></tr>
-      <tr><td class="step">2</td><td>Contractor is active</td><td>Continue</td><td><span class="msg">&lt;name&gt; - Contractor is inactive</span></td></tr>
+      <tr><td class="step">1</td><td>Employee exists</td><td>Continue</td><td><span class="msg">Employee not found</span></td></tr>
+      <tr><td class="step">2</td><td>Employee is active</td><td>Continue</td><td><span class="msg">&lt;name&gt; - Employee is inactive</span></td></tr>
       <tr><td class="step">3</td><td>Debounce: elapsed ≥ threshold since last scan event</td><td>Continue</td><td><span class="msg">&lt;name&gt; - Duplicate scan - wait N seconds.</span></td></tr>
       <tr><td class="step">4</td><td>Today's latest TIME IN is an allowed combination</td><td>Continue</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. You are UNFIT.</span> / <span class="msg">&lt;name&gt; - Not Allowed to Enter. You did not understand waiver.</span></td></tr>
       <tr><td class="step">5</td><td>Open session?</td><td>Yes → TIME OUT: <code>time_out = now</code>, <span class="msg">&lt;name&gt; - SUCCESS TIME OUT</span></td><td>No → continue</td></tr>
@@ -446,13 +446,13 @@
   </table></div>
   <div class="callout">
     <span class="callout-tag">Ordering matters</span>
-    <p>The project/provider gates (steps 6–7) deliberately run <em>after</em> the open-session check (step 5): a contractor already on-site can always TIME OUT even if their assignments or provider were deactivated mid-day. A contractor may hold several project assignments under one provider — a single active assignment passes step 6.</p>
+    <p>The project/provider gates (steps 6–7) deliberately run <em>after</em> the open-session check (step 5): an employee already on-site can always TIME OUT even if their assignments or provider were deactivated mid-day. An employee may hold several project assignments under one provider — a single active assignment passes step 6.</p>
   </div>
 
   <h3 class="sub">Health gate</h3>
   <ul class="plain">
     <li>On TIME IN the declaration panel opens with <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> pre-selected and a visible countdown.</li>
-    <li>The panel opens with a Personal Detail table — the contractor's name, provider, and one <code>Project Name / Area / Position</code> row per active assignment (a blank position renders as an em dash).</li>
+    <li>The panel opens with a Personal Detail table — the employee's name, provider, and one <code>Project Name / Area / Position</code> row per active assignment (a blank position renders as an em dash).</li>
     <li>Selecting <span class="pill unfit">UNFIT</span> or <code>NOT_UNDERSTOOD</code> persists immediately, sets <code>time_out = now</code>, shows a critical alert, and blocks same-day re-entry.</li>
     <li>Reversing to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> within the window clears the auto-set time_out and reopens the session.</li>
     <li>When the countdown reaches zero — or any next scan is submitted — the panel hides and the declaration locks.</li>
@@ -461,9 +461,9 @@
 
   <h3 class="sub">Reporting &amp; exports</h3>
   <ul class="plain">
-    <li>History logs, TimeLogs, and Contractors lists each export to Excel reflecting the active filters.</li>
-    <li>The Contractors export (ExcelJS) stacks one <code>Name (Position - Area)</code> line per project and embeds each contractor's stored QR code (64 px) in a QR Code column — contractors without a stored QR export with a blank QR cell.</li>
-    <li>Per-project contractor lists are viewable and exportable (Employee ID, Name, Position) from the Projects page.</li>
+    <li>History logs, TimeLogs, and Employees lists each export to Excel reflecting the active filters.</li>
+    <li>The Employees export (ExcelJS) stacks one <code>Name (Position - Area)</code> line per project and embeds each employee's stored QR code (64 px) in a QR Code column — employees without a stored QR export with a blank QR cell.</li>
+    <li>Per-project employee lists are viewable and exportable (Employee ID, Name, Position) from the Projects page.</li>
   </ul>
 
   <h3 class="sub">Dashboard charts</h3>
@@ -480,15 +480,15 @@
   <ul class="plain">
     <li><strong>Provider code</strong> — derived from the provider name as an acronym (e.g. Alpha Circuits Inc → ACI), with deterministic fallbacks that keep codes unique.</li>
     <li><strong>Project code</strong> — <code>{ProviderCode}-{YY}-{NNN}</code> (e.g. ACI-26-005), sequential per provider, resetting to 001 each year, transaction-protected.</li>
-    <li><strong>Employee ID</strong> — generated on enrollment as <code>{ProviderCode}-NNNNNN</code>, a 6-digit sequence scoped to the provider and stable for the contractor's lifetime regardless of project assignments.</li>
-    <li><strong>QR code</strong> — generated once at enrollment from the employee ID (ECC level Q PNG, ~260 px) and stored on the contractor record; re-enrollment backfills missing codes and never regenerates existing ones.</li>
+    <li><strong>Employee ID</strong> — generated on enrollment as <code>{ProviderCode}-NNNNNN</code>, a 6-digit sequence scoped to the provider and stable for the employee's lifetime regardless of project assignments.</li>
+    <li><strong>QR code</strong> — generated once at enrollment from the employee ID (ECC level Q PNG, ~260 px) and stored on the employee record; re-enrollment backfills missing codes and never regenerates existing ones.</li>
   </ul>
 
   <h3 class="sub">Configuration parameters</h3>
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>Key</th><th>Effect</th></tr></thead>
     <tbody>
-      <tr><td><code>DebounceThresholdSeconds</code></td><td>Minimum seconds between one contractor's scans</td></tr>
+      <tr><td><code>DebounceThresholdSeconds</code></td><td>Minimum seconds between one employee's scans</td></tr>
       <tr><td><code>HealthDeclarationWindowSeconds</code></td><td>Declaration window — drives the kiosk countdown, the server-side change cutoff, and how long the TIME IN result stays on screen; falls back to 120 when missing or invalid</td></tr>
       <tr><td><code>AdminADGroup</code></td><td>AD group required for admin login — database-managed, not shown in the config UI</td></tr>
       <tr><td><code>ScanInputReadOnly</code></td><td>Read-only kiosk scan input for scanner-only operation</td></tr>
@@ -507,7 +507,7 @@
   </div>
   <p class="mod-desc">How to use the system, by role and task.</p>
 
-  <h3 class="sub">Contractor — kiosk</h3>
+  <h3 class="sub">Employee — kiosk</h3>
   <ul class="plain">
     <li>Scan your ID card (or its printed QR code) at the kiosk (or type the employee ID and press Enter).</li>
     <li>On <strong>SUCCESS TIME IN</strong>, the declaration panel opens — it shows your Personal Detail (name, provider, and a <code>Project Name / Area / Position</code> row for each active assignment) above the health questions. Answer the health self-assessment and the waiver before the countdown ends. Untouched answers keep the safe defaults (<span class="pill fit">FIT</span> / I understand).</li>
@@ -519,8 +519,8 @@
     <thead><tr><th>Kiosk message</th><th>Meaning</th></tr></thead>
     <tbody>
       <tr><td><span class="msg">&lt;name&gt; - SUCCESS TIME IN</span> / <span class="msg">&lt;name&gt; - SUCCESS TIME OUT</span></td><td>Session opened / closed</td></tr>
-      <tr><td><span class="msg">Contractor not found</span></td><td>ID is not enrolled — contact the admin</td></tr>
-      <tr><td><span class="msg">&lt;name&gt; - Contractor is inactive</span></td><td>Enrollment is deactivated — contact the admin</td></tr>
+      <tr><td><span class="msg">Employee not found</span></td><td>ID is not enrolled — contact the admin</td></tr>
+      <tr><td><span class="msg">&lt;name&gt; - Employee is inactive</span></td><td>Enrollment is deactivated — contact the admin</td></tr>
       <tr><td><span class="msg">&lt;name&gt; - Duplicate scan - wait N seconds.</span></td><td>Too soon after the last scan; wait and re-scan</td></tr>
       <tr><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. You are UNFIT.</span></td><td>Declared UNFIT — entry blocked for the day</td></tr>
       <tr><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. You did not understand waiver.</span></td><td>Waiver not understood — entry blocked for the day</td></tr>
@@ -536,12 +536,12 @@
   <h3 class="sub">Admin — sign in</h3>
   <ul class="plain">
     <li>Sign in at <code>/Auth/Login</code> with corporate credentials; your account must be a member of the configured admin AD group.</li>
-    <li>The session expires after 30 minutes of inactivity. Sidebar pages: Dashboard, Projects, Contractors, System Config, TimeLogs (the Audit Logs page is reached by URL at <code>/Admin/AuditLogs</code>).</li>
+    <li>The session expires after 30 minutes of inactivity. Sidebar pages: Dashboard, Projects, Employees, System Config, TimeLogs (the Audit Logs page is reached by URL at <code>/Admin/AuditLogs</code>).</li>
   </ul>
 
   <h3 class="sub">Admin — dashboard</h3>
   <ul class="plain">
-    <li><code>/Admin</code> shows the Active Projects, Active Contractors, and On Premises cards, an <strong>Attendance Charts</strong> panel, and a Recent TimeLogs table covering the last 7 days (employee ID, name, provider, project, time in/out, health, consent).</li>
+    <li><code>/Admin</code> shows the Active Projects, Active Employees, and On Premises cards, an <strong>Attendance Charts</strong> panel, and a Recent TimeLogs table covering the last 7 days (employee ID, name, provider, project, time in/out, health, consent).</li>
     <li><strong>Attendance Charts</strong>: pick a From/To range (defaults to the last 7 days) and Apply — the <strong>Attendance</strong> chart (scans per day) and the <strong>Health Declaration</strong> chart (four-way FIT/UNFIT × waiver-consent breakdown, stacked per provider) reload together. Each chart has an Overall / Per Provider selector; the fixed color strip under the health chart is the legend.</li>
   </ul>
 
@@ -549,17 +549,17 @@
   <ul class="plain">
     <li><strong>Add New Project</strong>: choose or create the provider, then fill the project name, provider PIC, contact number, Area of Destination (required), and contract dates. Provider and project codes are generated automatically.</li>
     <li><strong>Edit</strong> (pencil): update project details; the provider is locked once assigned.</li>
-    <li><strong>View Contractors</strong> (count link): lists the project's contractors with an Excel export.</li>
-    <li><strong>Delete</strong> (trash): soft-deletes the project; enrolled contractors with no other active project are deactivated with it — the confirmation dialog states this and keeps contractors who are still on another active project.</li>
+    <li><strong>View Employees</strong> (count link): lists the project's employees with an Excel export.</li>
+    <li><strong>Delete</strong> (trash): soft-deletes the project; enrolled employees with no other active project are deactivated with it — the confirmation dialog states this and keeps employees who are still on another active project.</li>
     <li>The Remaining Days column flags projects as <em>Expired</em>; expired projects auto-deactivate.</li>
   </ul>
 
-  <h3 class="sub">Admin — manage contractors</h3>
+  <h3 class="sub">Admin — manage employees</h3>
   <ul class="plain">
-    <li><strong>Add New Contractor</strong>: fill the identity fields, then build the assignment table — <code>+ Add Project</code> appends a Project | Position row (one position per project; projects already picked disappear from the other rows; up to 50). Every project must belong to the chosen provider. The employee ID is generated automatically on save (the toast shows it), and a scannable QR code is generated with it. Re-enrolling an existing contractor (same name + birthdate under the same provider) merges into their account — details are updated and the project/position is added or replaced, with the employee ID unchanged.</li>
+    <li><strong>Add New Employee</strong>: fill the identity fields, then build the assignment table — <code>+ Add Project</code> appends a Project | Position row (one position per project; projects already picked disappear from the other rows; up to 50). Every project must belong to the chosen provider. The employee ID is generated automatically on save (the toast shows it), and a scannable QR code is generated with it. Re-enrolling an existing employee (same name + birthdate under the same provider) merges into their account — details are updated and the project/position is added or replaced, with the employee ID unchanged.</li>
     <li><strong>Bulk Import</strong>: select the provider and project, then upload an Excel file whose rows need name, gender, birthdate, and position (each row's position is its position on the selected project). A downloadable template with sample rows is provided; sample rows in an upload are skipped automatically. Review the preview (already-enrolled rows show an amber "will update existing" notice), then import — the result lists new, updated-existing, and failed rows.</li>
-    <li><strong>Edit</strong>: update details or the assignment table (the provider is locked), or reactivate an inactive contractor.</li>
-    <li><strong>Delete / Delete Selected</strong>: deactivates contractors (attendance history is preserved).</li>
+    <li><strong>Edit</strong>: update details or the assignment table (the provider is locked), or reactivate an inactive employee.</li>
+    <li><strong>Delete / Delete Selected</strong>: deactivates employees (attendance history is preserved).</li>
     <li>Filter by project and Active/Inactive status, reset the filters, or export the filtered list to Excel — the export stacks one <code>Name (Position - Area)</code> line per project and embeds the stored QR codes.</li>
   </ul>
 
@@ -589,7 +589,7 @@
       <tr><td>Admin login</td><td><code>/Auth/Login</code></td><td>—</td></tr>
       <tr><td>Admin dashboard</td><td><code>/Admin</code></td><td>Admin session</td></tr>
       <tr><td>Projects &amp; providers</td><td><code>/Admin/Projects</code></td><td>Admin session</td></tr>
-      <tr><td>Contractors</td><td><code>/Admin/Contractors</code></td><td>Admin session</td></tr>
+      <tr><td>Employees</td><td><code>/Admin/Employees</code></td><td>Admin session</td></tr>
       <tr><td>TimeLogs management</td><td><code>/Admin/TimeLogs</code></td><td>Admin session</td></tr>
       <tr><td>System configuration</td><td><code>/Admin/SystemConfig</code></td><td>Admin session</td></tr>
       <tr><td>Audit logs</td><td><code>/Admin/AuditLogs</code></td><td>Admin session</td></tr>
@@ -609,22 +609,22 @@
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
     <tbody>
-      <tr><td class="step">TC-K-01</td><td>Scan an enrolled, active contractor whose project and provider are active, with no open session</td><td><span class="msg">&lt;name&gt; - SUCCESS TIME IN</span>; record created with <code>time_in = now</code>, <code>time_out = NULL</code>, <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; declaration panel opens with countdown</td></tr>
-      <tr><td class="step">TC-K-02</td><td>Scan the same contractor again after the debounce window elapses</td><td><span class="msg">&lt;name&gt; - SUCCESS TIME OUT</span>; open session closed with <code>time_out = now</code>; declaration panel does not appear</td></tr>
-      <tr><td class="step">TC-K-03</td><td>Scan an ID that matches no contractor record</td><td><span class="msg">Contractor not found</span>; no attendance record written</td></tr>
-      <tr><td class="step">TC-K-04</td><td>Scan a contractor whose active flag is 0</td><td><span class="msg">&lt;name&gt; - Contractor is inactive</span>; no record created or modified</td></tr>
+      <tr><td class="step">TC-K-01</td><td>Scan an enrolled, active employee whose project and provider are active, with no open session</td><td><span class="msg">&lt;name&gt; - SUCCESS TIME IN</span>; record created with <code>time_in = now</code>, <code>time_out = NULL</code>, <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; declaration panel opens with countdown</td></tr>
+      <tr><td class="step">TC-K-02</td><td>Scan the same employee again after the debounce window elapses</td><td><span class="msg">&lt;name&gt; - SUCCESS TIME OUT</span>; open session closed with <code>time_out = now</code>; declaration panel does not appear</td></tr>
+      <tr><td class="step">TC-K-03</td><td>Scan an ID that matches no employee record</td><td><span class="msg">Employee not found</span>; no attendance record written</td></tr>
+      <tr><td class="step">TC-K-04</td><td>Scan an employee whose active flag is 0</td><td><span class="msg">&lt;name&gt; - Employee is inactive</span>; no record created or modified</td></tr>
       <tr><td class="step">TC-K-05</td><td>Scan again 5 s after the last scan event (threshold 30 s) — repeat after both a TIME IN and a TIME OUT</td><td>Rejected with <span class="msg">&lt;name&gt; - Duplicate scan - wait 30 seconds.</span> in both cases</td></tr>
       <tr><td class="step">TC-K-06</td><td>Boundary: scan again at exactly N s (allowed) and at N−1 s (rejected) after the last scan event</td><td>At exactly N s the scan is processed; at N−1 s it is rejected as duplicate</td></tr>
-      <tr><td class="step">TC-K-07</td><td>Contractor declared UNFIT earlier today scans again</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. You are UNFIT.</span> — blocked before session logic runs</td></tr>
-      <tr><td class="step">TC-K-08</td><td>Contractor with no open session and no active project assignment scans</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. Project is In-Active.</span></td></tr>
-      <tr><td class="step">TC-K-09</td><td>Contractor with no open session scans while their provider is inactive</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. Provider is In-Active.</span></td></tr>
-      <tr><td class="step">TC-K-10</td><td>Contractor is timed in; admin deactivates the project mid-day; contractor scans to leave</td><td>TIME OUT succeeds — the project/provider gates only block TIME IN</td></tr>
+      <tr><td class="step">TC-K-07</td><td>Employee declared UNFIT earlier today scans again</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. You are UNFIT.</span> — blocked before session logic runs</td></tr>
+      <tr><td class="step">TC-K-08</td><td>Employee with no open session and no active project assignment scans</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. Project is In-Active.</span></td></tr>
+      <tr><td class="step">TC-K-09</td><td>Employee with no open session scans while their provider is inactive</td><td><span class="msg">&lt;name&gt; - Not Allowed to Enter. Provider is In-Active.</span></td></tr>
+      <tr><td class="step">TC-K-10</td><td>Employee is timed in; admin deactivates the project mid-day; employee scans to leave</td><td>TIME OUT succeeds — the project/provider gates only block TIME IN</td></tr>
       <tr><td class="step">TC-K-11</td><td>Press Enter with an empty scan input</td><td>Nothing is submitted — no request, no error dialog; focus stays in the field</td></tr>
       <tr><td class="step">TC-K-12</td><td>With <code>ScanInputReadOnly</code> enabled: try typing, then scan with the wedge scanner</td><td>Keyboard typing is rejected; scanner input still registers and submits</td></tr>
       <tr><td class="step">TC-K-13</td><td>Immediately scan a second, different ID while the first scan's request is still in flight</td><td>The second ID is captured intact — no dropped first character; the input is cleared at submission time and scanner detection resets between scans</td></tr>
       <tr><td class="step">TC-K-14</td><td>Load the kiosk, complete a TIME IN, then let the declaration countdown reach zero</td><td>Company logo (ACI) shows in the right panel while the declaration panel is closed; it is hidden while the panel is open and returns when it closes</td></tr>
-      <tr><td class="step">TC-K-15</td><td>Contractor is assigned to two projects; one is deactivated but the other stays active; contractor scans with no open session</td><td>TIME IN succeeds — one active assignment is enough</td></tr>
-      <tr><td class="step">TC-K-16</td><td>Contractor with two active assignments (one with a blank legacy position) TIME INs</td><td>Personal Detail shows one <code>Project Name / Area / Position</code> row per active assignment; the blank position renders as an em dash (—)</td></tr>
+      <tr><td class="step">TC-K-15</td><td>Employee is assigned to two projects; one is deactivated but the other stays active; employee scans with no open session</td><td>TIME IN succeeds — one active assignment is enough</td></tr>
+      <tr><td class="step">TC-K-16</td><td>Employee with two active assignments (one with a blank legacy position) TIME INs</td><td>Personal Detail shows one <code>Project Name / Area / Position</code> row per active assignment; the blank position renders as an em dash (—)</td></tr>
       <tr><td class="step">TC-K-17</td><td>Set <code>HealthDeclarationWindowSeconds</code> to 60, then TIME IN; then TIME OUT</td><td>The TIME IN result stays visible ~60 s (closing together with the declaration panel); the TIME OUT result clears after ~7 s</td></tr>
     </tbody>
   </table></div>
@@ -639,7 +639,7 @@
       <tr><td class="step">TC-H-04</td><td>Full reversal chain: TIME IN → UNFIT → back to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>, all within the window</td><td>Auto-set <code>time_out</code> cleared to NULL, session reopened, "ALLOWED TO ENTER" alert; a later scan records a TIME OUT (no duplicate session)</td></tr>
       <tr><td class="step">TC-H-05</td><td>Submit a declaration change after the window expires</td><td>Rejected with the window-expired message; no database change</td></tr>
       <tr><td class="step">TC-H-06</td><td>Boundary: submit an update at exactly N s after TIME IN</td><td>Rejected — the window is strict less-than N</td></tr>
-      <tr><td class="step">TC-H-07</td><td>Contractor B scans while contractor A's declaration panel is open</td><td>A's panel and timers clear immediately; B's scan flow is unaffected</td></tr>
+      <tr><td class="step">TC-H-07</td><td>Employee B scans while employee A's declaration panel is open</td><td>A's panel and timers clear immediately; B's scan flow is unaffected</td></tr>
       <tr><td class="step">TC-H-08</td><td>Let the countdown reach zero without touching the declaration</td><td>Panel hides, empty-state message shown, declaration locks at <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code> defaults</td></tr>
     </tbody>
   </table></div>
@@ -660,7 +660,7 @@
       <tr><td class="step">TC-A-01</td><td>Log in with valid corporate credentials of a user in the admin AD group</td><td>Redirect to <code>/Admin</code>; session holds employee number, display name, Role=Admin</td></tr>
       <tr><td class="step">TC-A-02</td><td>Log in with valid credentials of a user <em>not</em> in the admin AD group</td><td>Access denied; no admin session created</td></tr>
       <tr><td class="step">TC-A-03</td><td>Log in with an incorrect password</td><td>Error message; no session</td></tr>
-      <tr><td class="step">TC-A-04</td><td>Navigate directly to <code>/Admin/Contractors</code> (and call an admin JSON endpoint) without a session</td><td>Redirect to <code>/Auth/Login</code>; endpoint returns no data</td></tr>
+      <tr><td class="step">TC-A-04</td><td>Navigate directly to <code>/Admin/Employees</code> (and call an admin JSON endpoint) without a session</td><td>Redirect to <code>/Auth/Login</code>; endpoint returns no data</td></tr>
       <tr><td class="step">TC-A-05</td><td>Leave an admin idle past 30 minutes, then submit an admin action</td><td>Redirect to login — not a silent failure</td></tr>
       <tr><td class="step">TC-A-06</td><td>Log out, then return to an admin page</td><td>Session cleared; admin pages unreachable without re-login</td></tr>
     </tbody>
@@ -670,13 +670,13 @@
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
     <tbody>
-      <tr><td class="step">TC-D-01</td><td>Open <code>/Admin</code> with scans recorded within the last 7 days</td><td>Cards show Active Projects / Active Contractors / On Premises counts; both charts render the default last-7-days range; Recent TimeLogs lists the last 7 days</td></tr>
+      <tr><td class="step">TC-D-01</td><td>Open <code>/Admin</code> with scans recorded within the last 7 days</td><td>Cards show Active Projects / Active Employees / On Premises counts; both charts render the default last-7-days range; Recent TimeLogs lists the last 7 days</td></tr>
       <tr><td class="step">TC-D-02</td><td>Change From/To and click Apply</td><td>Both charts reload with the new range in a single request; x-axis labels follow the range</td></tr>
       <tr><td class="step">TC-D-03</td><td>Set From after To, then clear one of the dates, and Apply each time</td><td>Rejected with the corresponding message; charts unchanged</td></tr>
       <tr><td class="step">TC-D-04</td><td>Apply a range longer than 366 days</td><td>Rejected: <span class="msg">Date range cannot exceed one year.</span> — the client blocks the request; a forced API call is rejected by the server too</td></tr>
       <tr><td class="step">TC-D-05</td><td>Attendance chart: switch Overall ↔ Per Provider</td><td>Overall shows one bar series per provider with data in the range and a legend; Per Provider shows a single total series for the provider chosen in the dropdown</td></tr>
       <tr><td class="step">TC-D-06</td><td>Health Declaration chart with known UNFIT and NOT_UNDERSTOOD records in the range</td><td>Each day renders one stacked bar per provider split into the four fixed-color combinations matching the static legend strip; hovering a bar shows a tooltip naming that bar's provider with all four counts</td></tr>
-      <tr><td class="step">TC-D-07</td><td>A contractor assigned to two active projects under one provider TIME INs once</td><td>The scan is counted once per day in both Overall charts — totals come from the provider dimension, so assignments never double-count</td></tr>
+      <tr><td class="step">TC-D-07</td><td>An employee assigned to two active projects under one provider TIME INs once</td><td>The scan is counted once per day in both Overall charts — totals come from the provider dimension, so assignments never double-count</td></tr>
       <tr><td class="step">TC-D-08</td><td>Choose a range where one provider has no scans; then a range with no data at all</td><td>The quiet provider contributes no Overall series; zero bars/segments show no data label; a fully empty range shows "No data for the selected period"</td></tr>
     </tbody>
   </table></div>
@@ -691,34 +691,34 @@
       <tr><td class="step">TC-P-04</td><td>Create the provider's first project of a new calendar year</td><td>Numbering resets to 001; previous-year codes untouched</td></tr>
       <tr><td class="step">TC-P-05</td><td>Add a project with contract end date before its start date</td><td>Rejected with a validation message; nothing saved</td></tr>
       <tr><td class="step">TC-P-06</td><td>Add a project with a contract end date already in the past</td><td>Rejected on creation</td></tr>
-      <tr><td class="step">TC-P-07</td><td>Project's contract end date passes (simulate/await expiry)</td><td>Project auto-deactivates; only enrolled contractors with no other active project are cascaded to inactive; audit log retains a <code>data_from</code> snapshot for restore — cascade reactivation restores only the cascade-deactivated contractors</td></tr>
-      <tr><td class="step">TC-P-08</td><td>Delete a project that has enrolled contractors</td><td>Confirmation dialog states the cascade; on confirm the project is soft-deleted and hidden; enrolled contractors without another active project are marked inactive and blocked at the kiosk — contractors still on another active project keep scanning</td></tr>
-      <tr><td class="step">TC-P-09</td><td>Open "View Contractors" for a project and export</td><td>Modal lists only that project's contractors; Excel export downloads the same list</td></tr>
+      <tr><td class="step">TC-P-07</td><td>Project's contract end date passes (simulate/await expiry)</td><td>Project auto-deactivates; only enrolled employees with no other active project are cascaded to inactive; audit log retains a <code>data_from</code> snapshot for restore — cascade reactivation restores only the cascade-deactivated employees</td></tr>
+      <tr><td class="step">TC-P-08</td><td>Delete a project that has enrolled employees</td><td>Confirmation dialog states the cascade; on confirm the project is soft-deleted and hidden; enrolled employees without another active project are marked inactive and blocked at the kiosk — employees still on another active project keep scanning</td></tr>
+      <tr><td class="step">TC-P-09</td><td>Open "View Employees" for a project and export</td><td>Modal lists only that project's employees; Excel export downloads the same list</td></tr>
       <tr><td class="step">TC-P-10</td><td>Set an expired project back to Active without changing its dates</td><td>Rejected: <span class="msg">Cannot set the project to Active: the contract end date is already expired. Extend the contract end date first.</span></td></tr>
       <tr><td class="step">TC-P-11</td><td>Add a project with a blank Area of Destination</td><td>Rejected: <span class="msg">Area of Destination is required</span>; nothing saved</td></tr>
-      <tr><td class="step">TC-P-12</td><td>Delete a project enrolled by one contractor who has another active project and one who does not</td><td>Only the single-project contractor is deactivated and blocked at the kiosk; the other keeps scanning; the confirmation dialog states this</td></tr>
+      <tr><td class="step">TC-P-12</td><td>Delete a project enrolled by one employee who has another active project and one who does not</td><td>Only the single-project employee is deactivated and blocked at the kiosk; the other keeps scanning; the confirmation dialog states this</td></tr>
     </tbody>
   </table></div>
 
-  <h3 class="sub">Contractors</h3>
+  <h3 class="sub">Employees</h3>
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
     <tbody>
       <tr><td class="step">TC-C-01</td><td>Submit the create form with required fields missing (e.g. no name or birthdate)</td><td>Rejected with a clear message; nothing saved</td></tr>
-      <tr><td class="step">TC-C-02</td><td>Enroll a contractor choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">Project &lt;code&gt; does not belong to the selected provider.</span></td></tr>
-      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice under the same provider (second attempt with a new project/position and different contact/address)</td><td>Second attempt merges into the existing account: details overwritten, project/position added, employee ID unchanged — <span class="msg">Contractor already enrolled under this provider — existing account updated with the submitted details</span></td></tr>
+      <tr><td class="step">TC-C-02</td><td>Enroll an employee choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">Project &lt;code&gt; does not belong to the selected provider.</span></td></tr>
+      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice under the same provider (second attempt with a new project/position and different contact/address)</td><td>Second attempt merges into the existing account: details overwritten, project/position added, employee ID unchanged — <span class="msg">Employee already enrolled under this provider — existing account updated with the submitted details</span></td></tr>
       <tr><td class="step">TC-C-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still matched (case- and whitespace-insensitive) and merged into the same account; the registered name casing is kept</td></tr>
       <tr><td class="step">TC-C-05</td><td>Enroll the same person under a different project of the same provider, then under a different provider</td><td>Same provider: merged — the project/position is added to the existing account (no new employee ID). Different provider: a new account with its own provider-scoped employee ID</td></tr>
       <tr><td class="step">TC-C-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, rows missing fields, and the template's sample rows</td><td>Valid rows committed; duplicates flagged <span class="msg">Already enrolled — will update the existing account</span> and merged (reported separately as "updated existing"); rows missing fields listed individually as failed; template sample rows skipped with a "Sample — skipped" badge</td></tr>
       <tr><td class="step">TC-C-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>Second row flagged <span class="msg">Duplicate of another row in this file</span>; Process Import stays blocked until it is fixed or removed</td></tr>
-      <tr><td class="step">TC-C-08</td><td>Deactivate a contractor, then scan their ID at the kiosk</td><td><span class="msg">Contractor is inactive</span>; attendance history preserved</td></tr>
-      <tr><td class="step">TC-C-09</td><td>Edit an inactive contractor back to active, then scan</td><td>Scan processes normally again</td></tr>
+      <tr><td class="step">TC-C-08</td><td>Deactivate an employee, then scan their ID at the kiosk</td><td><span class="msg">Employee is inactive</span>; attendance history preserved</td></tr>
+      <tr><td class="step">TC-C-09</td><td>Edit an inactive employee back to active, then scan</td><td>Scan processes normally again</td></tr>
       <tr><td class="step">TC-C-10</td><td>Filter by project and status, reset, then export</td><td>Filters narrow the table; Reset restores the full list; export matches the active filters</td></tr>
-      <tr><td class="step">TC-C-11</td><td>Enroll a contractor with a future birthdate, then one who is 17 years old</td><td>Both rejected — <span class="msg">Birthdate cannot be a future date</span> and <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></td></tr>
-      <tr><td class="step">TC-C-12</td><td>Enroll a contractor with two project rows added via + Add Project</td><td>One employee ID is generated (shown in the toast); both project/position assignments are stored; a QR code is generated for the new ID</td></tr>
+      <tr><td class="step">TC-C-11</td><td>Enroll an employee with a future birthdate, then one who is 17 years old</td><td>Both rejected — <span class="msg">Birthdate cannot be a future date</span> and <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></td></tr>
+      <tr><td class="step">TC-C-12</td><td>Enroll an employee with two project rows added via + Add Project</td><td>One employee ID is generated (shown in the toast); both project/position assignments are stored; a QR code is generated for the new ID</td></tr>
       <tr><td class="step">TC-C-13</td><td>Try to assign the same project twice, then leave a position blank</td><td>The picker hides already-taken projects; the server rejects with <span class="msg">Each project can only be assigned once</span> and <span class="msg">Position is required</span></td></tr>
-      <tr><td class="step">TC-C-14</td><td>Attempt a 51st project row</td><td>Blocked with <span class="msg">A contractor can be assigned to at most 50 projects</span> (client and server)</td></tr>
-      <tr><td class="step">TC-C-15</td><td>Export the Contractors list to Excel</td><td>Columns: Employee ID, Name, Provider Name, Project (Position - Area) — one stacked line per project, Status, QR Code; 64 px QR images embedded; a contractor without a stored QR exports with a blank QR cell</td></tr>
+      <tr><td class="step">TC-C-14</td><td>Attempt a 51st project row</td><td>Blocked with <span class="msg">An employee can be assigned to at most 50 projects</span> (client and server)</td></tr>
+      <tr><td class="step">TC-C-15</td><td>Export the Employees list to Excel</td><td>Columns: Employee ID, Name, Provider Name, Project (Position - Area) — one stacked line per project, Status, QR Code; 64 px QR images embedded; an employee without a stored QR exports with a blank QR cell</td></tr>
     </tbody>
   </table></div>
 
@@ -728,7 +728,7 @@
     <tbody>
       <tr><td class="step">TC-T-01</td><td>Edit an old record's Time In, Time Out, Health Status, and Waiver Consent — long past the kiosk window</td><td>All fields persist; change reflected immediately in history/dashboard; <code>updated_by</code>/<code>updated_at</code> stamped</td></tr>
       <tr><td class="step">TC-T-02</td><td>Save a blocked combination (<span class="pill unfit">UNFIT</span> or <span class="pill fit">FIT</span> + <code>NOT_UNDERSTOOD</code>) with Time Out left blank</td><td><code>time_out</code> auto-filled with the <code>time_in</code> value (zero-duration session)</td></tr>
-      <tr><td class="step">TC-T-03</td><td>Morning record was UNFIT-blocked; admin corrects it to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; contractor scans again the same day</td><td>Kiosk accepts the scan — the same-day block is lifted</td></tr>
+      <tr><td class="step">TC-T-03</td><td>Morning record was UNFIT-blocked; admin corrects it to <span class="pill fit">FIT</span> + <code>UNDERSTOOD</code>; employee scans again the same day</td><td>Kiosk accepts the scan — the same-day block is lifted</td></tr>
       <tr><td class="step">TC-T-04</td><td>Delete a timelog record</td><td>Confirmation required; on confirm the record is permanently removed; deletion appears in the audit log</td></tr>
       <tr><td class="step">TC-T-05</td><td>Filter TimeLogs (date range, health status; find an employee via table search) and export</td><td>Exported .xlsx matches the filtered rows, including health status and waiver consent columns</td></tr>
     </tbody>
@@ -744,7 +744,7 @@
       <tr><td class="step">TC-S-04</td><td>Change <code>AdminADGroup</code> in the database (the key is not exposed in the config UI), then attempt login</td><td>Only members of the new group gain admin access on the next login attempt</td></tr>
       <tr><td class="step">TC-S-05</td><td>Toggle <code>ScanInputReadOnly</code> on/off and load the kiosk</td><td>On → field read-only (scanner still works); off → manual typing restored</td></tr>
       <tr><td class="step">TC-S-06</td><td>Enter 3 (or 400) for <code>DebounceThresholdSeconds</code> in System Config</td><td>Rejected: <span class="msg">Value must be between 5 and 300 seconds</span></td></tr>
-      <tr><td class="step">TC-L-01</td><td>Perform one of each admin mutation: create/edit provider, project, contractor, bulk import, config change, timelog edit, timelog delete</td><td>Each produces an audit entry in the same request with before/after JSON and the acting admin's employee number</td></tr>
+      <tr><td class="step">TC-L-01</td><td>Perform one of each admin mutation: create/edit provider, project, employee, bulk import, config change, timelog edit, timelog delete</td><td>Each produces an audit entry in the same request with before/after JSON and the acting admin's employee number</td></tr>
       <tr><td class="step">TC-L-02</td><td>Open an audit entry whose change touched one field</td><td>Diff table shows only the changed field, old and new values side by side</td></tr>
       <tr><td class="step">TC-L-03</td><td>Force an audit write failure during an admin operation</td><td>The business operation still succeeds; the audit failure is logged server-side</td></tr>
     </tbody>

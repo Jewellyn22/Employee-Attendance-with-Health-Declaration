@@ -1,29 +1,29 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Services;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ContractorAttendanceWithHealthDeclaration.Controllers
+namespace EmployeeAttendanceWithHealthDeclaration.Controllers
 {
     public class HomeController : Controller
     {
         private readonly IAttendanceService _attendanceService;
         private readonly IHistoryLogsService _historyLogsService;
         private readonly ISystemConfigService _systemConfigService;
-        private readonly IContractorService _contractorService;
+        private readonly IEmployeeService _employeeService;
         private readonly ILogger<HomeController> _logger;
 
         public HomeController(
             IAttendanceService attendanceService,
             IHistoryLogsService historyLogsService,
             ISystemConfigService systemConfigService,
-            IContractorService contractorService,
+            IEmployeeService employeeService,
             ILogger<HomeController> logger)
         {
             _attendanceService = attendanceService;
             _historyLogsService = historyLogsService;
             _systemConfigService = systemConfigService;
-            _contractorService = contractorService;
+            _employeeService = employeeService;
             _logger = logger;
         }
 
@@ -89,9 +89,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
             if (result.Success)
             {
-                // Retrieve actual contractor details from database
-                var contractorResult = await _contractorService.GetByEmployeeId(employee_id);
-                var contractor = contractorResult.Data;
+                // Retrieve actual employee details from database
+                var employeeResult = await _employeeService.GetByEmployeeId(employee_id);
+                var employee = employeeResult.Data;
 
                 // Null check for result.Data
                 if (result?.Data == null)
@@ -99,10 +99,10 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     return Json(new { success = false, message = "Failed to process attendance" });
                 }
 
-                // Null check for contractor
-                if (contractor == null)
+                // Null check for employee
+                if (employee == null)
                 {
-                    return Json(new { success = false, message = "Contractor not found" });
+                    return Json(new { success = false, message = "Employee not found" });
                 }
 
                 var response_data = new
@@ -112,22 +112,22 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                     time_in = result.Data.time_in,
                     health_status = result.Data.health_status,
                     waiver_consent = result.Data.waiver_consent,
-                    contractor_info = new
+                    employee_info = new
                     {
-                        employee_id = contractor.employee_id,
-                        name = contractor.name,
-                        provider_code = contractor.provider_code,
-                        provider_name = contractor.provider_name,
+                        employee_id = employee.employee_id,
+                        name = employee.name,
+                        provider_code = employee.provider_code,
+                        provider_name = employee.provider_name,
                         // Multi-project CSVs: comma-joined codes/names, DISTINCT areas, and
-                        // per-project positions of the contractor's assigned projects (kiosk
+                        // per-project positions of the employee's assigned projects (kiosk
                         // renders them joined).
-                        project_codes = contractor.project_codes,
-                        project_names = contractor.project_names,
-                        areas = contractor.areas,
-                        positions = contractor.positions,
+                        project_codes = employee.project_codes,
+                        project_names = employee.project_names,
+                        areas = employee.areas,
+                        positions = employee.positions,
                         // JSON array string [{project_name, area, position}] per assigned project --
                         // index-aligned (unlike the DISTINCT areas CSV); kiosk Personal Detail rows.
-                        project_rows = contractor.project_rows
+                        project_rows = employee.project_rows
                     }
                 };
 

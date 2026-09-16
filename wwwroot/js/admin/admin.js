@@ -1,5 +1,19 @@
 // AdminPage - Organized JavaScript for Admin Controller views
-// Structure: projects, contractors, systemConfig, timeLogs, index
+// Structure: projects, employees, systemConfig, timeLogs, index
+
+// Audit-log entity_type values are stored data strings (e.g. 'employee'); map them
+// to the rebranded display vocabulary without changing what is stored in the DB.
+const AUDIT_ENTITY_LABELS = {
+    provider: 'Provider',
+    project: 'Project',
+    employee: 'Employee',
+    system_config: 'System Config',
+    timelog: 'TimeLog',
+    bulk_enrollment: 'Bulk Enrollment'
+};
+function auditEntityLabel(value) {
+    return AUDIT_ENTITY_LABELS[value] || value || '';
+}
 
 const AdminPage = {
     // Common utilities shared across all admin views
@@ -331,10 +345,10 @@ const AdminPage = {
                         }
                     },
                     {
-                        data: 'contractor_count',
+                        data: 'employee_count',
                         render: function(data, type, row) {
                             const count = data || 0;
-                            return `<a href="#" class="contractor-count text-center" data-project-code="${row.project_code}" style="cursor: pointer; text-decoration: underline; font-weight: bold;">${count}</a>`;
+                            return `<a href="#" class="employee-count text-center" data-project-code="${row.project_code}" style="cursor: pointer; text-decoration: underline; font-weight: bold;">${count}</a>`;
                         }
                     },
                     {
@@ -362,7 +376,7 @@ const AdminPage = {
                                 <button class="btn btn-sm btn-warning btn-edit" data-project-code="${data.project_code}">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger btn-delete-project" data-project-code="${data.project_code}" data-contractor-count="${data.contractor_count || 0}" title="Delete Project">
+                                <button class="btn btn-sm btn-danger btn-delete-project" data-project-code="${data.project_code}" data-employee-count="${data.employee_count || 0}" title="Delete Project">
                                     <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             `;
@@ -392,9 +406,9 @@ const AdminPage = {
                 self.exportToExcel();
             });
 
-            // Export project contractors (modal) button
-            $('#export-project-contractors').on('click', function() {
-                self.exportContractorsToExcel();
+            // Export project employees (modal) button
+            $('#export-project-employees').on('click', function() {
+                self.exportEmployeesToExcel();
             });
 
             // Show export button when data exists
@@ -473,11 +487,11 @@ const AdminPage = {
                 modal.show();
             });
 
-            // Contractor count click handler
-            $(document).on('click', '.contractor-count', function(e) {
+            // Employee count click handler
+            $(document).on('click', '.employee-count', function(e) {
                 e.preventDefault();
                 const projectCode = $(this).data('project-code');
-                self.loadContractors(projectCode);
+                self.loadEmployees(projectCode);
             });
 
             // Delete project button (soft delete: enrolled employees whose LAST active
@@ -485,11 +499,11 @@ const AdminPage = {
             // retained in the database; employees still on another active project survive)
             $(document).on('click', '.btn-delete-project', function() {
                 const projectCode = $(this).data('project-code');
-                const contractorCount = $(this).data('contractor-count') || 0;
+                const employeeCount = $(this).data('employee-count') || 0;
 
                 let message = `Are you sure you want to delete project ${projectCode}?`;
-                if (contractorCount > 0) {
-                    message = `Delete project ${projectCode}? Enrolled employee(s) without another active project (up to ${contractorCount}) will also be deleted and will no longer be able to scan at the kiosk. Employees still assigned to another active project are kept.`;
+                if (employeeCount > 0) {
+                    message = `Delete project ${projectCode}? Enrolled employee(s) without another active project (up to ${employeeCount}) will also be deleted and will no longer be able to scan at the kiosk. Employees still assigned to another active project are kept.`;
                 }
 
                 AdminPage.common.showConfirmation(message, function() {
@@ -674,35 +688,35 @@ const AdminPage = {
             }
         },
 
-        loadContractors: function(projectCode) {
+        loadEmployees: function(projectCode) {
             const self = this;
             this.currentProjectCode = projectCode;
 
             $.ajax({
-                url: '/Admin/GetProjectContractors',
+                url: '/Admin/GetProjectEmployees',
                 method: 'GET',
                 data: { project_code: projectCode },
                 success: function(response) {
                     if (response.success && response.data) {
-                        self.populateContractorsTable(response.data);
+                        self.populateEmployeesTable(response.data);
 
                         // Use Bootstrap 5 native API
-                        var modal = new bootstrap.Modal(document.getElementById('contractors-modal'));
+                        var modal = new bootstrap.Modal(document.getElementById('employees-modal'));
                         modal.show();
                     } else {
-                        AdminPage.common.showError('Failed to load contractors.');
+                        AdminPage.common.showError('Failed to load employees.');
                     }
                 },
                 error: function(xhr, status, error) {
-                    AdminPage.common.showError('Failed to load contractors. Please try again.');
-                    console.error('Load contractors error:', { xhr, status, error });
+                    AdminPage.common.showError('Failed to load employees. Please try again.');
+                    console.error('Load employees error:', { xhr, status, error });
                 }
             });
         },
 
-        populateContractorsTable: function(contractors) {
-            this.contractorsTable = $('#contractors-table').DataTable({
-                data: contractors,
+        populateEmployeesTable: function(employees) {
+            this.employeesTable = $('#employees-table').DataTable({
+                data: employees,
                 destroy: true,
                 columns: [
                     { data: 'employee_id' },
@@ -713,9 +727,9 @@ const AdminPage = {
             });
         },
 
-        exportContractorsToExcel: function() {
+        exportEmployeesToExcel: function() {
             // Get current filtered data from modal DataTable (respecting search)
-            const tableData = this.contractorsTable.rows({ search: 'applied' }).data().toArray();
+            const tableData = this.employeesTable.rows({ search: 'applied' }).data().toArray();
 
             if (tableData.length === 0) {
                 AdminPage.common.showWarning('No data available to export', 'No Data');
@@ -732,17 +746,17 @@ const AdminPage = {
             // Create Excel file using SheetJS
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
+            XLSX.utils.book_append_sheet(wb, ws, 'Employees');
 
             // Generate filename with timestamp
             const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
-            const filename = `ProjectContractors_${this.currentProjectCode || 'Export'}_${timestamp}.xlsx`;
+            const filename = `ProjectEmployees_${this.currentProjectCode || 'Export'}_${timestamp}.xlsx`;
 
             // Download file
             XLSX.writeFile(wb, filename);
 
             // Show success message
-            AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
+            AdminPage.common.showSuccess(`Exported ${tableData.length} employees to Excel`, 'Export Successful');
         },
 
         exportToExcel: function() {
@@ -765,7 +779,7 @@ const AdminPage = {
                 'Area of Destination': row.area_of_destination || '',
                 'Contract Start Date': row.contract_startdate ? AdminPage.common.formatDateTime(row.contract_startdate) : '',
                 'Contract End Date': row.contract_enddate ? AdminPage.common.formatDateTime(row.contract_enddate) : '',
-                'Active Contractors': row.contractor_count || 0,
+                'Active Employees': row.employee_count || 0,
                 'Status': row.active === 1 ? 'Active' : 'Inactive'
             }));
 
@@ -776,7 +790,7 @@ const AdminPage = {
 
             // Generate filename with timestamp
             const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_');
-            const filename = `ContractorProjects_${timestamp}.xlsx`;
+            const filename = `EmployeeProjects_${timestamp}.xlsx`;
 
             // Download file
             XLSX.writeFile(wb, filename);
@@ -786,22 +800,22 @@ const AdminPage = {
         }
     },
 
-    // Contractors.cshtml - Contractors CRUD
-    contractors: {
-        contractorTable: null,
+    // Employees.cshtml - Employees CRUD
+    employees: {
+        employeeTable: null,
         isEditing: false,
-        currentEditingAssignments: [],   // [{project_code, position}] of the contractor being edited (add-row picker pre-fill)
+        currentEditingAssignments: [],   // [{project_code, position}] of the employee being edited (add-row picker pre-fill)
         availableProjects: [],   // provider's projects cached for the add-row picker (code, name, contract_enddate)
         skipProjectCascade: false,   // suppress cascade during programmatic provider set (edit init)
-        selectedContractorIds: new Set(),   // checked employee_ids; survives pagination/filters, cleared after delete
+        selectedEmployeeIds: new Set(),   // checked employee_ids; survives pagination/filters, cleared after delete
 
         init: function() {
             const self = this;
 
             // Initialize DataTable
-            self.contractorTable = $('#contractors-table').DataTable({
+            self.employeeTable = $('#employees-table').DataTable({
                 ajax: {
-                    url: '/Admin/GetAllContractors',
+                    url: '/Admin/GetAllEmployees',
                     dataSrc: function(data) {
                         return data.success ? data.data : [];
                     }
@@ -815,8 +829,8 @@ const AdminPage = {
                         render: function(data, type, row) {
                             // Re-emitted from the Set on every draw, so checked state survives
                             // pagination, sorting, filters, and ajax.reload().
-                            const checked = self.selectedContractorIds.has(row.employee_id) ? ' checked' : '';
-                            return '<input type="checkbox" class="contractor-select" data-employee-id="' + row.employee_id + '"' + checked + '>';
+                            const checked = self.selectedEmployeeIds.has(row.employee_id) ? ' checked' : '';
+                            return '<input type="checkbox" class="employee-select" data-employee-id="' + row.employee_id + '"' + checked + '>';
                         }
                     },
                     { data: 'employee_id' },
@@ -853,7 +867,7 @@ const AdminPage = {
                                 <button class="btn btn-sm btn-warning btn-edit" data-employee-id="${data.employee_id}">
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </button>
-                                <button class="btn btn-sm btn-danger btn-delete-contractor" data-employee-id="${data.employee_id}" title="Delete">
+                                <button class="btn btn-sm btn-danger btn-delete-employee" data-employee-id="${data.employee_id}" title="Delete">
                                     <i class="fa-regular fa-trash-can"></i>
                                 </button>
                             `;
@@ -869,9 +883,9 @@ const AdminPage = {
             });
 
             // Client-side Status + Project filters (DataTables custom search).
-            // Guarded to #contractors-table so it never affects another table.
+            // Guarded to #employees-table so it never affects another table.
             $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
-                if (settings.nTable.id !== 'contractors-table') return true;
+                if (settings.nTable.id !== 'employees-table') return true;
 
                 const statusVal = $('#filter-active-status').val();
                 if (statusVal && String(rowData.active) !== String(statusVal)) return false;
@@ -886,21 +900,21 @@ const AdminPage = {
 
             // Re-run the filters whenever either dropdown changes
             $('#filter-active-status').on('change', function() {
-                self.contractorTable.draw();
+                self.employeeTable.draw();
             });
             $('#filter-project').on('change', function() {
-                self.contractorTable.draw();
+                self.employeeTable.draw();
             });
 
             // Reset all filters (Project + Status dropdowns and global search) and redraw
-            $('#reset-contractor-filters').on('click', function() {
+            $('#reset-employee-filters').on('click', function() {
                 $('#filter-project').val('');
                 $('#filter-active-status').val('');
-                self.contractorTable.search('').draw();
+                self.employeeTable.search('').draw();
             });
 
             // Export to Excel button
-            $('#export-contractors').on('click', function() {
+            $('#export-employees').on('click', function() {
                 self.exportToExcel();
             });
 
@@ -908,29 +922,29 @@ const AdminPage = {
             self.initBulkImport();
 
             // Show export button only when data exists
-            self.contractorTable.on('draw', function() {
-                const hasData = self.contractorTable.data().length > 0;
-                $('#export-contractors').toggle(hasData);
+            self.employeeTable.on('draw', function() {
+                const hasData = self.employeeTable.data().length > 0;
+                $('#export-employees').toggle(hasData);
             });
 
             // Keep row checkboxes, header select-all, and the Delete Selected button in
             // sync after every draw (pagination, sort, filter, ajax.reload).
-            self.contractorTable.on('draw', function() {
-                self._syncContractorCheckboxState();
+            self.employeeTable.on('draw', function() {
+                self._syncEmployeeCheckboxState();
             });
 
             // Add-row picker: append/remove assignment rows (project select + position
             // input). Delegated so rows created later are covered automatically.
-            $('#contractor-projects-container').on('click', '.cpa-remove', function() {
-                self.removeProjectRow($(this).closest('.contractor-assignment-row'));
+            $('#employee-projects-container').on('click', '.cpa-remove', function() {
+                self.removeProjectRow($(this).closest('.employee-assignment-row'));
             });
-            $('#contractor-projects-container').on('change', '.cpa-project', function() {
+            $('#employee-projects-container').on('change', '.cpa-project', function() {
                 // A row's project choice changes which projects the OTHER rows may offer
                 self.rebuildRowOptions();
             });
             $('#add-project-row').on('click', function() {
-                if ($('#contractor-projects-container .contractor-assignment-row').length >= 50) {
-                    AdminPage.common.showError('A contractor can be assigned to at most 50 projects');
+                if ($('#employee-projects-container .employee-assignment-row').length >= 50) {
+                    AdminPage.common.showError('An employee can be assigned to at most 50 projects');
                     return;
                 }
                 self.addProjectRow(null, '');
@@ -938,12 +952,12 @@ const AdminPage = {
 
             // Tear the picker down when the modal closes so the next open starts clean
             // (Select2 instances destroyed; container emptied).
-            $('#contractor-modal').on('hidden.bs.modal', function() {
+            $('#employee-modal').on('hidden.bs.modal', function() {
                 self.resetProjectRows();
             });
 
             // Setup modal event handler
-            $('#contractor-modal').on('shown.bs.modal', function() {
+            $('#employee-modal').on('shown.bs.modal', function() {
                 // Always load providers (for both add and edit modes).
                 // In edit mode, suppress the provider->project cascade while we programmatically
                 // set the provider value, so it doesn't fire a second picker rebuild
@@ -973,7 +987,7 @@ const AdminPage = {
                 } : null);
 
                 if (self.isEditing) {
-                    // Provider is locked once a contractor is registered (employee_id is
+                    // Provider is locked once a employee is registered (employee_id is
                     // provider-scoped); assignments remain editable via the picker rows.
                     $('#provider_code').prop('disabled', true);
                 }
@@ -987,13 +1001,13 @@ const AdminPage = {
                 self.currentEditingProvider = null;
             });
 
-            // Add contractor button
-            $('#add-contractor').on('click', function() {
+            // Add employee button
+            $('#add-employee').on('click', function() {
                 self.isEditing = false;
                 self.skipProjectCascade = false;   // re-enable cascade after a possibly-aborted edit
-                $('#contractor-form')[0].reset();
+                $('#employee-form')[0].reset();
 
-                // Employee ID is auto-generated on save - hide the field for new contractors
+                // Employee ID is auto-generated on save - hide the field for new employees
                 $('#employee_id').val('');
                 $('#employee_id_field').hide();
 
@@ -1004,21 +1018,21 @@ const AdminPage = {
                 self.availableProjects = [];
                 self.resetProjectRows();
 
-                // Reset toggle to Active state for new contractors
-                $('#contractor_active').prop('checked', true);
-                $('#contractor_active_label').text('Active');
+                // Reset toggle to Active state for new employees
+                $('#employee_active').prop('checked', true);
+                $('#employee_active_label').text('Active');
 
-                $('#contractor-modal .modal-title').text('Add New Contractor');
+                $('#employee-modal .modal-title').text('Add New Employee');
 
                 // Use Bootstrap 5 native API
-                var modal = new bootstrap.Modal(document.getElementById('contractor-modal'));
+                var modal = new bootstrap.Modal(document.getElementById('employee-modal'));
                 modal.show();
             });
 
-            // Edit contractor button
+            // Edit employee button
             $(document).on('click', '.btn-edit', function() {
                 const employeeId = $(this).data('employee-id');
-                const contractor = self.contractorTable.row($(this).closest('tr')).data();
+                const employee = self.employeeTable.row($(this).closest('tr')).data();
 
                 self.isEditing = true;
 
@@ -1026,81 +1040,81 @@ const AdminPage = {
                 // (provider locked; rows pre-filled from the exact project_positions map)
                 let assignments = [];
                 try {
-                    const map = JSON.parse(contractor.project_positions || '{}');
+                    const map = JSON.parse(employee.project_positions || '{}');
                     assignments = Object.keys(map).map(function(code) {
                         return { project_code: code, position: map[code] || '' };
                     });
                 } catch (e) {
                     // Unparseable map: fall back to the codes CSV with blank positions
-                    assignments = (contractor.project_codes || '')
+                    assignments = (employee.project_codes || '')
                         .split(',').map(function(c) { return c.trim(); }).filter(Boolean)
                         .map(function(code) { return { project_code: code, position: '' }; });
                 }
                 self.currentEditingAssignments = assignments;
-                self.currentEditingProvider = contractor.provider_code;
+                self.currentEditingProvider = employee.provider_code;
 
                 // Employee ID is auto-generated and read-only
-                $('#employee_id').val(contractor.employee_id);
+                $('#employee_id').val(employee.employee_id);
                 $('#employee_id').prop('readonly', true);
                 $('#employee_id_field').show();
-                $('#name').val(contractor.name);
-                $('#gender').val(contractor.gender);
-                $('#birthdate').val(self.formatDateForInput(contractor.birthdate));
-                $('#contact_number').val(contractor.contact_number);
-                $('#address').val(contractor.address || '');
-                $('#provider_code').val(contractor.provider_code);
+                $('#name').val(employee.name);
+                $('#gender').val(employee.gender);
+                $('#birthdate').val(self.formatDateForInput(employee.birthdate));
+                $('#contact_number').val(employee.contact_number);
+                $('#address').val(employee.address || '');
+                $('#provider_code').val(employee.provider_code);
 
-                // Set toggle state based on contractor status
-                $('#contractor_active').prop('checked', contractor.active === 1);
-                $('#contractor_active_label').text(contractor.active === 1 ? 'Active' : 'Inactive');
+                // Set toggle state based on employee status
+                $('#employee_active').prop('checked', employee.active === 1);
+                $('#employee_active_label').text(employee.active === 1 ? 'Active' : 'Inactive');
 
-                $('#contractor-modal .modal-title').text('Edit Contractor');
+                $('#employee-modal .modal-title').text('Edit Employee');
 
                 // Use Bootstrap 5 native API
-                var modal = new bootstrap.Modal(document.getElementById('contractor-modal'));
+                var modal = new bootstrap.Modal(document.getElementById('employee-modal'));
                 modal.show();
             });
 
             // Row checkbox: track selection (survives pagination/filters).
-            $('#contractors-table tbody').on('change', '.contractor-select', function() {
+            $('#employees-table tbody').on('change', '.employee-select', function() {
                 const id = String($(this).data('employee-id'));
-                if (this.checked) { self.selectedContractorIds.add(id); }
-                else { self.selectedContractorIds.delete(id); }
-                self._syncContractorCheckboxState();
+                if (this.checked) { self.selectedEmployeeIds.add(id); }
+                else { self.selectedEmployeeIds.delete(id); }
+                self._syncEmployeeCheckboxState();
             });
 
             // Header select-all: applies to the CURRENT PAGE only. The count on the
             // Delete Selected button always reflects the full selection (all pages).
-            $('#select-all-contractors').on('change', function() {
+            $('#select-all-employees').on('change', function() {
                 const checked = this.checked;
-                self.contractorTable.rows({ page: 'current' }).every(function() {
+                self.employeeTable.rows({ page: 'current' }).every(function() {
                     const id = String(this.data().employee_id);
-                    $(this.node()).find('.contractor-select').prop('checked', checked);
-                    if (checked) { self.selectedContractorIds.add(id); } else { self.selectedContractorIds.delete(id); }
+                    $(this.node()).find('.employee-select').prop('checked', checked);
+                    if (checked) { self.selectedEmployeeIds.add(id); } else { self.selectedEmployeeIds.delete(id); }
                 });
                 self._updateDeleteSelectedButton();
             });
 
             // Per-row delete (soft delete: attendance history kept, kiosk scans rejected afterwards)
-            $(document).on('click', '.btn-delete-contractor', function() {
+            $(document).on('click', '.btn-delete-employee', function() {
                 const employeeId = String($(this).data('employee-id'));
-                const contractor = self.contractorTable.row($(this).closest('tr')).data();
-                const name = (contractor && contractor.name) ? contractor.name : employeeId;
+                const employee = self.employeeTable.row($(this).closest('tr')).data();
+                const name = (employee && employee.name) ? employee.name : employeeId;
 
                 AdminPage.common.showConfirmation(
-                    'Are you sure you want to delete contractor ' + name + ' (' + employeeId + ')? ',
+                    'Are you sure you want to delete employee ' + name + ' (' + employeeId + ')? ',
                     function() {
                         $.ajax({
-                            url: '/Admin/DeleteContractors',
+                            url: '/Admin/DeleteEmployees',
                             method: 'POST',
                             contentType: 'application/json',
                             data: JSON.stringify({ employee_ids: [employeeId] }),
                             success: function(response) {
                                 if (response.success) {
                                     AdminPage.common.showSuccess(response.message);
-                                    self.selectedContractorIds.delete(employeeId);
+                                    self.selectedEmployeeIds.delete(employeeId);
                                     self._updateDeleteSelectedButton();
-                                    self.contractorTable.ajax.reload(function() {
+                                    self.employeeTable.ajax.reload(function() {
                                         self._populateProjectFilter();   // a project may now have zero rows
                                     });
                                 } else {
@@ -1108,36 +1122,36 @@ const AdminPage = {
                                 }
                             },
                             error: function(xhr, status, error) {
-                                AdminPage.common.showError('Failed to delete contractor. Please try again.');
-                                console.error('Delete contractor error:', { xhr, status, error });
+                                AdminPage.common.showError('Failed to delete employee. Please try again.');
+                                console.error('Delete employee error:', { xhr, status, error });
                             }
                         });
                     }
                 );
             });
 
-            // Bulk delete of every checked contractor (across pages/filters)
-            $('#delete-selected-contractors').on('click', function() {
-                const ids = Array.from(self.selectedContractorIds);
+            // Bulk delete of every checked employee (across pages/filters)
+            $('#delete-selected-employees').on('click', function() {
+                const ids = Array.from(self.selectedEmployeeIds);
                 if (ids.length === 0) {
-                    AdminPage.common.showWarning('Select at least one contractor first.');
+                    AdminPage.common.showWarning('Select at least one employee first.');
                     return;
                 }
 
                 AdminPage.common.showConfirmation(
-                    'Are you sure you want to delete ' + ids.length + ' selected contractor(s)?',
+                    'Are you sure you want to delete ' + ids.length + ' selected employee(s)?',
                     function() {
                         $.ajax({
-                            url: '/Admin/DeleteContractors',
+                            url: '/Admin/DeleteEmployees',
                             method: 'POST',
                             contentType: 'application/json',
                             data: JSON.stringify({ employee_ids: ids }),
                             success: function(response) {
                                 if (response.success) {
                                     AdminPage.common.showSuccess(response.message);
-                                    self.selectedContractorIds.clear();
+                                    self.selectedEmployeeIds.clear();
                                     self._updateDeleteSelectedButton();
-                                    self.contractorTable.ajax.reload(function() {
+                                    self.employeeTable.ajax.reload(function() {
                                         self._populateProjectFilter();
                                     });
                                 } else {
@@ -1145,8 +1159,8 @@ const AdminPage = {
                                 }
                             },
                             error: function(xhr, status, error) {
-                                AdminPage.common.showError('Failed to delete contractors. Please try again.');
-                                console.error('Bulk delete contractors error:', { xhr, status, error });
+                                AdminPage.common.showError('Failed to delete employees. Please try again.');
+                                console.error('Bulk delete employees error:', { xhr, status, error });
                             }
                         });
                     }
@@ -1154,9 +1168,9 @@ const AdminPage = {
             });
 
             // Toggle state change handler
-            $('#contractor_active').on('change', function() {
+            $('#employee_active').on('change', function() {
                 const isActive = $(this).is(':checked');
-                $('#contractor_active_label').text(isActive ? 'Active' : 'Inactive');
+                $('#employee_active_label').text(isActive ? 'Active' : 'Inactive');
             });
 
             // Provider change -> rebuild the picker from the new provider's projects (cascade)
@@ -1177,8 +1191,8 @@ const AdminPage = {
                 }
             });
 
-            // Save contractor
-            $('#save-contractor').on('click', function() {
+            // Save employee
+            $('#save-employee').on('click', function() {
                 // Client-side validation
                 const name = $('#name').val().trim();
                 if (!name) {
@@ -1241,7 +1255,7 @@ const AdminPage = {
                     return;
                 }
 
-                const contractor = {
+                const employee = {
                     name: name,
                     gender: gender,
                     birthdate: birthdateStr,
@@ -1249,27 +1263,27 @@ const AdminPage = {
                     address: $('#address').val(),
                     provider_code: providerCode,
                     // Per-project assignments: [{project_code, position}] — the server
-                    // binds List<contractor_project_assignment> and serializes p_projects
+                    // binds List<employee_project_assignment> and serializes p_projects
                     assignments: assignments,
-                    active: $('#contractor_active').is(':checked') ? 1 : 0
+                    active: $('#employee_active').is(':checked') ? 1 : 0
                 };
 
                 // employee_id is auto-generated on create; include it only when editing
                 if (self.isEditing) {
-                    contractor.employee_id = $('#employee_id').val();
+                    employee.employee_id = $('#employee_id').val();
                 }
 
-                const url = self.isEditing ? '/Admin/UpdateContractor' : '/Admin/CreateContractor';
+                const url = self.isEditing ? '/Admin/UpdateEmployee' : '/Admin/CreateEmployee';
 
                 $.ajax({
                     url: url,
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify(contractor),
+                    data: JSON.stringify(employee),
                     success: function(response) {
                         if (response.success) {
                             // Use Bootstrap 5 native API
-                            var modal = bootstrap.Modal.getInstance(document.getElementById('contractor-modal'));
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('employee-modal'));
                             if (modal) {
                                 modal.hide();
                             }
@@ -1278,14 +1292,14 @@ const AdminPage = {
                                 ? ' (Employee ID: ' + response.data.employee_id + ')'
                                 : '';
                             AdminPage.common.showSuccess(response.message + empIdSuffix);
-                            self.contractorTable.ajax.reload();
+                            self.employeeTable.ajax.reload();
                         } else {
                             AdminPage.common.showError(response.message);
                         }
                     },
                     error: function(xhr, status, error) {
-                        AdminPage.common.showError('Failed to save contractor. Please try again.');
-                        console.error('Save contractor error:', { xhr, status, error });
+                        AdminPage.common.showError('Failed to save employee. Please try again.');
+                        console.error('Save employee error:', { xhr, status, error });
                     }
                 });
             });
@@ -1298,8 +1312,8 @@ const AdminPage = {
 
         // ---- Add-row picker (per-project position) --------------------------------
         //
-        // #contractor-projects-container is the <tbody> of the Project|Position
-        // table and holds one .contractor-assignment-row <tr> per assignment:
+        // #employee-projects-container is the <tbody> of the Project|Position
+        // table and holds one .employee-assignment-row <tr> per assignment:
         // a Select2 project dropdown | a position input | a remove button. Each
         // row's dropdown offers the provider's non-expired projects minus the
         // projects already chosen in OTHER rows.
@@ -1344,7 +1358,7 @@ const AdminPage = {
         // Codes currently picked in some row (for the other rows' exclusions and
         // the expired-but-assigned allowance)
         pickedProjectCodes: function() {
-            return $('#contractor-projects-container .cpa-project')
+            return $('#employee-projects-container .cpa-project')
                 .map(function() { return $(this).val() || null; })
                 .get()
                 .filter(Boolean);
@@ -1356,20 +1370,20 @@ const AdminPage = {
         addProjectRow: function(selectedCode, positionText) {
             const self = this;
             const $row = $(
-                '<tr class="contractor-assignment-row">' +
+                '<tr class="employee-assignment-row">' +
                     '<td><select class="form-control cpa-project"></select></td>' +
                     '<td><input type="text" class="form-control cpa-position" placeholder="Position on this project" maxlength="255"></td>' +
                     '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger cpa-remove" title="Remove this project"><i class="fas fa-times"></i></button></td>' +
                 '</tr>'
             );
-            $('#contractor-projects-container').append($row);
+            $('#employee-projects-container').append($row);
 
             const $select = $row.find('.cpa-project');
             $select.select2({
                 placeholder: 'Select Project',
                 allowClear: false,
                 width: '100%',
-                dropdownParent: $('#contractor-modal')
+                dropdownParent: $('#employee-modal')
             });
             $row.find('.cpa-position').val(positionText || '');
 
@@ -1395,7 +1409,7 @@ const AdminPage = {
             const self = this;
             const picked = self.pickedProjectCodes();
 
-            $('#contractor-projects-container .contractor-assignment-row').each(function() {
+            $('#employee-projects-container .employee-assignment-row').each(function() {
                 const $row = $(this);
                 const $select = $row.find('.cpa-project');
                 const currentValue = ($row.is($focusRow) && selectedCode) ? selectedCode : $select.val();
@@ -1428,13 +1442,13 @@ const AdminPage = {
             });
 
             // Hide remove buttons when only one row remains (>= 1 assignment required)
-            const $rows = $('#contractor-projects-container .contractor-assignment-row');
+            const $rows = $('#employee-projects-container .employee-assignment-row');
             $rows.find('.cpa-remove').toggle($rows.length > 1);
         },
 
         // Read the picker rows into [{project_code, position}] (trimmed)
         collectAssignments: function() {
-            return $('#contractor-projects-container .contractor-assignment-row')
+            return $('#employee-projects-container .employee-assignment-row')
                 .map(function() {
                     const $row = $(this);
                     return {
@@ -1447,13 +1461,13 @@ const AdminPage = {
 
         // Tear down every row (Select2 destroy + empty the container)
         resetProjectRows: function() {
-            $('#contractor-projects-container .contractor-assignment-row').each(function() {
+            $('#employee-projects-container .employee-assignment-row').each(function() {
                 const $select = $(this).find('.cpa-project');
                 if ($select.data('select2')) {
                     $select.select2('destroy');
                 }
             });
-            $('#contractor-projects-container').empty();
+            $('#employee-projects-container').empty();
             $('#add-project-row').prop('disabled', false);
         },
 
@@ -1509,7 +1523,7 @@ const AdminPage = {
 
         exportToExcel: async function() {
             // Export only the rows currently shown (respects global search + Status/Project filters)
-            const tableData = this.contractorTable.rows({ search: 'applied' }).data().toArray();
+            const tableData = this.employeeTable.rows({ search: 'applied' }).data().toArray();
 
             if (tableData.length === 0) {
                 AdminPage.common.showWarning('No data available to export', 'No Data');
@@ -1520,16 +1534,16 @@ const AdminPage = {
 
             try {
                 // The QR PNGs are generated once at enrollment and stored on
-                // contractor_employee (contractor_employee.qr_code_image) — the export
+                // employee (employee.qr_code_image) — the export
                 // only fetches and embeds them, it never generates.
-                const qrRes = await fetch('/Admin/GetContractorQrCodes');
+                const qrRes = await fetch('/Admin/GetEmployeeQrCodes');
                 const qrJson = await qrRes.json();
                 const qrMap = {};
                 (qrJson.success && qrJson.data ? qrJson.data : []).forEach(q => { qrMap[q.employee_id] = q.qr_code_image; });
 
                 // ExcelJS (not SheetJS) because community SheetJS cannot embed images.
                 const wb = new ExcelJS.Workbook();
-                const ws = wb.addWorksheet('Contractors', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const ws = wb.addWorksheet('Employees', { views: [{ state: 'frozen', ySplit: 1 }] });
                 ws.columns = [
                     { header: 'Employee ID', key: 'employee_id', width: 14 },
                     { header: 'Name', key: 'name', width: 30 },
@@ -1573,22 +1587,22 @@ const AdminPage = {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Contractors_${timestamp}.xlsx`;
+                a.download = `Employees_${timestamp}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
                 URL.revokeObjectURL(url);
 
                 Swal.close();
-                AdminPage.common.showSuccess(`Exported ${tableData.length} contractors to Excel`, 'Export Successful');
+                AdminPage.common.showSuccess(`Exported ${tableData.length} employees to Excel`, 'Export Successful');
             } catch (err) {
-                console.error('Contractors Excel export failed:', err);
+                console.error('Employees Excel export failed:', err);
                 Swal.close();
                 AdminPage.common.showError('Could not generate the Excel file.');
             }
         },
 
-        // ===== Bulk Import Contractors =====
+        // ===== Bulk Import Employees =====
         parsedBulkRows: [],          // validated rows ready to submit
         _currentBulkFileName: '',
 
@@ -1601,7 +1615,7 @@ const AdminPage = {
         ],
 
         // Normalized signature of a row's 6 user fields. Matching all fields makes a
-        // real-contractor collision effectively impossible. (Area of Destination is
+        // real-employee collision effectively impossible. (Area of Destination is
         // no longer a bulk column — it comes from the selected project — so legacy
         // templates that still carry an Area column still match the samples.)
         _bulkRowSignature: function(row) {
@@ -1618,35 +1632,35 @@ const AdminPage = {
             return this._bulkSampleRows.some(function(s) { return self._bulkRowSignature(s) === sig; });
         },
 
-        // Duplicate key for a contractor: name (case-insensitive) + birthdate (yyyy-mm-dd).
-        // Matches the server-side rule (sp_contractor_employee_CheckDuplicate).
+        // Duplicate key for a employee: name (case-insensitive) + birthdate (yyyy-mm-dd).
+        // Matches the server-side rule (sp_employee_CheckDuplicate).
         _bulkDuplicateKey: function(name, birthdate) {
             const n = String(name || '').trim().toLowerCase();
             const b = String(birthdate || '').split('T')[0];   // JSON birthdate may be ISO "...T00:00:00"
             return n + '|' + b;
         },
 
-        // Build the set of already-enrolled contractor keys for the selected provider from
-        // the loaded contractors DataTable (active + inactive, per the duplicate policy —
+        // Build the set of already-enrolled employee keys for the selected provider from
+        // the loaded employees DataTable (active + inactive, per the duplicate policy —
         // duplicates are provider-scoped since employee IDs and duplicate checks are).
-        // No new endpoint — reuses the data behind /Admin/GetAllContractors.
+        // No new endpoint — reuses the data behind /Admin/GetAllEmployees.
         _buildBulkDuplicateKeys: function() {
             const keys = new Set();
             const providerCode = $('#bulk_provider_code').val();
-            if (!providerCode || !this.contractorTable) return keys;
-            this.contractorTable.data().each(function(row) {
+            if (!providerCode || !this.employeeTable) return keys;
+            this.employeeTable.data().each(function(row) {
                 if (!row) return;
                 if (row.provider_code !== providerCode) return;
-                const key = AdminPage.contractors._bulkDuplicateKey(row.name, row.birthdate);
+                const key = AdminPage.employees._bulkDuplicateKey(row.name, row.birthdate);
                 if (key && key !== '|') keys.add(key);
             });
             return keys;
         },
 
-        // Flag duplicate rows in the preview: against existing project contractors AND
+        // Flag duplicate rows in the preview: against existing project employees AND
         // within the file itself. Idempotent — clears prior duplicate flags first so it
         // can be re-run when the selected project changes. A row matching an already-
-        // enrolled contractor (same provider) is NOT an error: the server merges it into
+        // enrolled employee (same provider) is NOT an error: the server merges it into
         // the existing account, so it gets a non-blocking row.notice (amber badge). Only
         // duplicates WITHIN the file stay blocking errors (row.error + row.duplicate).
         _flagBulkDuplicates: function() {
@@ -1821,8 +1835,8 @@ const AdminPage = {
         downloadBulkTemplate: function() {
             const ws = XLSX.utils.json_to_sheet(this._bulkSampleRows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Contractors');
-            XLSX.writeFile(wb, 'BulkContractorTemplate.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, 'Employees');
+            XLSX.writeFile(wb, 'BulkEmployeeTemplate.xlsx');
         },
 
         handleBulkFile: function(file) {
@@ -1876,7 +1890,7 @@ const AdminPage = {
                 }
                 return row;
             });
-            // Flag duplicates (against existing project contractors + within the file).
+            // Flag duplicates (against existing project employees + within the file).
             this._flagBulkDuplicates();
             this.renderBulkPreview();
         },
@@ -1925,7 +1939,7 @@ const AdminPage = {
             else if (!validDob) row.error = 'Birthdate is not a valid date';
             else if (!row.position) row.error = 'Position is required';
             else {
-                // DOLE 18+ pre-check (mirrors ContractorService.ValidateBirthdate)
+                // DOLE 18+ pre-check (mirrors EmployeeService.ValidateBirthdate)
                 const d = new Date(dob); d.setHours(0, 0, 0, 0);
                 const today = new Date(); today.setHours(0, 0, 0, 0);
                 if (d > today) row.error = 'Birthdate cannot be a future date';
@@ -2017,9 +2031,9 @@ const AdminPage = {
             $sel.find('option').not('[value=""]').remove();
 
             const projects = {};
-            self.contractorTable.data().each(function(row) {
+            self.employeeTable.data().each(function(row) {
                 // Multi-project: split the CSVs and register each unique code->name
-                // pair (a project shared by many contractors appears once).
+                // pair (a project shared by many employees appears once).
                 const codes = String(row.project_codes || '').split(',').map(function(c) { return c.trim(); }).filter(Boolean);
                 const names = String(row.project_names || '').split(',').map(function(n) { return n.trim(); });
                 codes.forEach(function(code, i) {
@@ -2043,26 +2057,26 @@ const AdminPage = {
         // Re-apply checkbox state to the visible (current page) rows from the
         // selection Set, then refresh the header select-all and the Delete
         // Selected button. Runs on every draw so selection survives paging.
-        _syncContractorCheckboxState: function() {
+        _syncEmployeeCheckboxState: function() {
             const self = this;
-            if (!this.contractorTable) return;
+            if (!this.employeeTable) return;
             let visible = 0, selected = 0;
-            this.contractorTable.rows({ page: 'current' }).every(function() {
+            this.employeeTable.rows({ page: 'current' }).every(function() {
                 visible++;
-                const isChecked = self.selectedContractorIds.has(String(this.data().employee_id));
-                $(this.node()).find('.contractor-select').prop('checked', isChecked);
+                const isChecked = self.selectedEmployeeIds.has(String(this.data().employee_id));
+                $(this.node()).find('.employee-select').prop('checked', isChecked);
                 if (isChecked) selected++;
             });
             // Header reflects the CURRENT PAGE only; the button count reflects the full selection.
-            $('#select-all-contractors').prop('checked', visible > 0 && visible === selected);
+            $('#select-all-employees').prop('checked', visible > 0 && visible === selected);
             this._updateDeleteSelectedButton();
         },
 
         // Enable/disable the bulk Delete Selected button and show the selection count.
         _updateDeleteSelectedButton: function() {
-            const n = this.selectedContractorIds.size;
-            $('#delete-selected-contractors').prop('disabled', n === 0);
-            $('#selected-contractor-count').text(n > 0 ? ' (' + n + ')' : '');
+            const n = this.selectedEmployeeIds.size;
+            $('#delete-selected-employees').prop('disabled', n === 0);
+            $('#selected-employee-count').text(n > 0 ? ' (' + n + ')' : '');
         },
 
         processBulkImport: function() {
@@ -2091,7 +2105,7 @@ const AdminPage = {
                 provider_code: providerCode,
                 project_code: projectCode,
                 file_name: this._currentBulkFileName || '',
-                contractors: validRows.map(function(r) {
+                employees: validRows.map(function(r) {
                     return {
                         row_number: r.row_number,
                         name: r.name,
@@ -2108,7 +2122,7 @@ const AdminPage = {
                 .html('<span class="spinner-border spinner-border-sm"></span> Processing...');
 
             $.ajax({
-                url: '/Admin/BulkCreateContractors',
+                url: '/Admin/BulkCreateEmployees',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),
@@ -2117,8 +2131,8 @@ const AdminPage = {
                     if (response.success && response.data) {
                         self._showBulkResult(response.data);
                         // Reload, then rebuild the Project filter dropdown so a newly
-                        // imported project (one that had zero contractors before) appears.
-                        self.contractorTable.ajax.reload(function() {
+                        // imported project (one that had zero employees before) appears.
+                        self.employeeTable.ajax.reload(function() {
                             self._populateProjectFilter();
                         });
                     } else {
@@ -2196,7 +2210,7 @@ const AdminPage = {
                         }
                     },
                     { data: 'updated_by', defaultContent: '' },
-                    { data: 'entity_type', defaultContent: '' },
+                    { data: 'entity_type', defaultContent: '', render: auditEntityLabel },
                     { data: 'action', defaultContent: '' },
                     { data: 'reference_id', defaultContent: '' },
                     {
@@ -2254,7 +2268,7 @@ const AdminPage = {
 
         // Fields that change on every save (bookkeeping) — never shown in the diff table
         // active_project_count/other_active_project_count are computed read fields
-        // (derived from the contractor_project mappings), not stored state — excluded
+        // (derived from the employee_project mappings), not stored state — excluded
         // so audit diffs show only real edits.
         _diffIgnoreFields: ['created_at', 'create_at', 'updated_at', 'update_at', 'updated_by', 'log_id', 'active_project_count', 'other_active_project_count', 'project_positions', 'assignments'],
 
@@ -2307,7 +2321,7 @@ const AdminPage = {
             switch (row.entity_type) {
                 case 'provider':      return [src.provider_code, src.provider_name].filter(Boolean).join(' — ');
                 case 'project':       return [src.project_code, src.project_name].filter(Boolean).join(' — ');
-                case 'contractor':    return [src.employee_id, src.name].filter(Boolean).join(' — ');
+                case 'employee':    return [src.employee_id, src.name].filter(Boolean).join(' — ');
                 case 'system_config': return src.key || '';
                 case 'timelog':       return [src.attendance_id != null ? '#' + src.attendance_id : null, src.employee_id].filter(Boolean).join(' — ');
                 default:              return '';
@@ -2336,7 +2350,7 @@ const AdminPage = {
             const meta = '<dl class="row mb-0">' +
                 '<dt class="col-sm-3">Date / Time</dt><dd class="col-sm-9">' + (row.created_at ? new Date(row.created_at).toLocaleString() : '') + '</dd>' +
                 '<dt class="col-sm-3">Admin</dt><dd class="col-sm-9">' + (row.updated_by || '') + '</dd>' +
-                '<dt class="col-sm-3">Entity</dt><dd class="col-sm-9">' + (row.entity_type || '') + '</dd>' +
+                '<dt class="col-sm-3">Entity</dt><dd class="col-sm-9">' + auditEntityLabel(row.entity_type) + '</dd>' +
                 '<dt class="col-sm-3">Action</dt><dd class="col-sm-9">' + (row.action || '') + '</dd>' +
                 '<dt class="col-sm-3">Reference</dt><dd class="col-sm-9">' + (row.reference_id || '') + '</dd>' +
                 '</dl>';
@@ -2414,7 +2428,7 @@ const AdminPage = {
                 return {
                     'Date / Time': row.created_at ? new Date(row.created_at).toLocaleString() : '',
                     'Admin': row.updated_by || '',
-                    'Entity': row.entity_type || '',
+                    'Entity': auditEntityLabel(row.entity_type),
                     'Action': row.action || '',
                     'Reference': row.reference_id || '',
                     'Summary': summary
@@ -2593,14 +2607,14 @@ const AdminPage = {
                 case 'DebounceThresholdSeconds':
                     guidance = '<div class="alert alert-info">' +
                         '<strong>Duplicate Scan Prevention</strong><br>' +
-                        'Time in seconds that must pass before the same contractor can scan again.<br>' +
+                        'Time in seconds that must pass before the same employee can scan again.<br>' +
                         'Current: 30 seconds. Range: 5-300 seconds.' +
                         '</div>';
                     break;
                 case 'HealthDeclarationWindowSeconds':
                     guidance = '<div class="alert alert-info">' +
                         '<strong>Health Declaration Window</strong><br>' +
-                        'Time in seconds that contractors can change their health status after scanning.<br>' +
+                        'Time in seconds that employees can change their health status after scanning.<br>' +
                         'Also controls how long the health declaration form remains visible.<br>' +
                         'Current: 30 seconds. Range: 5-300 seconds.' +
                         '</div>';
@@ -2987,8 +3001,8 @@ const AdminPage = {
                         case 'Projects':
                             currentPage = 'projects';
                             break;
-                        case 'Contractors':
-                            currentPage = 'contractors';
+                        case 'Employees':
+                            currentPage = 'employees';
                             break;
                         case 'SystemConfig':
                             currentPage = 'systemconfig';
@@ -3007,7 +3021,7 @@ const AdminPage = {
             const activeLinkMap = {
                 'dashboard': 'a[href*="/Admin/Index"]',
                 'projects': 'a[href*="/Admin/Projects"]',
-                'contractors': 'a[href*="/Admin/Contractors"]',
+                'employees': 'a[href*="/Admin/Employees"]',
                 'systemconfig': 'a[href*="/Admin/SystemConfig"]',
                 'timelogs': 'a[href*="/Admin/TimeLogs"]'
             };
@@ -3328,7 +3342,7 @@ const AdminPage = {
         providerGroups: function() {
             // Overall view: one group per provider that has data in the range.
             // Built from by_provider (1 time_log -> 1 provider), so per-provider
-            // series never double-count multi-project contractors.
+            // series never double-count multi-project employees.
             const self = AdminPage.index;
             const groups = [];
             const byCode = {};

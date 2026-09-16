@@ -1,9 +1,9 @@
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services;
-using ContractorAttendanceWithHealthDeclaration.Services;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services;
+using EmployeeAttendanceWithHealthDeclaration.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ContractorAttendanceWithHealthDeclaration.Controllers
+namespace EmployeeAttendanceWithHealthDeclaration.Controllers
 {
     public class AuthController : Controller
     {

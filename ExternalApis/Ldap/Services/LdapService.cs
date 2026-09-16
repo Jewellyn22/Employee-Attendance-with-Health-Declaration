@@ -1,8 +1,8 @@
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories;
-using ContractorAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Models;
 
-namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services
+namespace EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services
 {
     public class LdapService : ILdapService
     {

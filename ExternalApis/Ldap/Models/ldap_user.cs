@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models
+namespace EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Models
 {
     public class ldap_user
     {

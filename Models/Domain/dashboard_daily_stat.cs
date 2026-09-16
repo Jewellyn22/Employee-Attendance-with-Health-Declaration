@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
+namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     /// <summary>
     /// One aggregated row from sp_time_logs_GetDailyStatsByProvider / _ByProject.

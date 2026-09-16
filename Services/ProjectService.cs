@@ -1,28 +1,28 @@
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
 
-namespace ContractorAttendanceWithHealthDeclaration.Services
+namespace EmployeeAttendanceWithHealthDeclaration.Services
 {
     public class ProjectService : IProjectService
     {
         private readonly IProjectRepository _projectRepository;
         private readonly IProviderRepository _providerRepository;
         private readonly IAuditLogService _auditLogService;
-        private readonly IContractorService _contractorService;
+        private readonly IEmployeeService _employeeService;
         private readonly ILogger<ProjectService> _logger;
 
         public ProjectService(
             IProjectRepository projectRepository,
             IProviderRepository providerRepository,
             IAuditLogService auditLogService,
-            IContractorService contractorService,
+            IEmployeeService employeeService,
             ILogger<ProjectService> logger)
         {
             _projectRepository = projectRepository;
             _providerRepository = providerRepository;
             _auditLogService = auditLogService;
-            _contractorService = contractorService;
+            _employeeService = employeeService;
             _logger = logger;
         }
 
@@ -252,25 +252,25 @@ namespace ContractorAttendanceWithHealthDeclaration.Services
                 {
                     await _auditLogService.Log("project", "update", project.project_code, existing, result, admin_employee_id);
 
-                    // Cascade contractor status with the project so the kiosk gate and
+                    // Cascade employee status with the project so the kiosk gate and
                     // the admin lists stay consistent. Deactivation takes down the
-                    // project's active contractors; re-activation restores ONLY the
-                    // contractors that were deactivated by a cascade (audit-verified) -
-                    // contractors an admin deactivated individually stay In-Active.
+                    // project's active employees; re-activation restores ONLY the
+                    // employees that were deactivated by a cascade (audit-verified) -
+                    // employees an admin deactivated individually stay In-Active.
                     if (existing.active == 1 && result.active == 0)
                     {
-                        var cascade = await _contractorService.CascadeDeactivateByProject(project.project_code, admin_employee_id);
+                        var cascade = await _employeeService.CascadeDeactivateByProject(project.project_code, admin_employee_id);
                         if (cascade.Success && cascade.Data > 0)
                         {
-                            message += $" - {cascade.Data} contractor(s) deactivated";
+                            message += $" - {cascade.Data} employee(s) deactivated";
                         }
                     }
                     else if (existing.active == 0 && result.active == 1)
                     {
-                        var restore = await _contractorService.CascadeReactivateByProject(project.project_code, admin_employee_id);
+                        var restore = await _employeeService.CascadeReactivateByProject(project.project_code, admin_employee_id);
                         if (restore.Success && restore.Data > 0)
                         {
-                            message += $" - {restore.Data} contractor(s) re-activated";
+                            message += $" - {restore.Data} employee(s) re-activated";
                         }
                     }
                 }

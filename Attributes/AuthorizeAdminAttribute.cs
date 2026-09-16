@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Security.Claims;
 
-namespace ContractorAttendanceWithHealthDeclaration.Attributes
+namespace EmployeeAttendanceWithHealthDeclaration.Attributes
 {
     public class AuthorizeAdminAttribute : Attribute, IAuthorizationFilter
     {

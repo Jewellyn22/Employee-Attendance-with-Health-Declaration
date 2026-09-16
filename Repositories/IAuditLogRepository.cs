@@ -1,6 +1,6 @@
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
 
-namespace ContractorAttendanceWithHealthDeclaration.Repositories
+namespace EmployeeAttendanceWithHealthDeclaration.Repositories
 {
     public interface IAuditLogRepository
     {

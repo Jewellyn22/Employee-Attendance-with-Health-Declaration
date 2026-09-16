@@ -1,7 +1,7 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
 using System.Collections.Generic;
 
-namespace ContractorAttendanceWithHealthDeclaration.Models
+namespace EmployeeAttendanceWithHealthDeclaration.Models
 {
     // Outcome of one bulk-import batch. Returned to the UI and stored (as JSON)
     // in audit_log.data_to for the batch row, so a single log entry is self-describing.

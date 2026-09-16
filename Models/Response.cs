@@ -1,4 +1,4 @@
-namespace ContractorAttendanceWithHealthDeclaration.Models
+namespace EmployeeAttendanceWithHealthDeclaration.Models
 {
     public class Response<T>
     {

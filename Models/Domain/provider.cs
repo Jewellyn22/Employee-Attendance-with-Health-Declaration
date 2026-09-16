@@ -1,5 +1,5 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
-namespace ContractorAttendanceWithHealthDeclaration.Models.Domain
+namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     public class provider
     {

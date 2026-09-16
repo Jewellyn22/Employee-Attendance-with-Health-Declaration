@@ -220,7 +220,7 @@ const HomePage = {
                 success: function(response) {
                     console.log('Scan response:', response);
                     if (response.success) {
-                        self.displayContractorInfo(response.data.contractor_info);
+                        self.displayEmployeeInfo(response.data.employee_info);
                         self.displayScanResult(response.message);
 
                         // Only show health declaration form for TIME IN (not TIME OUT)
@@ -247,15 +247,15 @@ const HomePage = {
             });
         },
 
-        displayContractorInfo: function(contractor) {
-            if (!contractor) {
-                $('#contractor-info').hide();
+        displayEmployeeInfo: function(employee) {
+            if (!employee) {
+                $('#employee-info').hide();
                 return;
             }
 
             // Names only -- no provider_code / project codes in the kiosk block.
-            $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + (contractor.name || ''));
-            $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (contractor.provider_name || ''));
+            $('#employee_name').html('<i class="fa-solid fa-user"></i> ' + (employee.name || ''));
+            $('#provider').html('<i class="fa-solid fa-building-user"></i> ' + (employee.provider_name || ''));
 
             // Clear rows appended by a previous scan (back-to-back scans call this
             // repeatedly; TIME OUT scans render this block too).
@@ -266,7 +266,7 @@ const HomePage = {
             // code (index-aligned, unlike the DISTINCT areas CSV).
             var rows = [];
             try {
-                rows = JSON.parse(contractor.project_rows || '[]') || [];
+                rows = JSON.parse(employee.project_rows || '[]') || [];
             } catch (e) {
                 rows = []; // malformed payload -> row 1 only, never block the form
             }
@@ -286,7 +286,7 @@ const HomePage = {
                 );
             }
 
-            $('#contractor-info').show();
+            $('#employee-info').show();
         },
 
         displayScanResult: function(message) {
@@ -355,8 +355,8 @@ const HomePage = {
                 });
             }, 7000);
 
-            // Clear contractor info on error
-            $('#contractor-info').hide();
+            // Clear employee info on error
+            $('#employee-info').hide();
         },
 
         showHealthDeclarationForm: function(attendanceId) {

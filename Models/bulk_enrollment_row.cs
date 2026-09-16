@@ -1,5 +1,5 @@
 #pragma warning disable CS8981 // Type name only contains lower-cased ascii characters
-namespace ContractorAttendanceWithHealthDeclaration.Models
+namespace EmployeeAttendanceWithHealthDeclaration.Models
 {
     // One parsed row from a bulk-import CSV/Excel file.
     // provider_code/project_code come from the modal selects (see bulk_enrollment_request),

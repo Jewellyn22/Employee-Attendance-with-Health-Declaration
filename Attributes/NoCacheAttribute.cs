@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace ContractorAttendanceWithHealthDeclaration.Attributes
+namespace EmployeeAttendanceWithHealthDeclaration.Attributes
 {
     public class NoCacheAttribute : Attribute, IResultFilter
     {

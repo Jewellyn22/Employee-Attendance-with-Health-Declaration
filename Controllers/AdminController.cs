@@ -1,17 +1,17 @@
-using ContractorAttendanceWithHealthDeclaration.Attributes;
-using ContractorAttendanceWithHealthDeclaration.Models;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Services;
+using EmployeeAttendanceWithHealthDeclaration.Attributes;
+using EmployeeAttendanceWithHealthDeclaration.Models;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Services;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ContractorAttendanceWithHealthDeclaration.Controllers
+namespace EmployeeAttendanceWithHealthDeclaration.Controllers
 {
     [AuthorizeAdmin]
     [NoCache]
     public class AdminController : Controller
     {
         private readonly IProjectService _projectService;
-        private readonly IContractorService _contractorService;
+        private readonly IEmployeeService _employeeService;
         private readonly ISystemConfigService _systemConfigService;
         private readonly ITimeLogsManagementService _timeLogsManagementService;
         private readonly IProviderService _providerService;
@@ -21,7 +21,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
 
         public AdminController(
             IProjectService projectService,
-            IContractorService contractorService,
+            IEmployeeService employeeService,
             ISystemConfigService systemConfigService,
             ITimeLogsManagementService timeLogsManagementService,
             IProviderService providerService,
@@ -30,7 +30,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             ILogger<AdminController> logger)
         {
             _projectService = projectService;
-            _contractorService = contractorService;
+            _employeeService = employeeService;
             _systemConfigService = systemConfigService;
             _timeLogsManagementService = timeLogsManagementService;
             _providerService = providerService;
@@ -44,12 +44,12 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         {
             // Fetch all dashboard statistics
             var activeProjects = await _projectService.GetActiveCount();
-            var activeContractors = await _contractorService.GetActiveCount();
+            var activeEmployees = await _employeeService.GetActiveCount();
             var openSessions = await _historyLogsService.GetOpenSessionsCount();
 
             // Pass to view
             ViewBag.ActiveProjects = activeProjects.Success ? activeProjects.Data : 0;
-            ViewBag.ActiveContractors = activeContractors.Success ? activeContractors.Data : 0;
+            ViewBag.ActiveEmployees = activeEmployees.Success ? activeEmployees.Data : 0;
             ViewBag.OpenSessions = openSessions.Success ? openSessions.Data : 0;
             ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
 
@@ -251,50 +251,50 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProjectContractors(string project_code)
+        public async Task<IActionResult> GetProjectEmployees(string project_code)
         {
-            var result = await _contractorService.GetByProjectCode(project_code);
+            var result = await _employeeService.GetByProjectCode(project_code);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
         #endregion
 
-        #region Contractor Management
+        #region Employee Management
 
-        // GET: /Admin/Contractors
-        public IActionResult Contractors()
+        // GET: /Admin/Employees
+        public IActionResult Employees()
         {
             ViewBag.AdminName = HttpContext.Session.GetString("DisplayName");
             return View();
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllContractors()
+        public async Task<IActionResult> GetAllEmployees()
         {
-            var result = await _contractorService.GetAll();
+            var result = await _employeeService.GetAll();
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
-        // GET: /Admin/GetContractorQrCodes — the stored QR PNGs (generated at
-        // enrollment) as {employee_id, qr_code_image(base64)} for the Contractors
-        // Excel export. Kept separate from GetAllContractors so the grid payload
+        // GET: /Admin/GetEmployeeQrCodes — the stored QR PNGs (generated at
+        // enrollment) as {employee_id, qr_code_image(base64)} for the Employees
+        // Excel export. Kept separate from GetAllEmployees so the grid payload
         // never carries the blobs.
         [HttpGet]
-        public async Task<IActionResult> GetContractorQrCodes()
+        public async Task<IActionResult> GetEmployeeQrCodes()
         {
-            var result = await _contractorService.GetQrCodes();
+            var result = await _employeeService.GetQrCodes();
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateContractor([FromBody] contractor_employee contractor)
+        public async Task<IActionResult> CreateEmployee([FromBody] employee employee)
         {
             try
             {
-                // Check if contractor object is null
-                if (contractor == null)
+                // Check if employee object is null
+                if (employee == null)
                 {
-                    return Json(new { success = false, message = "Contractor data is required" });
+                    return Json(new { success = false, message = "Employee data is required" });
                 }
 
                 // employee_id is auto-generated by the service/stored procedure on create,
@@ -302,9 +302,9 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 ModelState.Remove("employee_id");
 
                 // contact_number is optional: skip [Phone] format validation when blank
-                if (string.IsNullOrWhiteSpace(contractor.contact_number))
+                if (string.IsNullOrWhiteSpace(employee.contact_number))
                 {
-                    contractor.contact_number = string.Empty;
+                    employee.contact_number = string.Empty;
                     ModelState.Remove("contact_number");
                 }
 
@@ -324,31 +324,31 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 }
 
                 var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
-                var result = await _contractorService.Create(contractor, admin);
+                var result = await _employeeService.Create(employee, admin);
                 return Json(new { success = result.Success, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating contractor");
-                return Json(new { success = false, message = "An error occurred while creating the contractor" });
+                _logger.LogError(ex, "Error creating employee");
+                return Json(new { success = false, message = "An error occurred while creating the employee" });
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateContractor([FromBody] contractor_employee contractor)
+        public async Task<IActionResult> UpdateEmployee([FromBody] employee employee)
         {
             try
             {
-                // Check if contractor object is null
-                if (contractor == null)
+                // Check if employee object is null
+                if (employee == null)
                 {
-                    return Json(new { success = false, message = "Contractor data is required" });
+                    return Json(new { success = false, message = "Employee data is required" });
                 }
 
                 // contact_number is optional: skip [Phone] format validation when blank
-                if (string.IsNullOrWhiteSpace(contractor.contact_number))
+                if (string.IsNullOrWhiteSpace(employee.contact_number))
                 {
-                    contractor.contact_number = string.Empty;
+                    employee.contact_number = string.Empty;
                     ModelState.Remove("contact_number");
                 }
 
@@ -368,30 +368,30 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 }
 
                 var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
-                var result = await _contractorService.Update(contractor, admin);
+                var result = await _employeeService.Update(employee, admin);
                 return Json(new { success = result.Success, message = result.Message, data = result.Data });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating contractor");
-                return Json(new { success = false, message = "An error occurred while updating the contractor" });
+                _logger.LogError(ex, "Error updating employee");
+                return Json(new { success = false, message = "An error occurred while updating the employee" });
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> SetContractorInactive([FromBody] contractor_employee contractor)
+        public async Task<IActionResult> SetEmployeeInactive([FromBody] employee employee)
         {
-            contractor.active = 0;
+            employee.active = 0;
             var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
-            var result = await _contractorService.Update(contractor, admin);
+            var result = await _employeeService.Update(employee, admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 
-        // POST: /Admin/BulkCreateContractors
+        // POST: /Admin/BulkCreateEmployees
         // Accepts provider_code + project_code (from the modal selects) and a list of
-        // contractor rows parsed client-side from the uploaded CSV/Excel file.
+        // employee rows parsed client-side from the uploaded CSV/Excel file.
         [HttpPost]
-        public async Task<IActionResult> BulkCreateContractors([FromBody] bulk_enrollment_request request)
+        public async Task<IActionResult> BulkCreateEmployees([FromBody] bulk_enrollment_request request)
         {
             try
             {
@@ -403,7 +403,7 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
                 // Admin identity for the audit trail (matches TimeLogsManagement pattern).
                 var adminEmployeeId = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
 
-                var result = await _contractorService.BulkCreate(request, adminEmployeeId);
+                var result = await _employeeService.BulkCreate(request, adminEmployeeId);
                 return Json(new
                 {
                     success = result.Success,
@@ -413,19 +413,19 @@ namespace ContractorAttendanceWithHealthDeclaration.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during bulk contractor enrollment");
+                _logger.LogError(ex, "Error during bulk employee enrollment");
                 return Json(new { success = false, message = "An error occurred during bulk enrollment." });
             }
         }
 
-        // POST: /Admin/DeleteContractors
-        // Soft delete: marks the listed contractors is_deleted = 1 (rows and time_logs
+        // POST: /Admin/DeleteEmployees
+        // Soft delete: marks the listed employees is_deleted = 1 (rows and time_logs
         // retained). A single-row delete posts a one-element employee_ids list.
         [HttpPost]
-        public async Task<IActionResult> DeleteContractors([FromBody] delete_contractors_request request)
+        public async Task<IActionResult> DeleteEmployees([FromBody] delete_employees_request request)
         {
             var admin = HttpContext.Session.GetString("EmployeeNumber") ?? "System";
-            var result = await _contractorService.Delete(request?.employee_ids?.ToList() ?? new List<string>(), admin);
+            var result = await _employeeService.Delete(request?.employee_ids?.ToList() ?? new List<string>(), admin);
             return Json(new { success = result.Success, message = result.Message, data = result.Data });
         }
 

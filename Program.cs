@@ -1,9 +1,9 @@
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories;
-using ContractorAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services;
-using ContractorAttendanceWithHealthDeclaration.Hubs;
-using ContractorAttendanceWithHealthDeclaration.Models.Domain;
-using ContractorAttendanceWithHealthDeclaration.Repositories;
-using ContractorAttendanceWithHealthDeclaration.Services;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.ExternalApis.Ldap.Services;
+using EmployeeAttendanceWithHealthDeclaration.Hubs;
+using EmployeeAttendanceWithHealthDeclaration.Models.Domain;
+using EmployeeAttendanceWithHealthDeclaration.Repositories;
+using EmployeeAttendanceWithHealthDeclaration.Services;
 using Dapper;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +39,7 @@ builder.Services.AddScoped<IDbConnection>(sp =>
 });
 
 // Register Repositories
-builder.Services.AddScoped<IContractorEmployeeRepository, ContractorEmployeeRepository>();
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IProviderRepository, ProviderRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ITimeLogsRepository, TimeLogsRepository>();
@@ -47,7 +47,7 @@ builder.Services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 // Register Services
-builder.Services.AddScoped<IContractorService, ContractorService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IProviderService, ProviderService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
