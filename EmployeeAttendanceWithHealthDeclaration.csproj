@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>4.0.0.0</Version>
+    <Version>4.0.0.1</Version>
     <!-- The xUnit test project lives in a subfolder of this project directory;
          keep it (and its obj/bin outputs) out of this project's default globs. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);EmployeeAttendanceWithHealthDeclaration.Tests\**</DefaultItemExcludes>
