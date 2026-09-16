@@ -259,7 +259,7 @@
     <li><a href="#manual"><span>System manual</span></a></li>
     <li><a href="#tests"><span>Test cases</span></a></li>
   </ol>
-  <p class="toc-note">Applies to system version <strong>4.0.0.0</strong>.</p>
+  <p class="toc-note">Applies to system version <strong>4.0.0.2</strong>.</p>
 </nav>
 
 <main>
@@ -270,7 +270,7 @@
   <h1>Employee Attendance &amp; Health Declaration Monitoring</h1>
   <p class="standfirst">A web-based system that records employee attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
   <table class="doc-control">
-    <tr><th>System version</th><td>4.0.0.0</td></tr>
+    <tr><th>System version</th><td>4.0.0.2</td></tr>
     <tr><th>Document date</th><td>16 September 2026</td></tr>
     <tr><th>Audience</th><td>Management, QA, and development</td></tr>
     <tr><th>Platform</th><td>ASP.NET Core 8 MVC · MySQL (stored procedures via Dapper) · LDAP</td></tr>
@@ -349,6 +349,7 @@
   <h3 class="sub">Authentication &amp; session</h3>
   <ul class="plain">
     <li>Admin login authenticates against corporate LDAP and requires membership of the configured AD group.</li>
+    <li>The admin AD group is read from the <code>AdminADGroup</code> key in <code>system_config</code>; if the key is missing or cannot be read, admin login is denied for everyone — the system fails closed and never falls back to a built-in group.</li>
     <li>Sessions use an HTTP-only cookie with a 30-minute idle timeout; all <code>/Admin/*</code> pages and JSON endpoints are protected.</li>
     <li>Logout clears the session; audit entries record the admin's employee number.</li>
   </ul>
@@ -490,7 +491,7 @@
     <tbody>
       <tr><td><code>DebounceThresholdSeconds</code></td><td>Minimum seconds between one employee's scans</td></tr>
       <tr><td><code>HealthDeclarationWindowSeconds</code></td><td>Declaration window — drives the kiosk countdown, the server-side change cutoff, and how long the TIME IN result stays on screen; falls back to 120 when missing or invalid</td></tr>
-      <tr><td><code>AdminADGroup</code></td><td>AD group required for admin login — database-managed, not shown in the config UI</td></tr>
+      <tr><td><code>AdminADGroup</code></td><td>AD group required for admin login — database-managed, not shown in the config UI; a missing or unreadable value denies all admin logins (fail-closed, no built-in default)</td></tr>
       <tr><td><code>ScanInputReadOnly</code></td><td>Read-only kiosk scan input for scanner-only operation</td></tr>
       <tr><td><code>Health_Declaration_Sickness</code></td><td>Semicolon-separated sickness items shown on the declaration panel</td></tr>
       <tr><td><code>HealthDeclarationValidityHours</code></td><td>Stored key, reserved — does not drive behavior in this version</td></tr>
@@ -663,6 +664,7 @@
       <tr><td class="step">TC-A-04</td><td>Navigate directly to <code>/Admin/Employees</code> (and call an admin JSON endpoint) without a session</td><td>Redirect to <code>/Auth/Login</code>; endpoint returns no data</td></tr>
       <tr><td class="step">TC-A-05</td><td>Leave an admin idle past 30 minutes, then submit an admin action</td><td>Redirect to login — not a silent failure</td></tr>
       <tr><td class="step">TC-A-06</td><td>Log out, then return to an admin page</td><td>Session cleared; admin pages unreachable without re-login</td></tr>
+      <tr><td class="step">TC-A-07</td><td>Remove (or blank) the <code>AdminADGroup</code> key in <code>system_config</code>, then attempt login with valid credentials of a user in the admin AD group</td><td>Login rejected with the not-authorized message — no fallback group exists; restoring the key re-enables admin login on the next attempt</td></tr>
     </tbody>
   </table></div>
 
@@ -704,21 +706,21 @@
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>ID</th><th>Test scenario</th><th>Expected result</th></tr></thead>
     <tbody>
-      <tr><td class="step">TC-C-01</td><td>Submit the create form with required fields missing (e.g. no name or birthdate)</td><td>Rejected with a clear message; nothing saved</td></tr>
-      <tr><td class="step">TC-C-02</td><td>Enroll an employee choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">Project &lt;code&gt; does not belong to the selected provider.</span></td></tr>
-      <tr><td class="step">TC-C-03</td><td>Enroll the same name + birthdate twice under the same provider (second attempt with a new project/position and different contact/address)</td><td>Second attempt merges into the existing account: details overwritten, project/position added, employee ID unchanged — <span class="msg">Employee already enrolled under this provider — existing account updated with the submitted details</span></td></tr>
-      <tr><td class="step">TC-C-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still matched (case- and whitespace-insensitive) and merged into the same account; the registered name casing is kept</td></tr>
-      <tr><td class="step">TC-C-05</td><td>Enroll the same person under a different project of the same provider, then under a different provider</td><td>Same provider: merged — the project/position is added to the existing account (no new employee ID). Different provider: a new account with its own provider-scoped employee ID</td></tr>
-      <tr><td class="step">TC-C-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, rows missing fields, and the template's sample rows</td><td>Valid rows committed; duplicates flagged <span class="msg">Already enrolled — will update the existing account</span> and merged (reported separately as "updated existing"); rows missing fields listed individually as failed; template sample rows skipped with a "Sample — skipped" badge</td></tr>
-      <tr><td class="step">TC-C-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>Second row flagged <span class="msg">Duplicate of another row in this file</span>; Process Import stays blocked until it is fixed or removed</td></tr>
-      <tr><td class="step">TC-C-08</td><td>Deactivate an employee, then scan their ID at the kiosk</td><td><span class="msg">Employee is inactive</span>; attendance history preserved</td></tr>
-      <tr><td class="step">TC-C-09</td><td>Edit an inactive employee back to active, then scan</td><td>Scan processes normally again</td></tr>
-      <tr><td class="step">TC-C-10</td><td>Filter by project and status, reset, then export</td><td>Filters narrow the table; Reset restores the full list; export matches the active filters</td></tr>
-      <tr><td class="step">TC-C-11</td><td>Enroll an employee with a future birthdate, then one who is 17 years old</td><td>Both rejected — <span class="msg">Birthdate cannot be a future date</span> and <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></td></tr>
-      <tr><td class="step">TC-C-12</td><td>Enroll an employee with two project rows added via + Add Project</td><td>One employee ID is generated (shown in the toast); both project/position assignments are stored; a QR code is generated for the new ID</td></tr>
-      <tr><td class="step">TC-C-13</td><td>Try to assign the same project twice, then leave a position blank</td><td>The picker hides already-taken projects; the server rejects with <span class="msg">Each project can only be assigned once</span> and <span class="msg">Position is required</span></td></tr>
-      <tr><td class="step">TC-C-14</td><td>Attempt a 51st project row</td><td>Blocked with <span class="msg">An employee can be assigned to at most 50 projects</span> (client and server)</td></tr>
-      <tr><td class="step">TC-C-15</td><td>Export the Employees list to Excel</td><td>Columns: Employee ID, Name, Provider Name, Project (Position - Area) — one stacked line per project, Status, QR Code; 64 px QR images embedded; an employee without a stored QR exports with a blank QR cell</td></tr>
+      <tr><td class="step">TC-E-01</td><td>Submit the create form with required fields missing (e.g. no name or birthdate)</td><td>Rejected with a clear message; nothing saved</td></tr>
+      <tr><td class="step">TC-E-02</td><td>Enroll an employee choosing a project that belongs to a different provider</td><td>Rejected: <span class="msg">Project &lt;code&gt; does not belong to the selected provider.</span></td></tr>
+      <tr><td class="step">TC-E-03</td><td>Enroll the same name + birthdate twice under the same provider (second attempt with a new project/position and different contact/address)</td><td>Second attempt merges into the existing account: details overwritten, project/position added, employee ID unchanged — <span class="msg">Employee already enrolled under this provider — existing account updated with the submitted details</span></td></tr>
+      <tr><td class="step">TC-E-04</td><td>Retry the duplicate with different letter case and extra whitespace in the name</td><td>Still matched (case- and whitespace-insensitive) and merged into the same account; the registered name casing is kept</td></tr>
+      <tr><td class="step">TC-E-05</td><td>Enroll the same person under a different project of the same provider, then under a different provider</td><td>Same provider: merged — the project/position is added to the existing account (no new employee ID). Different provider: a new account with its own provider-scoped employee ID</td></tr>
+      <tr><td class="step">TC-E-06</td><td>Bulk import an Excel file mixing valid rows, duplicates of existing data, rows missing fields, and the template's sample rows</td><td>Valid rows committed; duplicates flagged <span class="msg">Already enrolled — will update the existing account</span> and merged (reported separately as "updated existing"); rows missing fields listed individually as failed; template sample rows skipped with a "Sample — skipped" badge</td></tr>
+      <tr><td class="step">TC-E-07</td><td>Bulk import a file containing the same name + birthdate twice within the batch</td><td>Second row flagged <span class="msg">Duplicate of another row in this file</span>; Process Import stays blocked until it is fixed or removed</td></tr>
+      <tr><td class="step">TC-E-08</td><td>Deactivate an employee, then scan their ID at the kiosk</td><td><span class="msg">Employee is inactive</span>; attendance history preserved</td></tr>
+      <tr><td class="step">TC-E-09</td><td>Edit an inactive employee back to active, then scan</td><td>Scan processes normally again</td></tr>
+      <tr><td class="step">TC-E-10</td><td>Filter by project and status, reset, then export</td><td>Filters narrow the table; Reset restores the full list; export matches the active filters</td></tr>
+      <tr><td class="step">TC-E-11</td><td>Enroll an employee with a future birthdate, then one who is 17 years old</td><td>Both rejected — <span class="msg">Birthdate cannot be a future date</span> and <span class="msg">The employee is under 18 years old and is not eligible for employment under DOLE regulations.</span></td></tr>
+      <tr><td class="step">TC-E-12</td><td>Enroll an employee with two project rows added via + Add Project</td><td>One employee ID is generated (shown in the toast); both project/position assignments are stored; a QR code is generated for the new ID</td></tr>
+      <tr><td class="step">TC-E-13</td><td>Try to assign the same project twice, then leave a position blank</td><td>The picker hides already-taken projects; the server rejects with <span class="msg">Each project can only be assigned once</span> and <span class="msg">Position is required</span></td></tr>
+      <tr><td class="step">TC-E-14</td><td>Attempt a 51st project row</td><td>Blocked with <span class="msg">An employee can be assigned to at most 50 projects</span> (client and server)</td></tr>
+      <tr><td class="step">TC-E-15</td><td>Export the Employees list to Excel</td><td>Columns: Employee ID, Name, Provider Name, Project (Position - Area) — one stacked line per project, Status, QR Code; 64 px QR images embedded; an employee without a stored QR exports with a blank QR cell</td></tr>
     </tbody>
   </table></div>
 
