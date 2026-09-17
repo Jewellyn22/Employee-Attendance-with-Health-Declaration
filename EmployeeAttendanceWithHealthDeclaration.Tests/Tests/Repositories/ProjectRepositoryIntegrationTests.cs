@@ -200,7 +200,7 @@ namespace EmployeeAttendanceWithHealthDeclaration.Tests.Repositories
             var created = await repo.Create(NewProject("TST Count"));
 
             var after = await repo.GetActiveCount();
-            Assert.Equal(before + 1, after);   // delta-based: tolerant of real ACI data
+            Assert.Equal(before + 1, after);   // delta-based: tolerant of real provider data
             Assert.Contains(created!.project_code, created.project_code);   // sanity
         }
     }

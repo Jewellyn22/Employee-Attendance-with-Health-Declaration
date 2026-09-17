@@ -514,7 +514,7 @@
     <li>On <strong>SUCCESS TIME IN</strong>, the declaration panel opens — it shows your Personal Detail (name, provider, and a <code>Project Name / Area / Position</code> row for each active assignment) above the health questions. Answer the health self-assessment and the waiver before the countdown ends. Untouched answers keep the safe defaults (<span class="pill fit">FIT</span> / I understand).</li>
     <li>The <strong>SUCCESS TIME IN</strong> message stays on screen while the declaration form is open; the <strong>SUCCESS TIME OUT</strong> confirmation and error messages clear after about 7 seconds.</li>
     <li>Scan again when leaving to record <strong>SUCCESS TIME OUT</strong>.</li>
-    <li>While the declaration panel is closed, the right panel shows the company logo (ACI); it hides while the panel is open and returns when the panel closes.</li>
+    <li>While the declaration panel is closed, the right panel shows the company logo; it hides while the panel is open and returns when the panel closes.</li>
   </ul>
   <div class="tbl-wrap"><table class="grid">
     <thead><tr><th>Kiosk message</th><th>Meaning</th></tr></thead>
@@ -623,7 +623,7 @@
       <tr><td class="step">TC-K-11</td><td>Press Enter with an empty scan input</td><td>Nothing is submitted — no request, no error dialog; focus stays in the field</td></tr>
       <tr><td class="step">TC-K-12</td><td>With <code>ScanInputReadOnly</code> enabled: try typing, then scan with the wedge scanner</td><td>Keyboard typing is rejected; scanner input still registers and submits</td></tr>
       <tr><td class="step">TC-K-13</td><td>Immediately scan a second, different ID while the first scan's request is still in flight</td><td>The second ID is captured intact — no dropped first character; the input is cleared at submission time and scanner detection resets between scans</td></tr>
-      <tr><td class="step">TC-K-14</td><td>Load the kiosk, complete a TIME IN, then let the declaration countdown reach zero</td><td>Company logo (ACI) shows in the right panel while the declaration panel is closed; it is hidden while the panel is open and returns when it closes</td></tr>
+      <tr><td class="step">TC-K-14</td><td>Load the kiosk, complete a TIME IN, then let the declaration countdown reach zero</td><td>The company logo shows in the right panel while the declaration panel is closed; it is hidden while the panel is open and returns when it closes</td></tr>
       <tr><td class="step">TC-K-15</td><td>Employee is assigned to two projects; one is deactivated but the other stays active; employee scans with no open session</td><td>TIME IN succeeds — one active assignment is enough</td></tr>
       <tr><td class="step">TC-K-16</td><td>Employee with two active assignments (one with a blank legacy position) TIME INs</td><td>Personal Detail shows one <code>Project Name / Area / Position</code> row per active assignment; the blank position renders as an em dash (—)</td></tr>
       <tr><td class="step">TC-K-17</td><td>Set <code>HealthDeclarationWindowSeconds</code> to 60, then TIME IN; then TIME OUT</td><td>The TIME IN result stays visible ~60 s (closing together with the declaration panel); the TIME OUT result clears after ~7 s</td></tr>

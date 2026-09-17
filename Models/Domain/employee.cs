@@ -5,7 +5,7 @@ namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
 {
     public class employee
     {
-        // Auto-generated on create as {provider_code}-NNNNNN (e.g., ACI-000000; 6-digit
+        // Auto-generated on create as {provider_code}-NNNNNN (e.g., ACI-000001; 6-digit
         // sequence per provider/company). Not required on the inbound create payload;
         // validated by existence on update.
         [StringLength(50, ErrorMessage = "Employee ID cannot exceed 50 characters")]
