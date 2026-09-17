@@ -20,7 +20,7 @@ The LDAP service is configured in `appsettings.json`:
 
 ```json
 "ApiHosts": {
-  "Ldap": "http://127.0.0.1:9008"
+  "Ldap": "http://<ldap-server-ip>:9008"
 }
 ```
 
@@ -28,10 +28,10 @@ The LDAP service is configured in `appsettings.json`:
 
 | Property | Value |
 |----------|-------|
-| **Host/IP** | 127.0.0.1 |
+| **Host/IP** | <ldap-server-ip> |
 | **Port** | 9008 |
 | **Protocol** | HTTP |
-| **Base URL** | `http://127.0.0.1:9008` |
+| **Base URL** | `http://<ldap-server-ip>:9008` |
 
 ### Authentication Flow
 
@@ -48,7 +48,7 @@ sequenceDiagram
     participant AuthController
     participant LdapService
     participant LdapRepository
-    participant LDAP API (127.0.0.1:9008)
+    participant LDAP API (<ldap-server-ip>:9008)
     participant UserService
     participant PeopleCore
 
@@ -149,7 +149,7 @@ The email service is configured in `appsettings.json`:
 
 ```json
 "ApiHosts": {
-  "Email": "http://127.0.0.1:9013"
+  "Email": "http://<ldap-server-ip>:9013"
 }
 ```
 
@@ -157,10 +157,10 @@ The email service is configured in `appsettings.json`:
 
 | Property | Value |
 |----------|-------|
-| **Host/IP** | 127.0.0.1 |
+| **Host/IP** | <ldap-server-ip> |
 | **Port** | 9013 |
 | **Protocol** | HTTP |
-| **Base URL** | `http://127.0.0.1:9013` |
+| **Base URL** | `http://<ldap-server-ip>:9013` |
 
 ### Email Service API
 
@@ -342,10 +342,10 @@ public async Task<Response<T>> Post<T>(ApiRequestParameter parameter)
 
 | Feature | LDAP | Email |
 |---------|------|-------|
-| **Host** | 127.0.0.1 | 127.0.0.1 |
+| **Host** | <ldap-server-ip> | <ldap-server-ip> |
 | **Port** | 9008 | 9013 |
 | **Protocol** | HTTP | HTTP |
-| **Base URL** | `http://127.0.0.1:9008` | `http://127.0.0.1:9013` |
+| **Base URL** | `http://<ldap-server-ip>:9008` | `http://<ldap-server-ip>:9013` |
 | **Main Endpoint** | `/Auth/Login` | `/Email/SendEmail` |
 | **Primary Use** | Buyer Authentication | Notifications & Reports |
 | **User Type** | Buyer Role | End Users & Admins |

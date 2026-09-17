@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# --- Local-only files: real credentials / internal data, never push ---
+appsettings.Development.json
+.claude/
+CLAUDE.md
+CONTEXT.md
+documentation/*.sql
