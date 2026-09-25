@@ -259,7 +259,7 @@
     <li><a href="#manual"><span>System manual</span></a></li>
     <li><a href="#tests"><span>Test cases</span></a></li>
   </ol>
-  <p class="toc-note">Applies to system version <strong>4.0.0.2</strong>.</p>
+  <p class="toc-note">Applies to system version <strong>4.0.0.5</strong>.</p>
 </nav>
 
 <main>
@@ -270,8 +270,8 @@
   <h1>Employee Attendance &amp; Health Declaration Monitoring</h1>
   <p class="standfirst">A web-based system that records employee attendance through ID-card scanning at a kiosk, applies a self-administered health and waiver gate at entry, and provides administrators with management, correction, and audit tools.</p>
   <table class="doc-control">
-    <tr><th>System version</th><td>4.0.0.2</td></tr>
-    <tr><th>Document date</th><td>16 September 2026</td></tr>
+    <tr><th>System version</th><td>4.0.0.5</td></tr>
+    <tr><th>Document date</th><td>25 September 2026</td></tr>
     <tr><th>Audience</th><td>Management, QA, and development</td></tr>
     <tr><th>Platform</th><td>ASP.NET Core 8 MVC · MySQL (stored procedures via Dapper) · LDAP</td></tr>
   </table>
@@ -695,7 +695,7 @@
       <tr><td class="step">TC-P-06</td><td>Add a project with a contract end date already in the past</td><td>Rejected on creation</td></tr>
       <tr><td class="step">TC-P-07</td><td>Project's contract end date passes (simulate/await expiry)</td><td>Project auto-deactivates; only enrolled employees with no other active project are cascaded to inactive; audit log retains a <code>data_from</code> snapshot for restore — cascade reactivation restores only the cascade-deactivated employees</td></tr>
       <tr><td class="step">TC-P-08</td><td>Delete a project that has enrolled employees</td><td>Confirmation dialog states the cascade; on confirm the project is soft-deleted and hidden; enrolled employees without another active project are marked inactive and blocked at the kiosk — employees still on another active project keep scanning</td></tr>
-      <tr><td class="step">TC-P-09</td><td>Open "View Employees" for a project and export</td><td>Modal lists only that project's employees; Excel export downloads the same list</td></tr>
+      <tr><td class="step">TC-P-09</td><td>Open "View Employees" for a project and export</td><td>Modal lists only that project's employees, each with its exact position on that project in the Position column; Excel export downloads the same list (Employee ID, Name, Position)</td></tr>
       <tr><td class="step">TC-P-10</td><td>Set an expired project back to Active without changing its dates</td><td>Rejected: <span class="msg">Cannot set the project to Active: the contract end date is already expired. Extend the contract end date first.</span></td></tr>
       <tr><td class="step">TC-P-11</td><td>Add a project with a blank Area of Destination</td><td>Rejected: <span class="msg">Area of Destination is required</span>; nothing saved</td></tr>
       <tr><td class="step">TC-P-12</td><td>Delete a project enrolled by one employee who has another active project and one who does not</td><td>Only the single-project employee is deactivated and blocked at the kiosk; the other keeps scanning; the confirmation dialog states this</td></tr>

@@ -72,6 +72,7 @@ namespace EmployeeAttendanceWithHealthDeclaration.Models.Domain
         public string? project_rows { get; set; }
         public int active_project_count { get; set; }       // assigned projects with active=1, is_deleted=0 (scan gate)
         public int? other_active_project_count { get; set; } // only from sp_employee_GetByProjectCode (cascade skip)
+        public string? position { get; set; }               // only from sp_employee_GetByProjectCode (project-employees modal) - exact per-project position
 
         public int active { get; set; }
 

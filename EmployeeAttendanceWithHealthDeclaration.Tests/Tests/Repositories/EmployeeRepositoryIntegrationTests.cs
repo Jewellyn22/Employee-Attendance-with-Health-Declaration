@@ -122,6 +122,32 @@ namespace EmployeeAttendanceWithHealthDeclaration.Tests.Repositories
             Assert.Equal("TST Project (Welder - TST Area)", row.project_details);
         }
 
+        // Regression (v4.0.0.5): the SP returns a singular `position` column, but the
+        // employee model lacked the property — Dapper silently dropped it, so the
+        // project-employees modal rendered a blank Position column.
+        [Fact]
+        public async Task GetByProjectCode_maps_position_and_other_active_project_count()
+        {
+            await using var connection = _fixture.CreateConnection();
+            await IntegrationSeed.CreateProviderAsync(connection);
+            await IntegrationSeed.CreateProjectAsync(connection);
+            await IntegrationSeed.CreateProjectAsync(connection, project_code: IntegrationSeed.SecondProjectCode);
+            // Own employee ID: other tests assert exact aggregates for the shared
+            // IntegrationSeed.EmployeeId, so adding a second assignment to it here
+            // would break them depending on execution order.
+            await IntegrationSeed.CreateEmployeeAsync(connection, employee_id: "TST-000035");
+            await IntegrationSeed.AssignProjectAsync(connection, "TST-000035", IntegrationSeed.ProjectCode, "Welder");
+            await IntegrationSeed.AssignProjectAsync(connection, "TST-000035", IntegrationSeed.SecondProjectCode, "Supervisor");
+            var repo = new EmployeeRepository(connection);
+
+            var rows = (await repo.GetByProjectCode(IntegrationSeed.ProjectCode)).ToList();
+
+            var row = Assert.Single(rows);
+            Assert.Equal("TST-000035", row.employee_id);
+            Assert.Equal("Welder", row.position);            // junction position for THIS project, not the plural CSV
+            Assert.Equal(1, row.other_active_project_count); // TST-26-002 is the other active assignment
+        }
+
         [Fact]
         public async Task Update_rewrites_the_assignment_rows()
         {
